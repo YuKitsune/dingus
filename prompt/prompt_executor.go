@@ -1,19 +1,25 @@
 package prompt
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/charmbracelet/huh"
 	"github.com/yukitsune/shiji/config"
+	"github.com/yukitsune/shiji/execution"
+	"os"
+	"strings"
 )
 
 type PromptExecutor interface {
 	Execute(promptDefinition *config.PromptDefinition) (any, error)
 }
 
-type executor struct{}
+type executor struct {
+	commandExecutor execution.CommandExecutor
+}
 
-func NewPromptExecutor() PromptExecutor {
-	return &executor{}
+func NewPromptExecutor(commandExecutor execution.CommandExecutor) PromptExecutor {
+	return &executor{commandExecutor}
 }
 
 func (pe *executor) Execute(promptDefinition *config.PromptDefinition) (any, error) {
@@ -27,7 +33,11 @@ func (pe *executor) Execute(promptDefinition *config.PromptDefinition) (any, err
 	}
 
 	if promptDefinition.Select != nil {
-		return executeSelectPrompt(promptDefinition.Select)
+		return pe.executeSelectPrompt(promptDefinition.Select)
+	}
+
+	if promptDefinition.MultiSelect != nil {
+		return pe.executeMultiSelectPrompt(promptDefinition.MultiSelect)
 	}
 
 	if promptDefinition.Confirm != nil {
@@ -46,6 +56,10 @@ func ensureMutualExclusivity(promptDefinition *config.PromptDefinition) error {
 	}
 
 	if promptDefinition.Select != nil {
+		count++
+	}
+
+	if promptDefinition.MultiSelect != nil {
 		count++
 	}
 
@@ -88,26 +102,39 @@ func executeTextPrompt(definition *config.TextPromptDefinition) (string, error) 
 	return value, nil
 }
 
-func executeSelectPrompt(definition *config.SelectPromptDefinition) ([]string, error) {
-	var values []string
+func (pe *executor) executeSelectPrompt(definition *config.SelectPromptDefinition) (string, error) {
+	var value string
 
-	var err error
-	if definition.Multiple {
-		err = huh.NewMultiSelect[string]().
-			Title(definition.Description).
-			Options(makeOptions(definition)...).
-			Value(&values).
-			Run()
-	} else {
-		var value string
-		err = huh.NewSelect[string]().
-			Title(definition.Description).
-			Options(makeOptions(definition)...).
-			Value(&value).
-			Run()
-		values = append(values, value)
+	options, err := pe.makeOptions(definition)
+	if err != nil {
+		return value, err
 	}
 
+	err = huh.NewSelect[string]().
+		Title(definition.Description).
+		Options(options...).
+		Value(&value).
+		Run()
+	if err != nil {
+		return value, err
+	}
+
+	return value, nil
+}
+
+func (pe *executor) executeMultiSelectPrompt(definition *config.SelectPromptDefinition) ([]string, error) {
+	var values []string
+
+	options, err := pe.makeOptions(definition)
+	if err != nil {
+		return nil, err
+	}
+
+	err = huh.NewMultiSelect[string]().
+		Title(definition.Description).
+		Options(options...).
+		Value(&values).
+		Run()
 	if err != nil {
 		return nil, err
 	}
@@ -128,11 +155,42 @@ func executeConfirmPrompt(definition *config.ConfirmPromptDefinition) (bool, err
 	return value, err
 }
 
-func makeOptions(definition *config.SelectPromptDefinition) []huh.Option[string] {
+func (pe *executor) makeOptions(definition *config.SelectPromptDefinition) ([]huh.Option[string], error) {
+
 	var options []huh.Option[string]
-	for _, option := range definition.Options {
-		options = append(options, huh.NewOption[string](option, option))
+	var err error
+	if len(definition.Options) > 0 {
+		for _, option := range definition.Options {
+			options = append(options, huh.NewOption[string](option, option))
+		}
+	} else if definition.OptionsFrom != nil {
+		options, err = pe.getPromptOptionsFromCommand(*definition.OptionsFrom)
 	}
 
-	return options
+	return options, err
+}
+
+func (pe *executor) getPromptOptionsFromCommand(optionsCommand config.ExecutableCommand) ([]huh.Option[string], error) {
+
+	stdoutBuffer := &bytes.Buffer{}
+	stderrBuffer := &bytes.Buffer{}
+	if err := pe.commandExecutor.Execute(optionsCommand, os.Stdin, stdoutBuffer, stderrBuffer); err != nil {
+		return nil, err
+	}
+
+	errStr := stderrBuffer.String()
+	if errStr != "" {
+		return nil, fmt.Errorf("%s", errStr)
+	}
+
+	result := stdoutBuffer.String()
+	trimmedResult := strings.TrimRight(result, "\n ")
+
+	values := strings.Split(trimmedResult, "\n")
+	var options []huh.Option[string]
+	for _, value := range values {
+		options = append(options, huh.NewOption(value, value))
+	}
+
+	return options, nil
 }

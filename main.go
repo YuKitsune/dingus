@@ -21,7 +21,7 @@ func main() {
 	}
 
 	commandExecutor := execution.NewBashExecutor() // TODO: Support other shells
-	promptExecutor := prompt.NewPromptExecutor()
+	promptExecutor := prompt.NewPromptExecutor(commandExecutor)
 	variableProvider := variables.NewVariableProvider(cfg, commandExecutor, promptExecutor)
 	templateRenderer := template.NewRenderer()
 

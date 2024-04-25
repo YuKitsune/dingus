@@ -36,9 +36,10 @@ type VariableDefinition struct {
 }
 
 type PromptDefinition struct {
-	Text    *TextPromptDefinition
-	Select  *SelectPromptDefinition
-	Confirm *ConfirmPromptDefinition
+	Text        *TextPromptDefinition
+	Select      *SelectPromptDefinition
+	MultiSelect *SelectPromptDefinition `yaml:"multiSelect"`
+	Confirm     *ConfirmPromptDefinition
 }
 
 type TextPromptDefinition struct {
@@ -50,8 +51,7 @@ type TextPromptDefinition struct {
 type SelectPromptDefinition struct {
 	Description string
 	Options     []string
-	OptionsFrom *ExecutableCommand
-	Multiple    bool // Todo: Consider splitting Multi-select into it's own thing
+	OptionsFrom *ExecutableCommand `yaml:"optionsFrom"`
 }
 
 type ConfirmPromptDefinition struct {

@@ -24,9 +24,16 @@ variables:
   commandOutput:
     valueFrom: echo "This is a command result"
 
+  # Even prompt options
+  promptOptions:
+    prompt:
+      multiSelect:
+        description: Dingus
+        optionsFrom: cat example.json | jq -r '.[]'
+
 commands:
   test:
-    execute: echo "Hello, {{ .name }} \#{{ .count }}! {{ .commandOutput }}"
+    execute: echo "Hello, {{ .name }} \#{{ .count }}! {{ .promptOptions }}"
     variables:
       count:
         default: 1
