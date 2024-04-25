@@ -5,20 +5,20 @@ description: My awesome description.
 variables:
 
   # Variables can be acquired by prompting the user
-#  name:
-#    prompt:
-#      text:
-#        description: What's your name?
-#
-#  food:
-#    prompt:
-#      select:
-#        description: What food do you like?
-#        options:
-#          - Cheeseburger
-#          - French Fries
-#          - Pizza
-#        multiple: true
+  name:
+    prompt:
+      text:
+        description: What's your name?
+
+  food:
+    prompt:
+      select:
+        description: What food do you like?
+        options:
+          - Cheeseburger
+          - French Fries
+          - Pizza
+        multiple: true
 
   # Variables can also be set using the output of other commands
   commandOutput:

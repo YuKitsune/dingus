@@ -1,0 +1,41 @@
+description: My Description
+variables:
+
+  version: v5
+
+  name:
+    prompt:
+      description: What's your name?
+
+#  food:
+#    select:
+#      description: What food do you like?
+#      options:
+#        - Burger
+#        - Pizza
+#        - Fries
+#      multiple: true
+
+#  command:
+#    exec: cat example.json | jq -r '.[]'
+
+commands:
+
+  # Single-line command
+  single:
+    description: Says Hello
+    action: echo "Hello, $name"
+
+  # Multi-step command
+  multi:
+    description: Tests the thing
+    actions:
+      - echo "Hello, $name"
+      - echo "How are you, $name?"
+
+  # Command with a confirmation
+  confirm:
+    description: Tests the thing
+    actions:
+      - confirm: Are you sure?
+      - echo "Awesome!"
