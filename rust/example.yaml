@@ -7,14 +7,13 @@ variables:
     prompt:
       description: What's your name?
 
-#  food:
-#    select:
-#      description: What food do you like?
-#      options:
-#        - Burger
-#        - Pizza
-#        - Fries
-#      multiple: true
+  food:
+    select:
+      description: What food do you like?
+      options:
+        - Burger
+        - Pizza
+        - Fries
 
 #  command:
 #    exec: cat example.json | jq -r '.[]'
@@ -24,7 +23,7 @@ commands:
   # Single-line command
   single:
     description: Says Hello
-    action: echo "Hello, $name"
+    action: echo "Hello, $name! I heard you like $food?"
 
   # Multi-step command
   multi:

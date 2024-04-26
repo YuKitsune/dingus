@@ -5,7 +5,7 @@ use std::error::Error;
 use clap::{Arg, ArgMatches, Command};
 
 use definitions::*;
-use variables::{VariableResolver, Variables};
+use variables::{VariableResolver};
 
 use crate::execution::CommandExecutor;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
@@ -39,7 +39,9 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
     let variable_resolver = &VariableResolver {
         command_executor: CommandExecutor{},
         prompt_executor: PromptExecutor{},
-        select_executor: SelectExecutor{}
+        select_executor: SelectExecutor{
+            command_executor: CommandExecutor{}
+        }
     };
 
     let confirm_executor = &ConfirmExecutor{};
@@ -153,6 +155,9 @@ fn execute_actions(
     confirm_executor: &ConfirmExecutor,
     variable_resolver: &VariableResolver,
     arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+
+    // TODO: Evaluate variables here
+
     for command_action in command_actions {
         execute_action(command_action, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches)?;
     }
@@ -167,6 +172,8 @@ fn execute_action(
     confirm_executor: &ConfirmExecutor,
     variable_resolver: &VariableResolver,
     arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+
+    // TODO: Evaluate variables here
 
     return match command_action {
         CommandAction::Invocation(invocation) => {
