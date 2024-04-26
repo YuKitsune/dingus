@@ -111,20 +111,6 @@ pub struct Execution {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct ConfirmDefinition {
     pub confirm: String,
-
-    #[serde(default="default_affirmative")]
-    pub affirmative: String,
-
-    #[serde(default="default_negative")]
-    pub negative: String
-}
-
-fn default_affirmative() -> String {
-    "Yes".to_string()
-}
-
-fn default_negative() -> String {
-    "No".to_string()
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
