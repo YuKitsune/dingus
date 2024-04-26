@@ -67,7 +67,7 @@ fn create_subcommands(
             // Combine the variable definitions from the parent with the variable definitions from the current command.
             // This lets us inherit variables from the root config/parent commands.
             let mut variables = parent_variable_definitions.clone();
-            variables.extend(definition.clone().variables.clone());
+            variables.extend(definition.variables.clone());
 
             let subcommands = create_subcommands(
                 &definition.commands,

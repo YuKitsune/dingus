@@ -139,7 +139,3 @@ pub enum SelectPromptOptions {
     Literal(Vec<String>),
     Invocation(Execution)
 }
-
-fn default_multiple_selections() -> bool {
-    false
-}

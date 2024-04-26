@@ -30,13 +30,13 @@ impl VariableResolver {
                     }
                     VariableDefinition::Prompt(prompt_definition) => {
 
-                        if let Some(flagValue) = get_argument_value(key.clone(), arg_matches) {
-                            return Ok((key.clone(), flagValue.clone()))
+                        if let Some(flag_value) = get_argument_value(key.clone(), arg_matches) {
+                            return Ok((key.clone(), flag_value.clone()))
                         }
 
                         if let Some(flag) = prompt_definition.clone().prompt.flag {
-                            if let Some(flagValue) = get_argument_value(flag, arg_matches) {
-                                return Ok((key.clone(), flagValue.clone()))
+                            if let Some(flag_value) = get_argument_value(flag, arg_matches) {
+                                return Ok((key.clone(), flag_value.clone()))
                             }
                         }
 
@@ -44,13 +44,13 @@ impl VariableResolver {
                         Ok((key.clone(), value.clone()))
                     }
                     VariableDefinition::Select(select_definition) => {
-                        if let Some(flagValue) = get_argument_value(key.clone(), arg_matches) {
-                            return Ok((key.clone(), flagValue.clone()))
+                        if let Some(flag_value) = get_argument_value(key.clone(), arg_matches) {
+                            return Ok((key.clone(), flag_value.clone()))
                         }
 
                         if let Some(flag) = select_definition.clone().select.flag {
-                            if let Some(flagValue) = get_argument_value(flag, arg_matches) {
-                                return Ok((key.clone(), flagValue.clone()))
+                            if let Some(flag_value) = get_argument_value(flag, arg_matches) {
+                                return Ok((key.clone(), flag_value.clone()))
                             }
                         }
 
