@@ -46,16 +46,19 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
 
     let confirm_executor = &ConfirmExecutor{};
 
+    // This will exit on any match failures
     let arg_matches = root_command.clone().get_matches();
-    if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
-        if let Some(subcommand) = root_command.clone().find_subcommand(subcommand_name) {
-            if let Some(command_definition) = config.commands.get(subcommand_name) {
-                return execute_command(command_executor, subcommand, command_definition, &mut variable_definitions, variable_resolver, confirm_executor, &subcommand_matches)
-            }
-        }
-    }
-
-    todo!("didn't match any commands")
+    let (subcommand_name, subcommand_matches) = arg_matches.subcommand().unwrap();
+    let subcommand = root_command.find_subcommand(subcommand_name).unwrap();
+    let command_definition = config.commands.get(subcommand_name).unwrap();
+    return execute_command(
+        command_executor,
+        subcommand,
+        command_definition,
+        &mut variable_definitions,
+        variable_resolver,
+        confirm_executor,
+        &subcommand_matches);
 }
 
 fn create_subcommands(
@@ -75,9 +78,12 @@ fn create_subcommands(
 
             let args = create_args_for_command(&variables);
 
+            let has_action = definition.action.is_some();
+
             let command = Command::new(name)
                 .about(definition.description.clone())
                 .subcommands(subcommands)
+                .subcommand_required(!has_action)
                 .args(args);
 
             return command;
@@ -135,17 +141,19 @@ fn execute_command(
 
     // Try to find any further matches on a subcommand
     if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
-        if let Some(subcommand) = command.clone().find_subcommand(subcommand_name) {
-            if let Some(command_definition) = command_definition.commands.get(subcommand_name) {
-                return execute_command(command_executor, subcommand, command_definition, variable_definitions, variable_resolver, confirm_executor, &subcommand_matches)
-            }
+        let subcommand = command.find_subcommand(subcommand_name).unwrap();
+        let command_definition = command_definition.commands.get(subcommand_name).unwrap();
+        return execute_command(command_executor, subcommand, command_definition, variable_definitions, variable_resolver, confirm_executor, &subcommand_matches)
+    }
+
+    if let Some(actions) = &command_definition.action {
+        return match actions {
+            CommandActions::SingleStep(step) => execute_action(&step.action, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches),
+            CommandActions::MultiStep(steps) => execute_actions(&steps.actions, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches)
         }
     }
 
-    return match &command_definition.action {
-        CommandActions::SingleStep(step) => execute_action(&step.action, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches),
-        CommandActions::MultiStep(steps) => execute_actions(&steps.actions, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches)
-    }
+    Err(Box::new(NoAction))
 }
 
 fn execute_actions(
@@ -208,3 +216,14 @@ impl fmt::Display for ConfirmationError {
 }
 
 impl Error for ConfirmationError { }
+
+#[derive(Debug, Clone)]
+struct NoAction;
+
+impl fmt::Display for NoAction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "this command has no action")
+    }
+}
+
+impl Error for NoAction { }

@@ -54,8 +54,9 @@ pub struct CommandDefinition {
     pub commands: HashMap<String, CommandDefinition>,
 
     #[serde(flatten)]
-    pub action: CommandActions
+    pub action: Option<CommandActions>
 }
+
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 #[serde(untagged)]
 pub enum CommandActions {

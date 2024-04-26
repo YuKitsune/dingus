@@ -23,7 +23,15 @@ commands:
   # Single-line command
   single:
     description: Says Hello
-    action: echo "Hello, $name! I heard you like $food?"
+
+    commands:
+      smelly:
+        description: Stinks
+        action: echo "Damn $name, you stink!"
+
+      not-smelly:
+        description: Doesn't stink
+        action: echo "Damn $name, you smell great!"
 
   # Multi-step command
   multi:
