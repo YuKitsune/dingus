@@ -5,13 +5,15 @@ use std::error::Error;
 use clap::{Arg, ArgMatches, Command};
 
 use definitions::*;
-use variables::{VariableResolver};
+use shell::BashExecutor;
+use variables::VariableResolver;
 
-use crate::execution::CommandExecutor;
+use crate::shell::ShellExecutor;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
+use crate::variables::Variables;
 
 mod definitions;
-mod execution;
+mod shell;
 mod variables;
 mod prompt;
 
@@ -34,13 +36,13 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
         .subcommand_required(true)
         .args(root_args);
 
-    let command_executor = &CommandExecutor{};
+    let command_executor = &BashExecutor{};
 
     let variable_resolver = &VariableResolver {
-        command_executor: CommandExecutor{},
+        shell_executor: Box::new(BashExecutor{}),
         prompt_executor: PromptExecutor{},
         select_executor: SelectExecutor{
-            command_executor: CommandExecutor{}
+            command_executor: Box::new(BashExecutor{})
         }
     };
 
@@ -128,7 +130,7 @@ fn read_config() -> Result<Config, Box<dyn Error>> {
 }
 
 fn execute_command(
-    command_executor: &CommandExecutor,
+    shell_executor: &impl ShellExecutor,
     command: &Command,
     command_definition: &CommandDefinition,
     variable_definitions: &mut HashMap<String, VariableDefinition>,
@@ -143,13 +145,13 @@ fn execute_command(
     if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
         let subcommand = command.find_subcommand(subcommand_name).unwrap();
         let command_definition = command_definition.commands.get(subcommand_name).unwrap();
-        return execute_command(command_executor, subcommand, command_definition, variable_definitions, variable_resolver, confirm_executor, &subcommand_matches)
+        return execute_command(shell_executor, subcommand, command_definition, variable_definitions, variable_resolver, confirm_executor, &subcommand_matches)
     }
 
     if let Some(actions) = &command_definition.action {
         return match actions {
-            CommandActions::SingleStep(step) => execute_action(&step.action, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches),
-            CommandActions::MultiStep(steps) => execute_actions(&steps.actions, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches)
+            CommandActions::SingleStep(step) => execute_action(&step.action, variable_definitions, shell_executor, confirm_executor, variable_resolver, arg_matches),
+            CommandActions::MultiStep(steps) => execute_actions(&steps.actions, variable_definitions, shell_executor, confirm_executor, variable_resolver, arg_matches)
         }
     }
 
@@ -159,7 +161,7 @@ fn execute_command(
 fn execute_actions(
     command_actions: &Vec<CommandAction>,
     variable_definitions: &HashMap<String, VariableDefinition>,
-    command_executor: &CommandExecutor,
+    shell_executor: &impl ShellExecutor,
     confirm_executor: &ConfirmExecutor,
     variable_resolver: &VariableResolver,
     arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
@@ -167,7 +169,7 @@ fn execute_actions(
     // TODO: Evaluate variables here
 
     for command_action in command_actions {
-        execute_action(command_action, variable_definitions, command_executor, confirm_executor, variable_resolver, arg_matches)?;
+        execute_action(command_action, variable_definitions, shell_executor, confirm_executor, variable_resolver, arg_matches)?;
     }
 
     Ok(())
@@ -176,7 +178,7 @@ fn execute_actions(
 fn execute_action(
     command_action: &CommandAction,
     variable_definitions: &HashMap<String, VariableDefinition>,
-    command_executor: &CommandExecutor,
+    shell_executor: &impl ShellExecutor,
     confirm_executor: &ConfirmExecutor,
     variable_resolver: &VariableResolver,
     arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
@@ -188,7 +190,14 @@ fn execute_action(
 
             let variables = variable_resolver.resolve_variables(variable_definitions, arg_matches)?;
 
-            command_executor.execute(invocation.as_str(), &variables)
+            let result = shell_executor.execute(invocation, &variables);
+
+            // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
+            if let Err(err) = result {
+                return Err(Box::new(err))
+            }
+
+            Ok(())
         },
         CommandAction::Confirmation(confirm_definition) => {
             let result = confirm_executor.execute(confirm_definition)?;

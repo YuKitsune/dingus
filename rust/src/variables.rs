@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::error::Error;
-use clap::{ArgMatches};
+use std::fmt;
+use std::process::ExitStatus;
+use clap::ArgMatches;
 use crate::definitions::VariableDefinition;
-use crate::execution::{CommandExecutor};
+use crate::shell::ShellExecutor;
 use crate::prompt::{PromptExecutor, SelectExecutor};
 
 pub type Variables = HashMap<String, String>;
 
 pub struct VariableResolver {
-    pub command_executor: CommandExecutor,
+    pub shell_executor: Box<dyn ShellExecutor>,
     pub prompt_executor: PromptExecutor,
     pub select_executor: SelectExecutor
 }
@@ -25,7 +27,18 @@ impl VariableResolver {
                         Ok((key.clone(), value.clone()))
                     }
                     VariableDefinition::Invocation(execution) => {
-                        let value = self.command_executor.get_output(execution.clone().exec)?;
+                        let output = self.shell_executor.as_ref().get_output(&execution.clone().exec)?;
+
+                        if !output.status.success() {
+                            return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
+                        }
+
+                        // TODO: Add an option to fail resolution if anything was send to stderr
+                        // if !output.stderr.is_empty() {
+
+                        // }
+
+                        let value = String::from_utf8(output.stdout)?;
                         Ok((key.clone(), value.clone()))
                     }
                     VariableDefinition::Prompt(prompt_definition) => {
@@ -69,4 +82,19 @@ fn get_argument_value(name: String, arg_matches: &ArgMatches) -> Option<String> 
     }
 
     None
+}
+
+#[derive(Debug)]
+enum VariableResolutionError {
+    UnsuccessfulShellExecution(ExitStatus)
+}
+
+impl Error for VariableResolutionError {}
+
+impl fmt::Display for VariableResolutionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            VariableResolutionError::UnsuccessfulShellExecution(exit_status) => write!(f, "shell command failed: {}", exit_status),
+        }
+    }
 }

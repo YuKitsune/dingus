@@ -1,7 +1,7 @@
 use std::error::Error;
 use inquire::{Confirm, Select, Text};
 use crate::definitions::{PromptDefinition, SelectDefinition, ConfirmDefinition, SelectPromptOptions};
-use crate::execution::CommandExecutor;
+use crate::shell::ShellExecutor;
 
 pub struct PromptExecutor {}
 
@@ -16,7 +16,7 @@ impl PromptExecutor {
 }
 
 pub struct SelectExecutor {
-    pub command_executor: CommandExecutor
+    pub command_executor: Box<dyn ShellExecutor>
 }
 
 impl SelectExecutor {
@@ -35,8 +35,9 @@ impl SelectExecutor {
                 Ok(options.clone())
             }
             SelectPromptOptions::Invocation(execution) => {
-                let output = self.command_executor.get_output(execution.clone().exec)?;
-                let options = output.clone().lines().map(|s| String::from(s)).collect();
+                let output = self.command_executor.get_output(&execution.clone().exec)?;
+                let stdout = String::from_utf8(output.stdout)?;
+                let options = stdout.clone().lines().map(|s| String::from(s)).collect();
                 Ok(options)
             }
         }
