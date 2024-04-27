@@ -10,7 +10,6 @@ use variables::VariableResolver;
 
 use crate::shell::ShellExecutor;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
-use crate::variables::Variables;
 
 mod definitions;
 mod shell;
@@ -25,9 +24,9 @@ fn main() {
 }
 
 fn main_with_result() -> Result<(), Box<dyn Error>> {
-    let config = read_config().unwrap();
-    let mut variable_definitions = config.variables.clone();
+    let config = read_config()?;
 
+    // Configure the clap commands
     let root_args = create_args_for_command(&config.variables);
     let sub_commands = create_subcommands(&config.commands, &config.variables);
     let root_command = Command::new("shiji")
@@ -36,7 +35,7 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
         .subcommand_required(true)
         .args(root_args);
 
-    let command_executor = &BashExecutor{};
+    let shell_executor = &BashExecutor{};
 
     let variable_resolver = &VariableResolver {
         shell_executor: Box::new(BashExecutor{}),
@@ -50,18 +49,75 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
 
     // This will exit on any match failures
     let arg_matches = root_command.clone().get_matches();
-    let (subcommand_name, subcommand_matches) = arg_matches.subcommand().unwrap();
-    let subcommand = root_command.find_subcommand(subcommand_name).unwrap();
-    let command_definition = config.commands.get(subcommand_name).unwrap();
-    return execute_command(
-        command_executor,
-        subcommand,
-        command_definition,
-        &mut variable_definitions,
-        variable_resolver,
-        confirm_executor,
-        &subcommand_matches);
+
+    let find_result = find_subcommand(
+        &arg_matches,
+        &root_command,
+        &config.commands,
+        &config.variables)?;
+
+    if let Some((target_command, available_variable_definitions)) = find_result {
+
+        if let Some(command_action) = target_command.action {
+            let actions = match command_action {
+                CommandActions::SingleStep(single_command_action) => {
+                    vec![single_command_action.action]
+                }
+                CommandActions::MultiStep(multi_command_action) => {
+                    multi_command_action.actions
+                }
+            };
+
+            for action in actions {
+                execute_action(
+                    &action,
+                    &available_variable_definitions,
+                    shell_executor,
+                    confirm_executor,
+                    variable_resolver,
+                    &arg_matches)
+            }
+        }
+    }
+
+    return Err(Box::new(CommandNotFound{}));
 }
+
+fn find_subcommand(
+    arg_matches: &ArgMatches,
+    parent_command: &Command,
+    available_commands: &HashMap<String, CommandDefinition>,
+    parent_variables: &HashMap<String, VariableDefinition>
+) -> Result<Option<SubcommandSearchResult>, Box<dyn Error>> {
+
+    // If we've matched on a subcommand, then lookup the subcommand definition
+    if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
+        let subcommand = parent_command.find_subcommand(subcommand_name).unwrap();
+        let command_definition = available_commands.get(subcommand_name).unwrap().to_owned();
+
+        // Add the subcommands variables to the variables provided by the parent
+        let mut available_variables = parent_variables.clone();
+        available_variables.extend(command_definition.variables.clone());
+
+        // If we've matched another subcommand, return that one instead
+        let matched_subcommand = find_subcommand(
+            &subcommand_matches,
+            &subcommand,
+            &command_definition.commands,
+            &available_variables)?;
+        if matched_subcommand.is_some() {
+            return Ok(matched_subcommand)
+        }
+
+        // If no more subcommand matches exist, then return the current subcommand
+        let result: SubcommandSearchResult = (command_definition.clone(), available_variables);
+        return Ok(Some(result));
+    }
+
+    return Ok(None);
+}
+
+type SubcommandSearchResult = (CommandDefinition, HashMap<String, VariableDefinition>);
 
 fn create_subcommands(
     command_definitions: &HashMap<String, CommandDefinition>,
@@ -129,52 +185,6 @@ fn read_config() -> Result<Config, Box<dyn Error>> {
     Ok(config)
 }
 
-fn execute_command(
-    shell_executor: &impl ShellExecutor,
-    command: &Command,
-    command_definition: &CommandDefinition,
-    variable_definitions: &mut HashMap<String, VariableDefinition>,
-    variable_resolver: &VariableResolver,
-    confirm_executor: &ConfirmExecutor,
-    arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
-
-    // Combine the variables from this command with the parent variables
-    variable_definitions.extend(command_definition.variables.clone());
-
-    // Try to find any further matches on a subcommand
-    if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
-        let subcommand = command.find_subcommand(subcommand_name).unwrap();
-        let command_definition = command_definition.commands.get(subcommand_name).unwrap();
-        return execute_command(shell_executor, subcommand, command_definition, variable_definitions, variable_resolver, confirm_executor, &subcommand_matches)
-    }
-
-    if let Some(actions) = &command_definition.action {
-        return match actions {
-            CommandActions::SingleStep(step) => execute_action(&step.action, variable_definitions, shell_executor, confirm_executor, variable_resolver, arg_matches),
-            CommandActions::MultiStep(steps) => execute_actions(&steps.actions, variable_definitions, shell_executor, confirm_executor, variable_resolver, arg_matches)
-        }
-    }
-
-    Err(Box::new(NoAction))
-}
-
-fn execute_actions(
-    command_actions: &Vec<CommandAction>,
-    variable_definitions: &HashMap<String, VariableDefinition>,
-    shell_executor: &impl ShellExecutor,
-    confirm_executor: &ConfirmExecutor,
-    variable_resolver: &VariableResolver,
-    arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
-
-    // TODO: Evaluate variables here
-
-    for command_action in command_actions {
-        execute_action(command_action, variable_definitions, shell_executor, confirm_executor, variable_resolver, arg_matches)?;
-    }
-
-    Ok(())
-}
-
 fn execute_action(
     command_action: &CommandAction,
     variable_definitions: &HashMap<String, VariableDefinition>,
@@ -227,12 +237,12 @@ impl fmt::Display for ConfirmationError {
 impl Error for ConfirmationError { }
 
 #[derive(Debug, Clone)]
-struct NoAction;
+struct CommandNotFound;
 
-impl fmt::Display for NoAction {
+impl fmt::Display for CommandNotFound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "this command has no action")
+        write!(f, "could not find a suitable command")
     }
 }
 
-impl Error for NoAction { }
+impl Error for CommandNotFound { }
