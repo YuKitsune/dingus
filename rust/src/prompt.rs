@@ -16,7 +16,7 @@ impl PromptExecutor {
 }
 
 pub struct SelectExecutor {
-    pub command_executor: Box<dyn ShellExecutor>
+    pub shell_executor: Box<dyn ShellExecutor>
 }
 
 impl SelectExecutor {
@@ -35,7 +35,7 @@ impl SelectExecutor {
                 Ok(options.clone())
             }
             SelectOptions::Invocation(invocation) => {
-                let output = self.command_executor.get_output(&invocation.shell_command)?;
+                let output = self.shell_executor.get_output(&invocation.shell_command)?;
                 let stdout = String::from_utf8(output.stdout)?;
                 let options = stdout.clone().lines().map(|s| String::from(s)).collect();
                 Ok(options)

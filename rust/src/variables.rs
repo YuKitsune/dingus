@@ -38,21 +38,21 @@ impl ArgumentResolver {
 pub struct VariableResolver {
     pub shell_executor: Box<dyn ShellExecutor>,
     pub prompt_executor: PromptExecutor,
-    pub select_executor: SelectExecutor
+    pub select_executor: SelectExecutor,
+    pub argument_resolver: ArgumentResolver
 }
 
 impl VariableResolver {
     pub fn resolve_variables(
         &self,
-        variable_definitions: &HashMap<String, VariableDefinition>,
-        arg_resolver: &ArgumentResolver) -> Result<Variables, Box<dyn Error>> {
+        variable_definitions: &HashMap<String, VariableDefinition>) -> Result<Variables, Box<dyn Error>> {
         variable_definitions.iter()
             .map(|(key, definition)| -> Result<(String, String), Box<dyn Error>> {
 
                 let arg_name = definition.arg_name(key);
 
                 // Check the args first
-                if let Some(arg_value) = arg_resolver.get(&arg_name) {
+                if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
                     return Ok((key.clone(), arg_value.clone()))
                 }
 

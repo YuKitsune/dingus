@@ -7,6 +7,7 @@ use clap::{Arg, ArgMatches, Command};
 use definitions::*;
 use shell::BashExecutor;
 use variables::VariableResolver;
+use crate::commands::ActionExecutor;
 
 use crate::shell::ShellExecutor;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
@@ -16,9 +17,9 @@ mod definitions;
 mod shell;
 mod variables;
 mod prompt;
+mod commands;
 
 // Todo:
-// - [ ] Separate the command execution from this file
 // - [ ] Unit tests
 // - [ ] Integration tests?
 // - [ ] Address final todos
@@ -26,13 +27,14 @@ mod prompt;
 // - [ ] Publish
 
 fn main() {
-    let result = main_with_result();
+    let result = run();
     if let Err(err) = result {
-        panic!("{}", err)
+        eprintln!("{}", err);
+        process::exit(1);
     }
 }
 
-fn main_with_result() -> Result<(), Box<dyn Error>> {
+fn run() -> Result<(), Box<dyn Error>> {
     let config = read_config()?;
 
     // Configure the clap commands
@@ -43,18 +45,6 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
         .subcommands(sub_commands)
         .subcommand_required(true)
         .args(root_args);
-
-    let shell_executor = &BashExecutor{};
-
-    let variable_resolver = &VariableResolver {
-        shell_executor: Box::new(BashExecutor{}),
-        prompt_executor: PromptExecutor{},
-        select_executor: SelectExecutor{
-            command_executor: Box::new(BashExecutor{})
-        }
-    };
-
-    let confirm_executor = &ConfirmExecutor{};
 
     // This will exit on any match failures
     let arg_matches = root_command.clone().get_matches();
@@ -78,15 +68,25 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
             };
 
             let arg_resolver = ArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
+            let variable_resolver = VariableResolver {
+                shell_executor: Box::new(BashExecutor{}),
+                prompt_executor: PromptExecutor{},
+                select_executor: SelectExecutor{
+                    shell_executor: Box::new(BashExecutor{})
+                },
+                argument_resolver: arg_resolver
+            };
+
+            let action_executor = ActionExecutor {
+                shell_executor: Box::new(BashExecutor{}),
+                confirm_executor: ConfirmExecutor{},
+                variable_resolver,
+            };
 
             for action in actions {
-                return execute_action(
+                return action_executor.execute(
                     &action,
-                    &available_variable_definitions,
-                    shell_executor,
-                    confirm_executor,
-                    variable_resolver,
-                    &arg_resolver)
+                    &available_variable_definitions);
             }
         }
     }
