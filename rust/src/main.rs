@@ -10,7 +10,7 @@ use variables::VariableResolver;
 
 use crate::shell::ShellExecutor;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
-use crate::variables::FlagResolver;
+use crate::variables::{ArgumentResolver};
 
 mod definitions;
 mod shell;
@@ -69,7 +69,7 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
                 }
             };
 
-            let flag_resolver = FlagResolver::from_arg_matches(&sucbommand_arg_matches);
+            let arg_resolver = ArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
 
             for action in actions {
                 return execute_action(
@@ -78,7 +78,7 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
                     shell_executor,
                     confirm_executor,
                     variable_resolver,
-                    &flag_resolver)
+                    &arg_resolver)
             }
         }
     }
@@ -187,9 +187,9 @@ fn execute_action(
     shell_executor: &impl ShellExecutor,
     confirm_executor: &ConfirmExecutor,
     variable_resolver: &VariableResolver,
-    flag_resolver: &FlagResolver) -> Result<(), Box<dyn Error>> {
+    arg_resolver: &ArgumentResolver) -> Result<(), Box<dyn Error>> {
 
-    let variables = variable_resolver.resolve_variables(variable_definitions, flag_resolver)?;
+    let variables = variable_resolver.resolve_variables(variable_definitions, arg_resolver)?;
 
     return match command_action {
         CommandAction::Execution(shell_command) => {

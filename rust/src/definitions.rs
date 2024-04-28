@@ -35,10 +35,10 @@ impl VariableDefinition {
     pub fn arg_name(&self, key: &String) -> String {
         match self {
             VariableDefinition::Literal(_) => None,
-            VariableDefinition::LiteralExtended(extended_literal_def) => extended_literal_def.clone().flag,
-            VariableDefinition::Execution(execution_def) => execution_def.clone().flag,
-            VariableDefinition::Prompt(prompt_def) => prompt_def.clone().prompt.flag,
-            VariableDefinition::Select(select_def) => select_def.clone().select.flag,
+            VariableDefinition::LiteralExtended(extended_literal_def) => extended_literal_def.clone().argument_name,
+            VariableDefinition::Execution(execution_def) => execution_def.clone().argument_name,
+            VariableDefinition::Prompt(prompt_def) => prompt_def.clone().argument_name,
+            VariableDefinition::Select(select_def) => select_def.clone().argument_name,
         }.unwrap_or(key.clone())
     }
 }
@@ -47,7 +47,9 @@ impl VariableDefinition {
 pub struct ExtendedLiteralVariableDefinition {
     pub value: String,
     pub description: Option<String>,
-    pub flag: Option<String>
+
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -55,25 +57,32 @@ pub struct ExecutionVariableDefinition {
     #[serde(rename(deserialize = "exec"))]
     pub shell_command: ShellCommand,
     pub description: Option<String>,
-    pub flag: Option<String>
+
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptVariableDefinition {
     pub prompt: PromptDefinition,
     pub description: Option<String>,
+
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SelectVariableDefinition {
     pub select: SelectDefinition,
     pub description: Option<String>,
+
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptDefinition {
     pub message: String,
-    pub flag: Option<String>,
 
     #[serde(default="default_multi_line")]
     pub multi_line: bool
@@ -86,7 +95,6 @@ fn default_multi_line() -> bool {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SelectDefinition {
     pub message: String,
-    pub flag: Option<String>,
     pub options: SelectOptions,
 }
 
