@@ -7,31 +7,29 @@ variables:
     prompt:
       description: What's your name?
 
-  food:
-    select:
-      description: What food do you like?
-      options:
-        - Burger
-        - Pizza
-        - Fries
-
-#  command:
-#    exec: cat example.json | jq -r '.[]'
-
 commands:
 
   # Single-line command
   single:
     description: Says Hello
 
+    variables:
+      food:
+        select:
+          description: What food do you like?
+          options:
+            - Burger
+            - Pizza
+            - Fries
+
     commands:
       smelly:
         description: Stinks
-        action: echo "Damn $name, you stink!"
+        action: echo "Damn $name, $food stinks!"
 
       not-smelly:
         description: Doesn't stink
-        action: echo "Damn $name, you smell great!"
+        action: echo "Damn $name, $food smells great!"
 
   # Multi-step command
   multi:

@@ -36,7 +36,7 @@ fn default_commands() -> HashMap<String, CommandDefinition> {
     HashMap::new()
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct CommandDefinition {
     pub description: String,
 
@@ -57,24 +57,24 @@ pub struct CommandDefinition {
     pub action: Option<CommandActions>
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum CommandActions {
     SingleStep(SingleCommandAction),
     MultiStep(MultiCommandAction),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SingleCommandAction {
     pub action: CommandAction
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct MultiCommandAction {
     pub actions: Vec<CommandAction>
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum CommandAction {
     Invocation(String),
@@ -89,9 +89,24 @@ fn default_aliases() -> Vec<String> {
 #[serde(untagged)]
 pub enum VariableDefinition {
     Literal(String),
-    Invocation(Execution),
+    LiteralWithFlag(LiteralVariableDefinitionWithFlag),
+    Invocation(VariableExecution),
     Prompt(PromptVariableDefinition),
     Select(SelectVariableDefinition),
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct LiteralVariableDefinitionWithFlag {
+    pub value: String,
+    pub description: Option<String>,
+    pub flag: Option<String>
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct VariableExecution {
+    pub exec: String,
+    pub description: Option<String>,
+    pub flag: Option<String>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -109,13 +124,15 @@ pub struct Execution {
     pub exec: String
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ConfirmDefinition {
     pub confirm: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptDefinition {
+
+    // Todo: Separate prompt from description
     pub description: String,
     pub flag: Option<String>,
 

@@ -56,7 +56,7 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
         &config.commands,
         &config.variables)?;
 
-    if let Some((target_command, available_variable_definitions)) = find_result {
+    if let Some((target_command, available_variable_definitions, sucbommand_arg_matches)) = find_result {
 
         if let Some(command_action) = target_command.action {
             let actions = match command_action {
@@ -69,13 +69,13 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
             };
 
             for action in actions {
-                execute_action(
+                return execute_action(
                     &action,
                     &available_variable_definitions,
                     shell_executor,
                     confirm_executor,
                     variable_resolver,
-                    &arg_matches)
+                    &sucbommand_arg_matches)
             }
         }
     }
@@ -110,14 +110,14 @@ fn find_subcommand(
         }
 
         // If no more subcommand matches exist, then return the current subcommand
-        let result: SubcommandSearchResult = (command_definition.clone(), available_variables);
+        let result: SubcommandSearchResult = (command_definition.clone(), available_variables, subcommand_matches.clone());
         return Ok(Some(result));
     }
 
     return Ok(None);
 }
 
-type SubcommandSearchResult = (CommandDefinition, HashMap<String, VariableDefinition>);
+type SubcommandSearchResult = (CommandDefinition, HashMap<String, VariableDefinition>, ArgMatches);
 
 fn create_subcommands(
     command_definitions: &HashMap<String, CommandDefinition>,
@@ -151,16 +151,15 @@ fn create_subcommands(
 
 fn create_args_for_command(variable_definitions: &HashMap<String, VariableDefinition>) -> Vec<Arg> {
     variable_definitions.iter()
-        .filter(|(_, variable_definition)| -> bool {
-            return if matches!(variable_definition, VariableDefinition::Literal(_)) || matches!(variable_definition, VariableDefinition::Invocation(_)) {
-                false
-            } else {
-                true
-            }
-        })
         .map(|(name, variable_definition)| -> Arg {
 
             let (flag, description) = match variable_definition {
+                VariableDefinition::Literal(_) =>
+                    (name.clone(), "".to_string()),
+                VariableDefinition::LiteralWithFlag(literal_with_flag) =>
+                    (literal_with_flag.flag.clone().unwrap_or(name.to_string()), literal_with_flag.description.clone().unwrap_or("".to_string())),
+                VariableDefinition::Invocation(execution_def) =>
+                    (execution_def.flag.clone().unwrap_or(name.to_string()), execution_def.description.clone().unwrap_or("".to_string())),
                 VariableDefinition::Prompt(prompt_variable_def) =>
                     (prompt_variable_def.clone().prompt.flag.unwrap_or(name.to_string()), prompt_variable_def.clone().prompt.description),
                 VariableDefinition::Select(select_variable_def) =>
@@ -193,12 +192,10 @@ fn execute_action(
     variable_resolver: &VariableResolver,
     arg_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
-    // TODO: Evaluate variables here
+    let variables = variable_resolver.resolve_variables(variable_definitions, arg_matches)?;
 
     return match command_action {
         CommandAction::Invocation(invocation) => {
-
-            let variables = variable_resolver.resolve_variables(variable_definitions, arg_matches)?;
 
             let result = shell_executor.execute(invocation, &variables);
 
