@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
-use crate::ConfirmationError;
+use std::fmt;
 use crate::definitions::{CommandAction, VariableDefinition};
 use crate::prompt::ConfirmExecutor;
 use crate::shell::ShellExecutor;
@@ -11,6 +11,8 @@ pub struct ActionExecutor {
     pub confirm_executor: ConfirmExecutor,
     pub variable_resolver: VariableResolver
 }
+
+type Reason = String;
 
 impl ActionExecutor {
     pub fn execute(
@@ -44,3 +46,14 @@ impl ActionExecutor {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+struct ConfirmationError;
+
+impl fmt::Display for ConfirmationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "confirmation resulted in a negative result")
+    }
+}
+
+impl Error for ConfirmationError { }

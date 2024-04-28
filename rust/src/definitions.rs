@@ -6,6 +6,9 @@ use crate::shell::ShellCommand;
 pub struct Config {
     pub description: String,
 
+    #[serde(default = "default_shell")]
+    pub default_shell: Shell,
+
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     #[serde(default = "default_variables")]
     pub variables: HashMap<String, VariableDefinition>,
@@ -13,12 +16,19 @@ pub struct Config {
     pub commands: HashMap<String, CommandDefinition>,
 }
 
+fn default_shell() -> Shell { Shell::Bash }
+
 fn default_variables() -> HashMap<String, VariableDefinition> {
     HashMap::new()
 }
 
 fn default_commands() -> HashMap<String, CommandDefinition> {
     HashMap::new()
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub enum Shell {
+    Bash
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -40,6 +50,16 @@ impl VariableDefinition {
             VariableDefinition::Prompt(prompt_def) => prompt_def.clone().argument_name,
             VariableDefinition::Select(select_def) => select_def.clone().argument_name,
         }.unwrap_or(key.clone())
+    }
+
+    pub fn description(&self) -> Option<String> {
+        return match self {
+            VariableDefinition::Literal(_) => None,
+            VariableDefinition::LiteralExtended(extended_literal_def) => extended_literal_def.clone().description,
+            VariableDefinition::Execution(execution_def) => execution_def.clone().description,
+            VariableDefinition::Prompt(prompt_def) => prompt_def.clone().description,
+            VariableDefinition::Select(select_def) => select_def.clone().description
+        }
     }
 }
 

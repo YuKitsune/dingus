@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::{fmt, io};
 use std::process::{Command, ExitStatus, Output};
+use crate::definitions::Shell;
 
 use crate::variables::Variables;
 
@@ -13,7 +14,13 @@ pub trait ShellExecutor {
     fn get_output(&self, command: &ShellCommand) -> ShellOutputResult;
 }
 
-pub struct BashExecutor { }
+pub fn create_shell_executor(shell: &Shell) -> impl ShellExecutor {
+    match shell {
+        Shell::Bash => BashExecutor{}
+    }
+}
+
+struct BashExecutor { }
 
 impl ShellExecutor for BashExecutor {
 
