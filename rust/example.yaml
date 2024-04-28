@@ -5,7 +5,7 @@ variables:
 
   name:
     prompt:
-      description: What's your name?
+      message: What's your name?
 
 commands:
 
@@ -16,7 +16,7 @@ commands:
     variables:
       food:
         select:
-          description: What food do you like?
+          message: What food do you like?
           options:
             - Burger
             - Pizza

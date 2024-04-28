@@ -48,27 +48,30 @@ impl VariableResolver {
         flag_resolver: &FlagResolver) -> Result<Variables, Box<dyn Error>> {
         variable_definitions.iter()
             .map(|(key, definition)| -> Result<(String, String), Box<dyn Error>> {
+
+                let arg_name = definition.arg_name(key);
+
                 return match definition {
                     VariableDefinition::Literal(value) => {
                         Ok((key.clone(), value.clone()))
                     }
-                    VariableDefinition::LiteralWithFlag(literal_variable_definition_with_flag) => {
+                    VariableDefinition::LiteralExtended(extended_literal_def) => {
 
-                        // Check the flags first
-                        if let Some(flag_value) = try_get_from_flags(key, &literal_variable_definition_with_flag.flag, flag_resolver) {
+                        // Check the args first
+                        if let Some(flag_value) = flag_resolver.get(&arg_name) {
                             return Ok((key.clone(), flag_value.clone()))
                         }
 
-                        Ok((key.clone(), literal_variable_definition_with_flag.value.clone()))
+                        Ok((key.clone(), extended_literal_def.value.clone()))
                     }
-                    VariableDefinition::Invocation(execution) => {
+                    VariableDefinition::Execution(execution_def) => {
 
-                        // Check the flags first
-                        if let Some(flag_value) = try_get_from_flags(key, &execution.flag, flag_resolver) {
+                        // Check the args first
+                        if let Some(flag_value) = flag_resolver.get(&arg_name) {
                             return Ok((key.clone(), flag_value.clone()))
                         }
 
-                        let output = self.shell_executor.as_ref().get_output(&execution.clone().exec)?;
+                        let output = self.shell_executor.as_ref().get_output(&execution_def.clone().shell_command)?;
 
                         if !output.status.success() {
                             return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
@@ -82,47 +85,30 @@ impl VariableResolver {
                         let value = String::from_utf8(output.stdout)?;
                         Ok((key.clone(), value.clone()))
                     }
-                    VariableDefinition::Prompt(prompt_definition) => {
+                    VariableDefinition::Prompt(prompt_def) => {
 
                         // Check the flags first
-                        if let Some(flag_value) = try_get_from_flags(key, &prompt_definition.prompt.flag, flag_resolver) {
+                        if let Some(flag_value) = flag_resolver.get(&arg_name) {
                             return Ok((key.clone(), flag_value.clone()))
                         }
 
-                        let value = self.prompt_executor.execute(&prompt_definition.clone().prompt)?;
+                        let value = self.prompt_executor.execute(&prompt_def.clone().prompt)?;
                         Ok((key.clone(), value.clone()))
                     }
-                    VariableDefinition::Select(select_definition) => {
+                    VariableDefinition::Select(select_def) => {
 
                         // Check the flags first
-                        if let Some(flag_value) = try_get_from_flags(key, &select_definition.select.flag, flag_resolver) {
+                        if let Some(flag_value) = flag_resolver.get(&arg_name) {
                             return Ok((key.clone(), flag_value.clone()))
                         }
 
-                        let value = self.select_executor.execute(&select_definition.clone().select)?;
+                        let value = self.select_executor.execute(&select_def.clone().select)?;
                         Ok((key.clone(), value.clone()))
                     }
                 }
             })
             .collect()
     }
-}
-
-fn try_get_from_flags(key: &String, flag_name: &Option<String>, flag_resolver: &FlagResolver) -> Option<String> {
-
-    // If the flag option has been specified, then we need to use that when looking up the flag.
-    // We don't want to check for a flag using the variable's key if the flag option has been specified.
-    let key = if let Some(flag_name) = flag_name {
-        flag_name
-    } else {
-        key
-    };
-
-    if let Some(value) = flag_resolver.get(key) {
-        return Some(value.clone());
-    }
-
-    return None;
 }
 
 #[derive(Debug)]

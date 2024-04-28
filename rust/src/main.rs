@@ -61,10 +61,10 @@ fn main_with_result() -> Result<(), Box<dyn Error>> {
 
         if let Some(command_action) = target_command.action {
             let actions = match command_action {
-                CommandActions::SingleStep(single_command_action) => {
+                CommandActionsVariant::SingleStep(single_command_action) => {
                     vec![single_command_action.action]
                 }
-                CommandActions::MultiStep(multi_command_action) => {
+                CommandActionsVariant::MultiStep(multi_command_action) => {
                     multi_command_action.actions
                 }
             };
@@ -156,24 +156,18 @@ fn create_args_for_command(variable_definitions: &HashMap<String, VariableDefini
     variable_definitions.iter()
         .map(|(name, variable_definition)| -> Arg {
 
-            let (flag, description) = match variable_definition {
-                VariableDefinition::Literal(_) =>
-                    (name.clone(), "".to_string()),
-                VariableDefinition::LiteralWithFlag(literal_with_flag) =>
-                    (literal_with_flag.flag.clone().unwrap_or(name.to_string()), literal_with_flag.description.clone().unwrap_or("".to_string())),
-                VariableDefinition::Invocation(execution_def) =>
-                    (execution_def.flag.clone().unwrap_or(name.to_string()), execution_def.description.clone().unwrap_or("".to_string())),
-                VariableDefinition::Prompt(prompt_variable_def) =>
-                    (prompt_variable_def.clone().prompt.flag.unwrap_or(name.to_string()), prompt_variable_def.clone().prompt.description),
-                VariableDefinition::Select(select_variable_def) =>
-                    (select_variable_def.clone().select.flag.unwrap_or(name.to_string()), select_variable_def.clone().select.description),
-                _ => {
-                    panic!("This shouldn't happen")
-                }
-            };
+            let arg_name = variable_definition.arg_name(name);
 
-            let arg = Arg::new(flag.clone())
-                .long(flag.clone())
+            let description = match variable_definition {
+                VariableDefinition::Literal(_) => None,
+                VariableDefinition::LiteralExtended(extended_literal_def) => extended_literal_def.clone().description,
+                VariableDefinition::Execution(execution_def) => execution_def.clone().description,
+                VariableDefinition::Prompt(prompt_def) => prompt_def.clone().description,
+                VariableDefinition::Select(select_def) => select_def.clone().description
+            }.unwrap_or("".to_string());
+
+            let arg = Arg::new(arg_name.clone())
+                .long(arg_name.clone())
                 .help(description);
 
             return arg
@@ -198,9 +192,9 @@ fn execute_action(
     let variables = variable_resolver.resolve_variables(variable_definitions, flag_resolver)?;
 
     return match command_action {
-        CommandAction::Invocation(invocation) => {
+        CommandAction::Execution(shell_command) => {
 
-            let result = shell_executor.execute(invocation, &variables);
+            let result = shell_executor.execute(shell_command, &variables);
 
             // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
             if let Err(err) = result {

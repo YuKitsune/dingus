@@ -4,7 +4,7 @@ use std::process::{Command, ExitStatus, Output};
 
 use crate::variables::Variables;
 
-type ShellCommand = String;
+pub type ShellCommand = String;
 type ShellExecutionResult = Result<ExitStatus, ShellError>;
 type ShellOutputResult = Result<Output, ShellError>;
 
