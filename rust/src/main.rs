@@ -17,6 +17,14 @@ mod shell;
 mod variables;
 mod prompt;
 
+// Todo:
+// - [ ] Separate the command execution from this file
+// - [ ] Unit tests
+// - [ ] Integration tests?
+// - [ ] Address final todos
+// - [ ] Documentation (in-code and public-facing)
+// - [ ] Publish
+
 fn main() {
     let result = main_with_result();
     if let Err(err) = result {
