@@ -18,6 +18,7 @@ mod config;
 
 // Todo:
 // - [ ] Precursor support for alternative shells
+// - [ ] Dry-run support
 // - [ ] Address todos
 // - [ ] Unit tests
 // - [ ] Integration tests?
@@ -27,8 +28,10 @@ mod config;
 // Ideas:
 // - Named actions: Actions can be named so that they can be skipped selectively
 // - Command invocation action: Have an action that invokes another command (Or named action ^)
+// - Include other config files
 // - Pipe config file: example.yaml | shiji do something
 // - Aliases: Have a command alias another command (E.g: shiji deps = docker compose -f deps.yaml). remaining args are passed to the child command
+// - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
 
 fn main() {
     let result = run();
@@ -104,4 +107,3 @@ impl fmt::Display for CommandNotFound {
     }
 }
 
-impl Error for CommandNotFound { }
