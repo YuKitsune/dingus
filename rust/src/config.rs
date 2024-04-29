@@ -179,6 +179,8 @@ pub struct CommandConfig {
     #[serde(default = "default_variables")]
     pub variables: HashMap<String, VariableConfig>,
 
+    // Todo: Need to enforce an invariant here:
+    // - If no action exists, then one or more subcommands _must_ exist.
     #[serde(default = "default_commands")]
     pub commands: HashMap<String, CommandConfig>,
 

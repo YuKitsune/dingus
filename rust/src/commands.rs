@@ -3,8 +3,8 @@ use std::error::Error;
 use std::fmt;
 use crate::config::{CommandActionConfig, VariableConfig};
 use crate::prompt::ConfirmExecutor;
-use crate::shell::{ShellExecutorFactory};
-use crate::variables::{VariableResolver};
+use crate::shell::{ShellCommand, ShellExecutor, ShellExecutorFactory};
+use crate::variables::{VariableResolver, Variables};
 
 pub struct ActionExecutor {
     pub shell_executor_factory: Box<dyn ShellExecutorFactory>,
@@ -23,32 +23,22 @@ impl ActionExecutor {
 
         return match command_action {
             CommandActionConfig::Execution(shell_command) => {
-
                 let shell_executor = self.shell_executor_factory.create_default();
-                let result = shell_executor.execute(shell_command, &variables);
-
-                // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
-                if let Err(err) = result {
-                    return Err(Box::new(err))
-                }
-
-                Ok(())
+                return execute_with_shell_executor(
+                    &shell_executor,
+                    shell_command,
+                    &variables);
             },
             CommandActionConfig::ExtendedExecution(execution_config) => {
-
                 let shell_executor = match &execution_config.shell {
                     Some(shell) => self.shell_executor_factory.create(&shell),
                     None => self.shell_executor_factory.create_default(),
                 };
 
-                let result = shell_executor.execute(&execution_config.shell_command, &variables);
-
-                // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
-                if let Err(err) = result {
-                    return Err(Box::new(err))
-                }
-
-                Ok(())
+                return execute_with_shell_executor(
+                    &shell_executor,
+                    &execution_config.shell_command,
+                    &variables);
             },
             CommandActionConfig::Confirmation(confirm_config) => {
                 let result = self.confirm_executor.execute(confirm_config)?;
@@ -60,6 +50,20 @@ impl ActionExecutor {
             }
         }
     }
+}
+
+fn execute_with_shell_executor(
+    shell_executor: &Box<dyn ShellExecutor>,
+    shell_command: &ShellCommand,
+    variables: &Variables) -> Result<(), Box<dyn Error>> {
+    let result = shell_executor.execute(&shell_command, &variables);
+
+    // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
+    if let Err(err) = result {
+        return Err(Box::new(err))
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
