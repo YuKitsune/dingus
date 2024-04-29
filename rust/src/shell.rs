@@ -95,3 +95,77 @@ impl fmt::Display for ShellError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::shell::{BashExecutor, ShellCommand, ShellExecutor};
+
+    // Todo: Macro for various shell types
+
+    // Todo: execute_executes_command
+    // Todo: execute_is_interactive
+    // Todo: execute_has_variables
+    // Todo: execute_returns_status_with_success
+    // Todo: execute_returns_status_with_failure
+
+    #[test]
+    fn bash_executor_get_output_returns_stdout() {
+
+        // Arrange
+        let shell_command: ShellCommand = ShellCommand::from("echo \"Hello, World!\"");
+        let shell_executor = BashExecutor{};
+
+        // Act
+        let result = shell_executor.get_output(&shell_command);
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.status.code().unwrap(), 0);
+        assert!(output.stderr.is_empty());
+
+        let output_value = String::from_utf8(output.stdout).unwrap();
+        assert_eq!(output_value, "Hello, World!\n");
+    }
+
+    #[test]
+    fn bash_executor_get_output_returns_stderr() {
+
+        // Arrange
+        let shell_command: ShellCommand = ShellCommand::from(">&2 echo \"Error message\"");
+        let shell_executor = BashExecutor{};
+
+        // Act
+        let result = shell_executor.get_output(&shell_command);
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.status.code().unwrap(), 0);
+        assert!(output.stdout.is_empty());
+
+        let output_value = String::from_utf8(output.stderr).unwrap();
+        assert_eq!(output_value, "Error message\n");
+    }
+
+    #[test]
+    fn bash_executor_get_output_returns_exit_code() {
+
+        // Arrange
+        let shell_command: ShellCommand = ShellCommand::from("exit 42");
+        let shell_executor = BashExecutor{};
+
+        // Act
+        let result = shell_executor.get_output(&shell_command);
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert!(!output.status.success());
+        assert_eq!(output.status.code().unwrap(), 42);
+        assert!(output.stdout.is_empty());
+        assert!(output.stderr.is_empty());
+    }
+}
