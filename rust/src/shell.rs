@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::{fmt, io};
 use std::process::{Command, ExitStatus, Output};
-use crate::definitions::Shell;
+use crate::config::Shell;
 
 use crate::variables::Variables;
 

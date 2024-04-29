@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
-use crate::definitions::{CommandAction, VariableDefinition};
+use crate::config::{CommandActionConfig, VariableConfig};
 use crate::prompt::ConfirmExecutor;
 use crate::shell::ShellExecutor;
 use crate::variables::{VariableResolver};
@@ -12,19 +12,17 @@ pub struct ActionExecutor {
     pub variable_resolver: VariableResolver
 }
 
-type Reason = String;
-
 impl ActionExecutor {
     pub fn execute(
         &self,
-        command_action: &CommandAction,
-        variable_definitions: &HashMap<String, VariableDefinition>,
+        command_action: &CommandActionConfig,
+        variable_configs: &HashMap<String, VariableConfig>,
         ) -> Result<(), Box<dyn Error>> {
 
-        let variables = self.variable_resolver.resolve_variables(variable_definitions)?;
+        let variables = self.variable_resolver.resolve_variables(variable_configs)?;
 
         return match command_action {
-            CommandAction::Execution(shell_command) => {
+            CommandActionConfig::Execution(shell_command) => {
 
                 let result = self.shell_executor.execute(shell_command, &variables);
 
@@ -35,8 +33,8 @@ impl ActionExecutor {
 
                 Ok(())
             },
-            CommandAction::Confirmation(confirm_definition) => {
-                let result = self.confirm_executor.execute(confirm_definition)?;
+            CommandActionConfig::Confirmation(confirm_config) => {
+                let result = self.confirm_executor.execute(confirm_config)?;
                 if result == false {
                     return Err(Box::new(ConfirmationError))
                 }

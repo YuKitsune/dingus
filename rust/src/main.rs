@@ -1,15 +1,14 @@
 use std::{fmt, process};
 use std::error::Error;
 
-use definitions::*;
 use variables::VariableResolver;
 
 use crate::commands::ActionExecutor;
+use crate::config::CommandActionConfigVariant;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
-use crate::shell::{create_shell_executor, ShellExecutor};
+use crate::shell::{create_shell_executor};
 use crate::variables::ArgumentResolver;
 
-mod definitions;
 mod shell;
 mod variables;
 mod prompt;
@@ -29,6 +28,7 @@ mod config;
 // - Named actions: Actions can be named so that they can be skipped selectively
 // - Command invocation action: Have an action that invokes another command (Or named action ^)
 // - Pipe config file: example.yaml | shiji do something
+// - Aliases: Have a command alias another command (E.g: shiji deps = docker compose -f deps.yaml). remaining args are passed to the child command
 
 fn main() {
     let result = run();
@@ -59,10 +59,10 @@ fn run() -> Result<(), Box<dyn Error>> {
             // Coalesce single actions into multistep actions.
             // Makes the execution part easier.
             let actions = match command_action {
-                CommandActionsVariant::SingleStep(single_command_action) =>
+                CommandActionConfigVariant::SingleStep(single_command_action) =>
                     vec![single_command_action.action],
 
-                CommandActionsVariant::MultiStep(multi_command_action) =>
+                CommandActionConfigVariant::MultiStep(multi_command_action) =>
                     multi_command_action.actions
             };
 

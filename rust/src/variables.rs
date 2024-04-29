@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fmt;
 use std::process::ExitStatus;
 use clap::ArgMatches;
-use crate::definitions::VariableDefinition;
+use crate::config::{VariableConfig};
 use crate::shell::ShellExecutor;
 use crate::prompt::{PromptExecutor, SelectExecutor};
 
@@ -45,24 +45,24 @@ pub struct VariableResolver {
 impl VariableResolver {
     pub fn resolve_variables(
         &self,
-        variable_definitions: &HashMap<String, VariableDefinition>) -> Result<Variables, Box<dyn Error>> {
-        variable_definitions.iter()
-            .map(|(key, definition)| -> Result<(String, String), Box<dyn Error>> {
+        variable_configs: &HashMap<String, VariableConfig>) -> Result<Variables, Box<dyn Error>> {
+        variable_configs.iter()
+            .map(|(key, config)| -> Result<(String, String), Box<dyn Error>> {
 
-                let arg_name = definition.arg_name(key);
+                let arg_name = config.arg_name(key);
 
                 // Check the args first
                 if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
                     return Ok((key.clone(), arg_value.clone()))
                 }
 
-                return match definition {
-                    VariableDefinition::Literal(value) => Ok((key.clone(), value.clone())),
+                return match config {
+                    VariableConfig::Literal(value) => Ok((key.clone(), value.clone())),
 
-                    VariableDefinition::LiteralExtended(extended_literal_def) =>
+                    VariableConfig::LiteralExtended(extended_literal_def) =>
                         Ok((key.clone(), extended_literal_def.value.clone())),
 
-                    VariableDefinition::Execution(execution_def) => {
+                    VariableConfig::Execution(execution_def) => {
 
                         let output = self.shell_executor.as_ref().get_output(&execution_def.clone().shell_command)?;
 
@@ -79,12 +79,12 @@ impl VariableResolver {
                         Ok((key.clone(), value.clone()))
                     }
 
-                    VariableDefinition::Prompt(prompt_def) => {
+                    VariableConfig::Prompt(prompt_def) => {
                         let value = self.prompt_executor.execute(&prompt_def.clone().prompt)?;
                         Ok((key.clone(), value.clone()))
                     }
 
-                    VariableDefinition::Select(select_def) => {
+                    VariableConfig::Select(select_def) => {
                         let value = self.select_executor.execute(&select_def.clone().select)?;
                         Ok((key.clone(), value.clone()))
                     }
