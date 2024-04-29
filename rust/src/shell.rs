@@ -9,15 +9,36 @@ pub type ShellCommand = String;
 type ShellExecutionResult = Result<ExitStatus, ShellError>;
 type ShellOutputResult = Result<Output, ShellError>;
 
+pub trait ShellExecutorFactory {
+    fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor>;
+    fn create_default(&self) -> Box<dyn ShellExecutor>;
+}
+
+struct ShellExecutorFactoryImpl {
+    default_shell: Shell
+}
+
+impl ShellExecutorFactory for ShellExecutorFactoryImpl {
+    fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor> {
+        return match shell {
+            Shell::Bash => Box::new(BashExecutor{})
+        }
+    }
+
+    fn create_default(&self) -> Box<dyn ShellExecutor> {
+        self.create(&self.default_shell)
+    }
+}
+
+pub fn create_shell_executor_factory(default_shell: &Shell) -> impl ShellExecutorFactory {
+    return ShellExecutorFactoryImpl{
+        default_shell: default_shell.clone()
+    };
+}
+
 pub trait ShellExecutor {
     fn execute(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionResult;
     fn get_output(&self, command: &ShellCommand) -> ShellOutputResult;
-}
-
-pub fn create_shell_executor(shell: &Shell) -> impl ShellExecutor {
-    match shell {
-        Shell::Bash => BashExecutor{}
-    }
 }
 
 struct BashExecutor { }

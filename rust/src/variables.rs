@@ -4,7 +4,7 @@ use std::fmt;
 use std::process::ExitStatus;
 use clap::ArgMatches;
 use crate::config::{VariableConfig};
-use crate::shell::ShellExecutor;
+use crate::shell::{ShellExecutorFactory};
 use crate::prompt::{PromptExecutor, SelectExecutor};
 
 pub type Variables = HashMap<String, String>;
@@ -36,7 +36,7 @@ impl ArgumentResolver {
 }
 
 pub struct VariableResolver {
-    pub shell_executor: Box<dyn ShellExecutor>,
+    pub shell_executor_factory: Box<dyn ShellExecutorFactory>,
     pub prompt_executor: PromptExecutor,
     pub select_executor: SelectExecutor,
     pub argument_resolver: ArgumentResolver
@@ -64,7 +64,12 @@ impl VariableResolver {
 
                     VariableConfig::Execution(execution_def) => {
 
-                        let output = self.shell_executor.as_ref().get_output(&execution_def.clone().shell_command)?;
+                        let shell_executor = match &execution_def.execution.shell {
+                            Some(shell) => self.shell_executor_factory.create(shell),
+                            None => self.shell_executor_factory.create_default(),
+                        };
+
+                        let output = shell_executor.get_output(&execution_def.execution.shell_command)?;
 
                         if !output.status.success() {
                             return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));

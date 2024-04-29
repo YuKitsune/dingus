@@ -3,11 +3,11 @@ use std::error::Error;
 use std::fmt;
 use crate::config::{CommandActionConfig, VariableConfig};
 use crate::prompt::ConfirmExecutor;
-use crate::shell::ShellExecutor;
+use crate::shell::{ShellExecutorFactory};
 use crate::variables::{VariableResolver};
 
 pub struct ActionExecutor {
-    pub shell_executor: Box<dyn ShellExecutor>,
+    pub shell_executor_factory: Box<dyn ShellExecutorFactory>,
     pub confirm_executor: ConfirmExecutor,
     pub variable_resolver: VariableResolver
 }
@@ -24,7 +24,24 @@ impl ActionExecutor {
         return match command_action {
             CommandActionConfig::Execution(shell_command) => {
 
-                let result = self.shell_executor.execute(shell_command, &variables);
+                let shell_executor = self.shell_executor_factory.create_default();
+                let result = shell_executor.execute(shell_command, &variables);
+
+                // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
+                if let Err(err) = result {
+                    return Err(Box::new(err))
+                }
+
+                Ok(())
+            },
+            CommandActionConfig::ExtendedExecution(execution_config) => {
+
+                let shell_executor = match &execution_config.shell {
+                    Some(shell) => self.shell_executor_factory.create(&shell),
+                    None => self.shell_executor_factory.create_default(),
+                };
+
+                let result = shell_executor.execute(&execution_config.shell_command, &variables);
 
                 // Todo: If the command fails to execute, fail the remaining steps, or seek user input (continue or abort)
                 if let Err(err) = result {

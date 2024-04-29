@@ -108,12 +108,21 @@ pub struct ExtendedLiteralVariableConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ExecutionVariableConfig {
-    #[serde(rename(deserialize = "exec"))]
-    pub shell_command: ShellCommand,
+
+    #[serde(flatten)]
+    pub execution: ExecutionConfig,
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
     pub argument_name: Option<String>
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ExecutionConfig {
+    pub shell: Option<Shell>,
+
+    #[serde(rename(deserialize = "exec"))]
+    pub shell_command: ShellCommand
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -156,13 +165,7 @@ pub struct SelectConfig {
 #[serde(untagged)]
 pub enum SelectOptionsConfig {
     Literal(Vec<String>),
-    Invocation(InvocationSelectOptionsConfig)
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct InvocationSelectOptionsConfig {
-    #[serde(rename(deserialize = "exec"))]
-    pub shell_command: ShellCommand
+    Execution(ExecutionConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -208,6 +211,7 @@ pub struct MultiCommandActionConfig {
 #[serde(untagged)]
 pub enum CommandActionConfig {
     Execution(ShellCommand),
+    ExtendedExecution(ExecutionConfig),
     Confirmation(ConfirmationCommandActionConfig)
 }
 

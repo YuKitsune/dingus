@@ -6,7 +6,7 @@ use variables::VariableResolver;
 use crate::commands::ActionExecutor;
 use crate::config::CommandActionConfigVariant;
 use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
-use crate::shell::{create_shell_executor};
+use crate::shell::{create_shell_executor_factory};
 use crate::variables::ArgumentResolver;
 
 mod shell;
@@ -17,7 +17,6 @@ mod cli;
 mod config;
 
 // Todo:
-// - [ ] Precursor support for alternative shells
 // - [ ] Dry-run support
 // - [ ] Address todos
 // - [ ] Unit tests
@@ -72,16 +71,16 @@ fn run() -> Result<(), Box<dyn Error>> {
             // Set up the dependencies
             let arg_resolver = ArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
             let variable_resolver = VariableResolver {
-                shell_executor: Box::new(create_shell_executor(&config.default_shell)),
+                shell_executor_factory: Box::new(create_shell_executor_factory(&config.default_shell)),
                 prompt_executor: PromptExecutor{},
                 select_executor: SelectExecutor{
-                    shell_executor: Box::new(create_shell_executor(&config.default_shell))
+                    shell_executor_factory: Box::new(create_shell_executor_factory(&config.default_shell))
                 },
                 argument_resolver: arg_resolver
             };
 
             let action_executor = ActionExecutor {
-                shell_executor: Box::new(create_shell_executor(&config.default_shell)),
+                shell_executor_factory: Box::new(create_shell_executor_factory(&config.default_shell)),
                 confirm_executor: ConfirmExecutor{},
                 variable_resolver,
             };
@@ -101,9 +100,10 @@ fn run() -> Result<(), Box<dyn Error>> {
 #[derive(Debug, Clone)]
 struct CommandNotFound;
 
+impl Error for CommandNotFound { }
+
 impl fmt::Display for CommandNotFound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "could not find a suitable command")
     }
 }
-
