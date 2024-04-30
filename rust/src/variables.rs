@@ -119,7 +119,8 @@ mod tests {
     use std::collections::HashMap;
     use std::error::Error;
     use clap::{Arg, Command};
-    use crate::config::{ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptVariableConfig, Shell, VariableConfig};
+    use crate::config::{ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptVariableConfig, PromptVariableConfigVariant, SelectOptionsConfig, SelectPromptVariableConfig, Shell, TextPromptVariableConfig, VariableConfig};
+    use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
     use crate::shell::{ExitStatus, Output, ShellCommand, ShellExecutor, ShellExecutorFactory};
     use crate::variables::{ArgumentResolver, ClapArgumentResolver, VariableResolver, Variables};
@@ -301,6 +302,86 @@ mod tests {
             description: None,
             argument_name: None,
         }));
+
+        // Act
+        let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
+
+        // Assert
+        assert!(!resolved_variables.is_err());
+
+        let binding = resolved_variables.unwrap().clone();
+        let resolved_value = binding.get(name).unwrap().as_str();
+        assert_eq!(resolved_value, value);
+    }
+
+    #[test]
+    fn variable_resolver_resolves_text_prompt_variable() {
+
+        // Arrange
+        let shell_executor_factory = Box::new(MockShellExecutorFactory{ output: Output {
+            status: ExitStatus::Success,
+            stdout: vec![],
+            stderr: vec![],
+        } });
+        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+
+        let value = "Dingus";
+        let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
+
+        let variable_resolver = VariableResolver{
+            shell_executor_factory,
+            prompt_executor,
+            argument_resolver,
+        };
+
+        let name = "name";
+        let mut variable_configs = HashMap::new();
+        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Text(TextPromptVariableConfig{
+            description: None,
+            argument_name: None,
+            message: "Enter your name".to_string(),
+            multi_line: false,
+        }) }));
+
+        // Act
+        let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
+
+        // Assert
+        assert!(!resolved_variables.is_err());
+
+        let binding = resolved_variables.unwrap().clone();
+        let resolved_value = binding.get(name).unwrap().as_str();
+        assert_eq!(resolved_value, value);
+    }
+
+    #[test]
+    fn variable_resolver_resolves_select_prompt_variable() {
+
+        // Arrange
+        let shell_executor_factory = Box::new(MockShellExecutorFactory{ output: Output {
+            status: ExitStatus::Success,
+            stdout: vec![],
+            stderr: vec![],
+        } });
+        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+
+        let value = "Dingus";
+        let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
+
+        let variable_resolver = VariableResolver{
+            shell_executor_factory,
+            prompt_executor,
+            argument_resolver,
+        };
+
+        let name = "name";
+        let mut variable_configs = HashMap::new();
+        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Select(SelectPromptVariableConfig{
+            description: None,
+            argument_name: None,
+            message: "Select your name".to_string(),
+            options: SelectOptionsConfig::Literal(vec!["Alice".to_string(), "Bob".to_string(), "Charlie".to_string(), "Dingus".to_string()]),
+        })}));
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
