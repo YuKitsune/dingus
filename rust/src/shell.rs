@@ -4,7 +4,6 @@ use std::fmt::{Formatter};
 use std::process::{Command};
 use crate::config::Shell;
 use crate::shell::ExitStatus::Unknown;
-
 use crate::variables::Variables;
 
 pub type ShellCommand = String;
@@ -146,7 +145,7 @@ impl fmt::Display for ShellError {
 
 #[cfg(test)]
 mod tests {
-    use crate::shell::{BashExecutor, ExitStatus, ShellCommand, ShellExecutor};
+    use super::*;
 
     // Todo: Macro for various shell types
 

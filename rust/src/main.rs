@@ -1,20 +1,20 @@
 use std::{fmt, process};
 use std::error::Error;
-
-use variables::VariableResolver;
+use crate::args::ClapArgumentResolver;
 
 use crate::commands::ActionExecutor;
 use crate::config::CommandActionConfigVariant;
 use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
 use crate::shell::{create_shell_executor_factory};
-use crate::variables::{ClapArgumentResolver};
+use crate::variables::VariableResolver;
 
 mod shell;
-mod variables;
 mod prompt;
 mod commands;
 mod cli;
 mod config;
+mod args;
+mod variables;
 
 // Todo:
 // - [ ] Dry-run support
