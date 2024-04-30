@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
 use crate::config::{ConfirmationCommandActionConfig, PromptVariableConfig, PromptVariableConfigVariant, SelectOptionsConfig, SelectPromptVariableConfig, TextPromptVariableConfig};
@@ -66,7 +67,7 @@ fn get_options(select_options_config: &SelectOptionsConfig, shell_executor_facto
                 None => shell_executor_factory.create_default(),
             };
 
-            let output = shell_executor.get_output(&execution_config.shell_command)?;
+            let output = shell_executor.execute(&execution_config.shell_command, &HashMap::new())?;
             let stdout = String::from_utf8(output.stdout)?;
             let options = stdout.clone().lines().map(|s| String::from(s)).collect();
             Ok(options)

@@ -7,8 +7,7 @@ use crate::shell::ExitStatus::Unknown;
 use crate::variables::Variables;
 
 pub type ShellCommand = String;
-pub type ShellExecutionResult = Result<ExitStatus, ShellError>;
-pub type ShellOutputResult = Result<Output, ShellError>;
+pub type ShellExecutionResult = Result<Output, ShellError>;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExitStatus {
@@ -85,7 +84,6 @@ pub fn create_shell_executor_factory(default_shell: &Shell) -> impl ShellExecuto
 
 pub trait ShellExecutor {
     fn execute(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionResult;
-    fn get_output(&self, command: &ShellCommand) -> ShellOutputResult;
 }
 
 struct BashExecutor { }
@@ -95,33 +93,15 @@ impl ShellExecutor for BashExecutor {
     fn execute(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionResult {
 
         let mut binding = Command::new("bash");
-        let cmd = binding
+        let result = binding
             .arg("-c")
             .arg(command)
-            .envs(variables);
-
-        // When invoked using spawn, this will inherit stdin, stdout, and stdin from this process
-        if let Ok(mut child) = cmd.spawn() {
-            let result = child.wait();
-
-            return match result {
-                Ok(exit_status) => Ok(ExitStatus::from_std_exitstatus(&exit_status)),
-                Err(io_err) => Err(ShellError::IO(io_err)),
-            }
-        } else {
-            return Err(ShellError::FailedToStart)
-        }
-    }
-
-    fn get_output(&self, command: &ShellCommand) -> ShellOutputResult {
-        let result = Command::new("bash")
-            .arg("-c")
-            .arg(command)
+            .envs(variables)
             .output();
 
         return match result {
             Ok(output) => Ok(Output::from_std_output(&output)),
-            Err(io_err) => Err(ShellError::IO(io_err)),
+            Err(err) => Err(ShellError::IO(err))
         }
     }
 }
@@ -145,25 +125,46 @@ impl fmt::Display for ShellError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use super::*;
 
     // Todo: Macro for various shell types
-
-    // Todo: execute_executes_command
     // Todo: execute_is_interactive
-    // Todo: execute_has_variables
-    // Todo: execute_returns_status_with_success
-    // Todo: execute_returns_status_with_failure
 
     #[test]
-    fn bash_executor_get_output_returns_stdout() {
+    fn bash_executor_execute_has_variables() {
+
+        // Arrange
+        let variable_name = "name";
+        let variable_value = "Dingus";
+        let mut variables = HashMap::new();
+        variables.insert(variable_name.to_string(), variable_value.to_string());
+
+        let shell_command: ShellCommand = ShellCommand::from(format!("echo \"Hello, ${variable_name}!\""));
+        let shell_executor = BashExecutor{};
+
+        // Act
+        let result = shell_executor.execute(&shell_command, &variables);
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert_eq!(output.status, ExitStatus::Success);
+        assert!(output.stderr.is_empty());
+
+        let output_value = String::from_utf8(output.stdout).unwrap();
+        assert_eq!(output_value, format!("Hello, {variable_value}!\n"));
+    }
+
+    #[test]
+    fn bash_executor_execute_returns_stdout() {
 
         // Arrange
         let shell_command: ShellCommand = ShellCommand::from("echo \"Hello, World!\"");
         let shell_executor = BashExecutor{};
 
         // Act
-        let result = shell_executor.get_output(&shell_command);
+        let result = shell_executor.execute(&shell_command, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -176,14 +177,14 @@ mod tests {
     }
 
     #[test]
-    fn bash_executor_get_output_returns_stderr() {
+    fn bash_executor_execute_returns_stderr() {
 
         // Arrange
         let shell_command: ShellCommand = ShellCommand::from(">&2 echo \"Error message\"");
         let shell_executor = BashExecutor{};
 
         // Act
-        let result = shell_executor.get_output(&shell_command);
+        let result = shell_executor.execute(&shell_command, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -196,14 +197,14 @@ mod tests {
     }
 
     #[test]
-    fn bash_executor_get_output_returns_exit_code() {
+    fn bash_executor_execute_returns_exit_code() {
 
         // Arrange
         let shell_command: ShellCommand = ShellCommand::from("exit 42");
         let shell_executor = BashExecutor{};
 
         // Act
-        let result = shell_executor.get_output(&shell_command);
+        let result = shell_executor.execute(&shell_command, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert

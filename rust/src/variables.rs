@@ -41,7 +41,7 @@ impl VariableResolver {
                             None => self.shell_executor_factory.create_default(),
                         };
 
-                        let output = shell_executor.get_output(&execution_def.execution.shell_command)?;
+                        let output = shell_executor.execute(&execution_def.execution.shell_command, &HashMap::new())?;
 
                         if let ExitStatus::Fail(code) = output.status {
                             return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
@@ -297,10 +297,6 @@ mod tests {
 
     impl ShellExecutor for MockShellExecutor {
         fn execute(&self, command: &ShellCommand, variables: &Variables) -> crate::shell::ShellExecutionResult {
-            Ok(self.output.status.clone())
-        }
-
-        fn get_output(&self, command: &ShellCommand) -> crate::shell::ShellOutputResult {
             Ok(self.output.clone())
         }
     }
