@@ -67,8 +67,6 @@ fn create_args(variables: &HashMap<String, VariableConfig>) -> Vec<Arg> {
         .collect()
 }
 
-
-
 pub fn find_subcommand(
     arg_matches: &ArgMatches,
     parent_command: &Command,
@@ -104,3 +102,20 @@ pub fn find_subcommand(
 }
 
 type SubcommandSearchResult = (CommandConfig, HashMap<String, VariableConfig>, ArgMatches);
+
+#[cfg(test)]
+mod tests {
+
+    // Todo: create_root_command creates a correct root command
+
+    // Todo: create_commands creates subcommands
+    // Todo: create_commands creates correct args
+    // Todo: create_commands inherits args from parent commands
+    // Todo: create_commands mark subcommands as required when no action exists
+
+    // Todo: create_args creates correct args for variables
+
+    // Todo: find_subcommand finds top-level commands
+    // Todo: find_subcommand finds mid-level commands
+    // Todo: find_subcommand finds bottom-level commands
+}

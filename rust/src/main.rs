@@ -17,10 +17,12 @@ mod args;
 mod variables;
 
 // Todo:
+// - [ ] working directory for actions
 // - [ ] Dry-run support
 // - [ ] Address todos
 // - [ ] Unit tests
 // - [ ] Integration tests?
+// - [ ] Consider naming (Commands, actions, shiji, all confusing)
 // - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish
 

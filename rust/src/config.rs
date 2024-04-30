@@ -14,12 +14,20 @@ pub fn load() -> Result<Config, ConfigError> {
         }
 
         let config_text: String = fs::read_to_string(config_file_name).map_err(|err| ConfigError::ReadFailed(err))?;
-        let config: Config = serde_yaml::from_str(&config_text).map_err(|err| ConfigError::ParseFailed(err))?;
+        let config = parse_config(&config_text)?;
 
         return Ok(config);
     }
 
     return Err(ConfigError::FileNotFound)
+}
+
+fn parse_config(text: &str) -> Result<Config, ConfigError> {
+    let result = serde_yaml::from_str(text);
+    return match result {
+        Ok(config) => Ok(config),
+        Err(parse_err) => Err(ConfigError::ParseFailed(parse_err))
+    }
 }
 
 #[derive(Debug)]
@@ -239,4 +247,33 @@ pub enum CommandActionConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ConfirmationCommandActionConfig {
     pub confirm: String,
+}
+
+#[cfg(test)]
+mod tests {
+
+    // Todo: Variable get arg returns correct arg name
+
+    // Todo: Empty root variables allowed - Pass
+    // Todo: Literal variable - Pass
+    // Todo: Extended literal variable - Pass
+    // Todo: Extended literal variable with all the properties - Pass
+    // Todo: Execution variable - Pass
+    // Todo: Execution variable with all the properties - Pass
+    // Todo: Text prompt variable - Pass
+    // Todo: Text prompt variable with all the properties - Pass
+    // Todo: Select prompt - Pass
+    // Todo: Select prompt variable with all the properties - Pass
+    // Todo: Mixed up prompt properties - Fail
+
+    // Todo: Basic command
+    // Todo: Command with all the properties
+    // Todo: Command with subcommands and an action
+    // Todo: Command with subcommands only
+    // Todo: Command with action only
+    // Todo: Command with no subcommands or action - Fail
+
+    // Todo: Basic execute action
+    // Todo: Extended execute action
+    // Todo: Confirmation action
 }
