@@ -85,7 +85,8 @@ impl VariableResolver {
                         // }
 
                         let value = String::from_utf8(output.stdout)?;
-                        Ok((key.clone(), value.clone()))
+                        let trimmed_value = value.trim_end().to_string();
+                        Ok((key.clone(), trimmed_value.clone()))
                     }
 
                     VariableConfig::Prompt(prompt_config) => {
@@ -118,7 +119,7 @@ mod tests {
     use std::collections::HashMap;
     use std::error::Error;
     use clap::{Arg, Command};
-    use crate::config::{PromptVariableConfig, Shell, VariableConfig};
+    use crate::config::{ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptVariableConfig, Shell, VariableConfig};
     use crate::prompt::PromptExecutor;
     use crate::shell::{ExitStatus, Output, ShellCommand, ShellExecutor, ShellExecutorFactory};
     use crate::variables::{ArgumentResolver, ClapArgumentResolver, VariableResolver, Variables};
@@ -204,11 +205,11 @@ mod tests {
     fn variable_resolver_resolves_literal_variable() {
 
         // Arrange
-        let shell_executor_factory = Box::new(MockShellExecutorFactory{
-            exit_code: 0,
-            stdout: "".to_string(),
-            stderr: "".to_string(),
-        });
+        let shell_executor_factory = Box::new(MockShellExecutorFactory { output: Output {
+            status: ExitStatus::Success,
+            stdout: vec![],
+            stderr: vec![],
+        }});
         let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
@@ -234,11 +235,88 @@ mod tests {
         assert_eq!(resolved_value, value);
     }
 
-    struct MockShellExecutorFactory {
-        exit_code: i32,
-        stdout: String,
-        stderr: String,
+    #[test]
+    fn variable_resolver_resolves_extended_literal() {
+
+        // Arrange
+        let shell_executor_factory = Box::new(MockShellExecutorFactory{ output: Output {
+            status: ExitStatus::Success,
+            stdout: vec![],
+            stderr: vec![],
+        } });
+        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+        let prompt_executor = Box::new(MockPromptExecutor{ response: None });
+
+        let variable_resolver = VariableResolver{
+            shell_executor_factory,
+            prompt_executor,
+            argument_resolver,
+        };
+
+        let name = "name";
+        let value = "Dingus";
+        let mut variable_configs = HashMap::new();
+        variable_configs.insert(name.to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
+            value: value.to_string(),
+            description: None,
+            argument_name: None,
+        }));
+
+        // Act
+        let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
+
+        // Assert
+        assert!(!resolved_variables.is_err());
+
+        let binding = resolved_variables.unwrap().clone();
+        let resolved_value = binding.get(name).unwrap().as_str();
+        assert_eq!(resolved_value, value);
     }
+
+    #[test]
+    fn variable_resolver_resolves_execution_variable() {
+
+        // Arrange
+        let value = "Dingus";
+        let shell_executor_factory = Box::new(MockShellExecutorFactory{
+            output: Output {
+                status: ExitStatus::Success,
+                stdout: format!("{value}\n").as_bytes().to_vec(),
+                stderr: vec![],
+            }
+        });
+        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+        let prompt_executor = Box::new(MockPromptExecutor{ response: None });
+
+        let variable_resolver = VariableResolver{
+            shell_executor_factory,
+            prompt_executor,
+            argument_resolver,
+        };
+
+        let name = "name";
+        let mut variable_configs = HashMap::new();
+        variable_configs.insert(name.to_string(), VariableConfig::Execution(ExecutionVariableConfig{
+            execution: ExecutionConfig { shell: None, shell_command: format!("echo \"{value}\"") },
+            description: None,
+            argument_name: None,
+        }));
+
+        // Act
+        let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
+
+        // Assert
+        assert!(!resolved_variables.is_err());
+
+        let binding = resolved_variables.unwrap().clone();
+        let resolved_value = binding.get(name).unwrap().as_str();
+        assert_eq!(resolved_value, value);
+    }
+
+    struct MockShellExecutorFactory {
+        output: Output
+    }
+
     struct MockShellExecutor {
         output: Output
     }
@@ -260,11 +338,7 @@ mod tests {
 
         fn create_default(&self) -> Box<dyn ShellExecutor> {
             Box::new(MockShellExecutor{
-                output: Output {
-                    status: ExitStatus::Success,
-                    stdout: vec![],
-                    stderr: vec![],
-                },
+                output: self.output.clone(),
             })
         }
     }
