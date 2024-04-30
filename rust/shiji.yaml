@@ -7,6 +7,11 @@ variables:
     prompt:
       message: What's your name?
 
+  password:
+    prompt:
+      message: What's your password?
+      sensitive: true
+
 commands:
 
   # Single-line command
@@ -25,7 +30,7 @@ commands:
     commands:
       smelly:
         description: Stinks
-        action: echo "Damn $name, $food stinks!"
+        action: echo "Damn $name, $food stinks! Your password is $password"
 
       not-smelly:
         description: Doesn't stink

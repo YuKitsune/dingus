@@ -154,10 +154,15 @@ pub struct TextPromptVariableConfig {
     pub message: String,
 
     #[serde(default = "default_multi_line")]
-    pub multi_line: bool
+    pub multi_line: bool,
+
+    #[serde(default = "default_sensitive")]
+    pub sensitive: bool
 }
 
 fn default_multi_line() -> bool { false }
+
+fn default_sensitive() -> bool { false }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SelectPromptVariableConfig {

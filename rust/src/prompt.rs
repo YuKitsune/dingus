@@ -1,5 +1,5 @@
 use std::error::Error;
-use inquire::{Confirm, Select, Text};
+use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
 use crate::config::{ConfirmationCommandActionConfig, PromptVariableConfig, PromptVariableConfigVariant, SelectOptionsConfig, SelectPromptVariableConfig, TextPromptVariableConfig};
 use crate::shell::{ShellExecutorFactory};
 
@@ -29,7 +29,15 @@ impl PromptExecutor for TerminalPromptExecutor {
 }
 
 fn execute_text_prompt(text_prompt_variable_config: &TextPromptVariableConfig) -> Result<String, Box<dyn Error>> {
-    let result = Text::new(text_prompt_variable_config.message.as_str()).prompt();
+    let result = if text_prompt_variable_config.sensitive {
+        Password::new(text_prompt_variable_config.message.as_str())
+            .with_display_mode(PasswordDisplayMode::Masked)
+            .without_confirmation()
+            .prompt()
+    } else {
+        Text::new(text_prompt_variable_config.message.as_str()).prompt()
+    };
+
     match result {
         Ok(value) => Ok(value),
         Err(err) => Err(Box::new(err)),
