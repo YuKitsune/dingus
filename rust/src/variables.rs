@@ -1,20 +1,23 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
-use std::process::ExitStatus;
 use clap::ArgMatches;
 use crate::config::{VariableConfig};
-use crate::shell::{ShellExecutorFactory};
-use crate::prompt::{PromptExecutor, SelectExecutor};
+use crate::shell::{ExitStatus, ShellExecutorFactory};
+use crate::prompt::{PromptExecutor};
 
 pub type Variables = HashMap<String, String>;
 
-pub struct ArgumentResolver {
+pub trait ArgumentResolver {
+    fn get(&self, key: &String) -> Option<String>;
+}
+
+pub struct ClapArgumentResolver {
     args: HashMap<String, String>
 }
 
-impl ArgumentResolver {
-    pub fn from_arg_matches(arg_matches: &ArgMatches) -> ArgumentResolver {
+impl ClapArgumentResolver {
+    pub fn from_arg_matches(arg_matches: &ArgMatches) -> ClapArgumentResolver {
         let ids = arg_matches.ids();
         let mut args = HashMap::new();
         for id in ids {
@@ -23,10 +26,12 @@ impl ArgumentResolver {
             }
         }
 
-        ArgumentResolver {args}
+        return ClapArgumentResolver {args}
     }
+}
 
-    pub fn get(&self, key: &String) -> Option<String> {
+impl ArgumentResolver for ClapArgumentResolver {
+    fn get(&self, key: &String) -> Option<String> {
         if let Some(value) = self.args.get(key) {
             return Some(value.clone());
         }
@@ -37,9 +42,8 @@ impl ArgumentResolver {
 
 pub struct VariableResolver {
     pub shell_executor_factory: Box<dyn ShellExecutorFactory>,
-    pub prompt_executor: PromptExecutor,
-    pub select_executor: SelectExecutor,
-    pub argument_resolver: ArgumentResolver
+    pub prompt_executor: Box<dyn PromptExecutor>,
+    pub argument_resolver: Box<dyn ArgumentResolver>
 }
 
 impl VariableResolver {
@@ -71,7 +75,7 @@ impl VariableResolver {
 
                         let output = shell_executor.get_output(&execution_def.execution.shell_command)?;
 
-                        if !output.status.success() {
+                        if let ExitStatus::Fail(code) = output.status {
                             return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
                         }
 
@@ -84,13 +88,8 @@ impl VariableResolver {
                         Ok((key.clone(), value.clone()))
                     }
 
-                    VariableConfig::Prompt(prompt_def) => {
-                        let value = self.prompt_executor.execute(&prompt_def.clone().prompt)?;
-                        Ok((key.clone(), value.clone()))
-                    }
-
-                    VariableConfig::Select(select_def) => {
-                        let value = self.select_executor.execute(&select_def.clone().select)?;
+                    VariableConfig::Prompt(prompt_config) => {
+                        let value = self.prompt_executor.execute(&prompt_config)?;
                         Ok((key.clone(), value.clone()))
                     }
                 }
@@ -116,8 +115,13 @@ impl fmt::Display for VariableResolutionError {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::error::Error;
     use clap::{Arg, Command};
-    use crate::variables::ArgumentResolver;
+    use crate::config::{PromptVariableConfig, Shell, VariableConfig};
+    use crate::prompt::PromptExecutor;
+    use crate::shell::{ExitStatus, Output, ShellCommand, ShellExecutor, ShellExecutorFactory};
+    use crate::variables::{ArgumentResolver, ClapArgumentResolver, VariableResolver, Variables};
 
     #[test]
     fn argresolver_resolves_arg() {
@@ -131,7 +135,7 @@ mod tests {
             .arg(arg)
             .get_matches_from(vec!["shiji", "--name", value]);
 
-        let arg_resolver = ArgumentResolver::from_arg_matches(&matches);
+        let arg_resolver = ClapArgumentResolver::from_arg_matches(&matches);
 
         // Assert
         let found_value = arg_resolver.get(&"name".to_string());
@@ -154,7 +158,7 @@ mod tests {
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "greet");
 
-        let arg_resolver = ArgumentResolver::from_arg_matches(&subcommand_matches);
+        let arg_resolver = ClapArgumentResolver::from_arg_matches(&subcommand_matches);
 
         // Assert
         let found_value = arg_resolver.get(&"name".to_string());
@@ -181,7 +185,7 @@ mod tests {
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "greet");
 
-        let arg_resolver = ArgumentResolver::from_arg_matches(&subcommand_matches);
+        let arg_resolver = ClapArgumentResolver::from_arg_matches(&subcommand_matches);
 
         // Assert
         let found_name_value = arg_resolver.get(&"name".to_string());
@@ -195,4 +199,98 @@ mod tests {
         return Arg::new(name.clone())
             .long(name.clone());
     }
+
+    #[test]
+    fn variable_resolver_resolves_literal_variable() {
+
+        // Arrange
+        let shell_executor_factory = Box::new(MockShellExecutorFactory{
+            exit_code: 0,
+            stdout: "".to_string(),
+            stderr: "".to_string(),
+        });
+        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+        let prompt_executor = Box::new(MockPromptExecutor{ response: None });
+
+        let variable_resolver = VariableResolver{
+            shell_executor_factory,
+            prompt_executor,
+            argument_resolver,
+        };
+
+        let name = "name";
+        let value = "Dingus";
+        let mut variable_configs = HashMap::new();
+        variable_configs.insert(name.to_string(), VariableConfig::Literal(value.to_string()));
+
+        // Act
+        let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
+
+        // Assert
+        assert!(!resolved_variables.is_err());
+
+        let binding = resolved_variables.unwrap().clone();
+        let resolved_value = binding.get(name).unwrap().as_str();
+        assert_eq!(resolved_value, value);
+    }
+
+    struct MockShellExecutorFactory {
+        exit_code: i32,
+        stdout: String,
+        stderr: String,
+    }
+    struct MockShellExecutor {
+        output: Output
+    }
+
+    impl ShellExecutor for MockShellExecutor {
+        fn execute(&self, command: &ShellCommand, variables: &Variables) -> crate::shell::ShellExecutionResult {
+            Ok(self.output.status.clone())
+        }
+
+        fn get_output(&self, command: &ShellCommand) -> crate::shell::ShellOutputResult {
+            Ok(self.output.clone())
+        }
+    }
+
+    impl ShellExecutorFactory for MockShellExecutorFactory {
+        fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor> {
+            self.create_default()
+        }
+
+        fn create_default(&self) -> Box<dyn ShellExecutor> {
+            Box::new(MockShellExecutor{
+                output: Output {
+                    status: ExitStatus::Success,
+                    stdout: vec![],
+                    stderr: vec![],
+                },
+            })
+        }
+    }
+
+    struct MockArgumentResolver {
+        args: HashMap<String, String>
+    }
+
+    impl ArgumentResolver for MockArgumentResolver {
+        fn get(&self, key: &String) -> Option<String> {
+            if let Some(value) = self.args.get(key) {
+                return Some(value.clone())
+            }
+
+            return None;
+        }
+    }
+
+    struct MockPromptExecutor {
+        response: Option<String>
+    }
+
+    impl PromptExecutor for MockPromptExecutor {
+        fn execute(&self, prompt_config: &PromptVariableConfig) -> Result<String, Box<dyn Error>> {
+            Ok(self.response.clone().unwrap())
+        }
+    }
+
 }

@@ -5,9 +5,9 @@ use variables::VariableResolver;
 
 use crate::commands::ActionExecutor;
 use crate::config::CommandActionConfigVariant;
-use crate::prompt::{ConfirmExecutor, PromptExecutor, SelectExecutor};
+use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
 use crate::shell::{create_shell_executor_factory};
-use crate::variables::ArgumentResolver;
+use crate::variables::{ClapArgumentResolver};
 
 mod shell;
 mod variables;
@@ -69,14 +69,11 @@ fn run() -> Result<(), Box<dyn Error>> {
             };
 
             // Set up the dependencies
-            let arg_resolver = ArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
+            let arg_resolver = ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
             let variable_resolver = VariableResolver {
                 shell_executor_factory: Box::new(create_shell_executor_factory(&config.default_shell)),
-                prompt_executor: PromptExecutor{},
-                select_executor: SelectExecutor{
-                    shell_executor_factory: Box::new(create_shell_executor_factory(&config.default_shell))
-                },
-                argument_resolver: arg_resolver
+                prompt_executor: Box::new(TerminalPromptExecutor::new(Box::new(create_shell_executor_factory(&config.default_shell)))),
+                argument_resolver: Box::new(arg_resolver),
             };
 
             let action_executor = ActionExecutor {

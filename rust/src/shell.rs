@@ -1,13 +1,61 @@
 use std::error::Error;
 use std::{fmt, io};
-use std::process::{Command, ExitStatus, Output};
+use std::fmt::{Formatter};
+use std::process::{Command};
 use crate::config::Shell;
+use crate::shell::ExitStatus::Unknown;
 
 use crate::variables::Variables;
 
 pub type ShellCommand = String;
-type ShellExecutionResult = Result<ExitStatus, ShellError>;
-type ShellOutputResult = Result<Output, ShellError>;
+pub type ShellExecutionResult = Result<ExitStatus, ShellError>;
+pub type ShellOutputResult = Result<Output, ShellError>;
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum ExitStatus {
+    Success,
+    Fail(i32),
+    Unknown
+}
+
+impl ExitStatus {
+    pub fn from_std_exitstatus(exit_status: &std::process::ExitStatus) -> ExitStatus {
+        return if exit_status.success() {
+            ExitStatus::Success
+        } else if let Some(code) = exit_status.code() {
+            ExitStatus::Fail(code)
+        } else {
+            Unknown
+        };
+    }
+}
+
+impl fmt::Display for ExitStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ExitStatus::Success => write!(f, "process exited with code 0"),
+            ExitStatus::Fail(code) => write!(f, "process exited with code {}", code),
+            Unknown => write!(f, "process exited with unknown exit code")
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Output {
+    pub status: ExitStatus,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+}
+
+impl Output {
+    pub fn from_std_output(output: &std::process::Output) -> Output {
+        Output {
+            status: ExitStatus::from_std_exitstatus(&output.status),
+            stdout: output.stdout.clone(),
+            stderr: output.stderr.clone(),
+        }
+    }
+}
 
 pub trait ShellExecutorFactory {
     fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor>;
@@ -58,7 +106,7 @@ impl ShellExecutor for BashExecutor {
             let result = child.wait();
 
             return match result {
-                Ok(exit_status) => Ok(exit_status),
+                Ok(exit_status) => Ok(ExitStatus::from_std_exitstatus(&exit_status)),
                 Err(io_err) => Err(ShellError::IO(io_err)),
             }
         } else {
@@ -73,7 +121,7 @@ impl ShellExecutor for BashExecutor {
             .output();
 
         return match result {
-            Ok(output) => Ok(output),
+            Ok(output) => Ok(Output::from_std_output(&output)),
             Err(io_err) => Err(ShellError::IO(io_err)),
         }
     }
@@ -98,7 +146,7 @@ impl fmt::Display for ShellError {
 
 #[cfg(test)]
 mod tests {
-    use crate::shell::{BashExecutor, ShellCommand, ShellExecutor};
+    use crate::shell::{BashExecutor, ExitStatus, ShellCommand, ShellExecutor};
 
     // Todo: Macro for various shell types
 
@@ -121,8 +169,7 @@ mod tests {
 
         // Assert
         let output = result.unwrap();
-        assert!(output.status.success());
-        assert_eq!(output.status.code().unwrap(), 0);
+        assert_eq!(output.status, ExitStatus::Success);
         assert!(output.stderr.is_empty());
 
         let output_value = String::from_utf8(output.stdout).unwrap();
@@ -142,8 +189,7 @@ mod tests {
 
         // Assert
         let output = result.unwrap();
-        assert!(output.status.success());
-        assert_eq!(output.status.code().unwrap(), 0);
+        assert_eq!(output.status, ExitStatus::Success);
         assert!(output.stdout.is_empty());
 
         let output_value = String::from_utf8(output.stderr).unwrap();
@@ -163,8 +209,7 @@ mod tests {
 
         // Assert
         let output = result.unwrap();
-        assert!(!output.status.success());
-        assert_eq!(output.status.code().unwrap(), 42);
+        assert_eq!(output.status, ExitStatus::Fail(42));
         assert!(output.stdout.is_empty());
         assert!(output.stderr.is_empty());
     }

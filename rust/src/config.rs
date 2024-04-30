@@ -71,8 +71,7 @@ pub enum VariableConfig {
     Literal(String),
     LiteralExtended(ExtendedLiteralVariableConfig),
     Execution(ExecutionVariableConfig),
-    Prompt(PromptVariableConfig),
-    Select(SelectVariableConfig),
+    Prompt(PromptVariableConfig)
 }
 
 impl VariableConfig {
@@ -81,8 +80,12 @@ impl VariableConfig {
             VariableConfig::Literal(_) => None,
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().argument_name,
             VariableConfig::Execution(execution_def) => execution_def.clone().argument_name,
-            VariableConfig::Prompt(prompt_def) => prompt_def.clone().argument_name,
-            VariableConfig::Select(select_def) => select_def.clone().argument_name,
+            VariableConfig::Prompt(prompt_def) => {
+                match prompt_def {
+                    PromptVariableConfig::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
+                    PromptVariableConfig::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
+                }
+            },
         }.unwrap_or(key.clone())
     }
 
@@ -91,8 +94,12 @@ impl VariableConfig {
             VariableConfig::Literal(_) => None,
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().description,
             VariableConfig::Execution(execution_def) => execution_def.clone().description,
-            VariableConfig::Prompt(prompt_def) => prompt_def.clone().description,
-            VariableConfig::Select(select_def) => select_def.clone().description
+            VariableConfig::Prompt(prompt_def) => {
+                match prompt_def {
+                    PromptVariableConfig::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
+                    PromptVariableConfig::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
+                }
+            },
         }
     }
 }
@@ -126,39 +133,41 @@ pub struct ExecutionConfig {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct PromptVariableConfig {
-    pub prompt: PromptConfig,
-    pub description: Option<String>,
-
-    #[serde(rename(deserialize = "arg"))]
-    pub argument_name: Option<String>
+#[serde(untagged)]
+pub enum PromptVariableConfig {
+    Text(TextPromptVariableConfig),
+    Select(SelectPromptVariableConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct SelectVariableConfig {
-    pub select: SelectConfig,
+pub struct TextPromptVariableConfig {
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
-    pub argument_name: Option<String>
-}
+    pub argument_name: Option<String>,
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct PromptConfig {
     pub message: String,
 
-    #[serde(default="default_multi_line")]
+    #[serde(default = "default_multi_line")]
     pub multi_line: bool
 }
 
-fn default_multi_line() -> bool {
-    false
+fn default_multi_line() -> bool { false }
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct SelectPromptVariableConfig {
+    pub description: Option<String>,
+
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>,
+
+    pub message: String,
+    pub options: SelectOptionsConfig,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SelectConfig {
     pub message: String,
-    pub options: SelectOptionsConfig,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]

@@ -15,7 +15,7 @@ commands:
 
     variables:
       food:
-        select:
+        prompt:
           message: What food do you like?
           options:
             - Burger
