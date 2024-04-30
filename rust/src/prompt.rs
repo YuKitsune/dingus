@@ -1,6 +1,6 @@
 use std::error::Error;
 use inquire::{Confirm, Select, Text};
-use crate::config::{ConfirmationCommandActionConfig, PromptVariableConfig, SelectOptionsConfig, SelectPromptVariableConfig, TextPromptVariableConfig};
+use crate::config::{ConfirmationCommandActionConfig, PromptVariableConfig, PromptVariableConfigVariant, SelectOptionsConfig, SelectPromptVariableConfig, TextPromptVariableConfig};
 use crate::shell::{ShellExecutorFactory};
 
 pub trait PromptExecutor {
@@ -19,11 +19,11 @@ impl TerminalPromptExecutor {
 
 impl PromptExecutor for TerminalPromptExecutor {
     fn execute(&self, prompt_config: &PromptVariableConfig) -> Result<String, Box<dyn Error>> {
-        match prompt_config {
-            PromptVariableConfig::Text(text_prompt_config) =>
-                execute_text_prompt(text_prompt_config),
-            PromptVariableConfig::Select(select_prompt_config) =>
-                execute_select_prompt(select_prompt_config, &self.shell_executor_factory),
+        match prompt_config.clone().prompt {
+            PromptVariableConfigVariant::Text(text_prompt_config) =>
+                execute_text_prompt(&text_prompt_config),
+            PromptVariableConfigVariant::Select(select_prompt_config) =>
+                execute_select_prompt(&select_prompt_config, &self.shell_executor_factory),
         }
     }
 }

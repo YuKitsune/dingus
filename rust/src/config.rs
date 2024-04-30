@@ -81,9 +81,9 @@ impl VariableConfig {
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().argument_name,
             VariableConfig::Execution(execution_def) => execution_def.clone().argument_name,
             VariableConfig::Prompt(prompt_def) => {
-                match prompt_def {
-                    PromptVariableConfig::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
-                    PromptVariableConfig::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
+                match prompt_def.clone().prompt {
+                    PromptVariableConfigVariant::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
+                    PromptVariableConfigVariant::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
                 }
             },
         }.unwrap_or(key.clone())
@@ -95,9 +95,9 @@ impl VariableConfig {
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().description,
             VariableConfig::Execution(execution_def) => execution_def.clone().description,
             VariableConfig::Prompt(prompt_def) => {
-                match prompt_def {
-                    PromptVariableConfig::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
-                    PromptVariableConfig::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
+                match prompt_def.clone().prompt {
+                    PromptVariableConfigVariant::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
+                    PromptVariableConfigVariant::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
                 }
             },
         }
@@ -133,8 +133,13 @@ pub struct ExecutionConfig {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct PromptVariableConfig {
+    pub prompt: PromptVariableConfigVariant
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
-pub enum PromptVariableConfig {
+pub enum PromptVariableConfigVariant {
     Text(TextPromptVariableConfig),
     Select(SelectPromptVariableConfig)
 }
