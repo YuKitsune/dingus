@@ -83,7 +83,7 @@ pub enum VariableConfig {
 }
 
 impl VariableConfig {
-    pub fn arg_name(&self, key: &String) -> String {
+    pub fn arg_name(&self, key: &str) -> String {
         match self {
             VariableConfig::Literal(_) => None,
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().argument_name,
@@ -94,7 +94,7 @@ impl VariableConfig {
                     PromptVariableConfigVariant::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
                 }
             },
-        }.unwrap_or(key.clone())
+        }.unwrap_or(key.to_string())
     }
 
     pub fn description(&self) -> Option<String> {
@@ -251,8 +251,60 @@ pub struct ConfirmationCommandActionConfig {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
-    // Todo: Variable get arg returns correct arg name
+    #[test]
+    fn variable_get_arg_returns_correct_arg_name() {
+
+        let literal = VariableConfig::Literal("Dingus".to_string());
+        assert_eq!("key", literal.arg_name("key"));
+
+        let extended_literal_no_arg = VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
+            value: "Dingus".to_string(),
+            description: None,
+            argument_name: None,
+        });
+        assert_eq!("key", extended_literal_no_arg.arg_name("key"));
+
+        let extended_literal_with_arg = VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
+            value: "Dingus".to_string(),
+            description: None,
+            argument_name: Some("name".to_string()),
+        });
+        assert_eq!("name", extended_literal_with_arg.arg_name("key"));
+
+        let exec_no_arg = VariableConfig::Execution(ExecutionVariableConfig{
+            execution: ExecutionConfig { shell: None, shell_command: "echo \"Dingus\"".to_string() },
+            description: None,
+            argument_name: None,
+        });
+        assert_eq!("key", exec_no_arg.arg_name("key"));
+
+        let exec_with_arg = VariableConfig::Execution(ExecutionVariableConfig{
+            execution: ExecutionConfig { shell: None, shell_command: "echo \"Dingus\"".to_string() },
+            description: None,
+            argument_name: Some("name".to_string()),
+        });
+        assert_eq!("name", exec_with_arg.arg_name("key"));
+
+        let prompt_no_arg = VariableConfig::Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Text(TextPromptVariableConfig{
+            description: None,
+            argument_name: None,
+            message: "".to_string(),
+            multi_line: false,
+            sensitive: false,
+        })});
+        assert_eq!("key", prompt_no_arg.arg_name("key"));
+
+        let exec_with_arg = VariableConfig::Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Text(TextPromptVariableConfig{
+            description: None,
+            argument_name: Some("name".to_string()),
+            message: "".to_string(),
+            multi_line: false,
+            sensitive: false,
+        })});
+        assert_eq!("name", exec_with_arg.arg_name("key"));
+    }
 
     // Todo: Empty root variables allowed - Pass
     // Todo: Literal variable - Pass

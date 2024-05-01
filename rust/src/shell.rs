@@ -108,7 +108,6 @@ impl ShellExecutor for BashExecutor {
 
 #[derive(Debug)]
 pub enum ShellError {
-    FailedToStart,
     IO(io::Error)
 }
 
@@ -117,7 +116,6 @@ impl Error for ShellError {}
 impl fmt::Display for ShellError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ShellError::FailedToStart => write!(f, "process failed to start"),
             ShellError::IO(io_error) => io_error.fmt(f),
         }
     }
