@@ -18,6 +18,8 @@ mod variables;
 
 // Todo:
 // - [ ] working directory for actions
+// - [ ] Sudo
+// - [ ] Shell-less command execution
 // - [ ] Dry-run support
 // - [ ] Address todos
 // - [ ] Unit tests
