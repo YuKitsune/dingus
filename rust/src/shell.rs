@@ -93,16 +93,18 @@ impl ShellExecutor for BashExecutor {
     fn execute(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionResult {
 
         let mut binding = Command::new("bash");
-        let result = binding
+
+        let child = binding
             .arg("-c")
             .arg(command)
             .envs(variables)
-            .output();
+            .spawn()
+            .map_err(|io_err| ShellError::IO(io_err))?;
 
-        return match result {
-            Ok(output) => Ok(Output::from_std_output(&output)),
-            Err(err) => Err(ShellError::IO(err))
-        }
+        let output = child.wait_with_output()
+            .map_err(|io_err| ShellError::IO(io_err))?;
+
+        return Ok(Output::from_std_output(&output))
     }
 }
 
