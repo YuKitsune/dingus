@@ -88,12 +88,7 @@ impl VariableConfig {
             VariableConfig::Literal(_) => None,
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().argument_name,
             VariableConfig::Execution(execution_def) => execution_def.clone().argument_name,
-            VariableConfig::Prompt(prompt_def) => {
-                match prompt_def.clone().prompt {
-                    PromptVariableConfigVariant::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
-                    PromptVariableConfigVariant::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
-                }
-            },
+            VariableConfig::Prompt(prompt_config) => prompt_config.clone().argument_name,
         }.unwrap_or(key.to_string())
     }
 
@@ -102,12 +97,7 @@ impl VariableConfig {
             VariableConfig::Literal(_) => None,
             VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().description,
             VariableConfig::Execution(execution_def) => execution_def.clone().description,
-            VariableConfig::Prompt(prompt_def) => {
-                match prompt_def.clone().prompt {
-                    PromptVariableConfigVariant::Text(text_prompt_def) => text_prompt_def.clone().argument_name,
-                    PromptVariableConfigVariant::Select(select_prompt_def) => select_prompt_def.clone().argument_name,
-                }
-            },
+            VariableConfig::Prompt(prompt_config) => prompt_config.clone().description,
         }
     }
 }
@@ -142,24 +132,42 @@ pub struct ExecutionConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptVariableConfig {
-    pub prompt: PromptVariableConfigVariant
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[serde(untagged)]
-pub enum PromptVariableConfigVariant {
-    Text(TextPromptVariableConfig),
-    Select(SelectPromptVariableConfig)
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct TextPromptVariableConfig {
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
     pub argument_name: Option<String>,
 
+    pub prompt: PromptConfig
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct PromptConfig {
     pub message: String,
+
+    #[serde(flatten)]
+    pub options: PromptOptionsVariant
+}
+
+impl Default for PromptOptionsVariant {
+    fn default() -> Self {
+        return PromptOptionsVariant::Text(TextPromptOptions {
+            multi_line: false,
+            sensitive: false,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum PromptOptionsVariant {
+    // Note: Select needs to come first here because SelectPromptOptions is the most specific.
+    // Serde will use the type it matches on.
+    Select(SelectPromptOptions),
+    Text(TextPromptOptions)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct TextPromptOptions {
 
     #[serde(default = "default_multi_line")]
     pub multi_line: bool,
@@ -173,19 +181,8 @@ fn default_multi_line() -> bool { false }
 fn default_sensitive() -> bool { false }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct SelectPromptVariableConfig {
-    pub description: Option<String>,
-
-    #[serde(rename(deserialize = "arg"))]
-    pub argument_name: Option<String>,
-
-    pub message: String,
+pub struct SelectPromptOptions {
     pub options: SelectOptionsConfig,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct SelectConfig {
-    pub message: String,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -287,23 +284,19 @@ mod tests {
         });
         assert_eq!("name", exec_with_arg.arg_name("key"));
 
-        let prompt_no_arg = VariableConfig::Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Text(TextPromptVariableConfig{
+        let prompt_no_arg = VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: None,
-            message: "".to_string(),
-            multi_line: false,
-            sensitive: false,
-        })});
+            prompt: PromptConfig { message: "".to_string(), options: PromptOptionsVariant::default() },
+        });
         assert_eq!("key", prompt_no_arg.arg_name("key"));
 
-        let exec_with_arg = VariableConfig::Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Text(TextPromptVariableConfig{
+        let prompt_with_arg = VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: Some("name".to_string()),
-            message: "".to_string(),
-            multi_line: false,
-            sensitive: false,
-        })});
-        assert_eq!("name", exec_with_arg.arg_name("key"));
+            prompt: PromptConfig { message: "".to_string(), options: PromptOptionsVariant::default() },
+        });
+        assert_eq!("name", prompt_with_arg.arg_name("key"));
     }
 
     // Todo: Empty root variables allowed - Pass

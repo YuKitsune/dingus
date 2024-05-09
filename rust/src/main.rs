@@ -47,6 +47,8 @@ fn main() {
 fn run() -> Result<(), Box<dyn Error>> {
     let config = config::load()?;
 
+    println!("{:?}", config);
+
     let root_command = cli::create_root_command(&config);
 
     // This will exit on any match failures

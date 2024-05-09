@@ -58,7 +58,7 @@ impl VariableResolver {
                     }
 
                     VariableConfig::Prompt(prompt_config) => {
-                        let value = self.prompt_executor.execute(&prompt_config)?;
+                        let value = self.prompt_executor.execute(&prompt_config.prompt)?;
                         Ok((key.clone(), value.clone()))
                     }
                 }
@@ -89,7 +89,7 @@ mod tests {
     use std::collections::HashMap;
     use std::error::Error;
     use crate::args::ArgumentResolver;
-    use crate::config::{ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptVariableConfig, PromptVariableConfigVariant, SelectOptionsConfig, SelectPromptVariableConfig, Shell, TextPromptVariableConfig, VariableConfig};
+    use crate::config::{ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, Shell, VariableConfig};
     use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
     use crate::shell::{ExitStatus, Output, ShellCommand, ShellExecutor, ShellExecutorFactory};
@@ -228,13 +228,11 @@ mod tests {
 
         let name = "name";
         let mut variable_configs = HashMap::new();
-        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Text(TextPromptVariableConfig{
+        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{
             description: None,
             argument_name: None,
-            message: "Enter your name".to_string(),
-            multi_line: false,
-            sensitive: false,
-        }) }));
+            prompt: PromptConfig { message: "Enter your name".to_string(), options: Default::default() },
+        }));
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -269,12 +267,16 @@ mod tests {
 
         let name = "name";
         let mut variable_configs = HashMap::new();
-        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{ prompt: PromptVariableConfigVariant::Select(SelectPromptVariableConfig{
+        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{
             description: None,
             argument_name: None,
-            message: "Select your name".to_string(),
-            options: SelectOptionsConfig::Literal(vec!["Alice".to_string(), "Bob".to_string(), "Charlie".to_string(), "Dingus".to_string()]),
-        })}));
+            prompt: PromptConfig {
+                message: "Select your name".to_string(),
+                options: PromptOptionsVariant::Select(SelectPromptOptions{
+                    options: SelectOptionsConfig::Literal(vec!["Alice".to_string(), "Bob".to_string(), "Charlie".to_string(), "Dingus".to_string()])
+                }),
+            },
+        }));
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -332,7 +334,7 @@ mod tests {
     }
 
     impl PromptExecutor for MockPromptExecutor {
-        fn execute(&self, prompt_config: &PromptVariableConfig) -> Result<String, Box<dyn Error>> {
+        fn execute(&self, prompt_config: &PromptConfig) -> Result<String, Box<dyn Error>> {
             Ok(self.response.clone().unwrap())
         }
     }
