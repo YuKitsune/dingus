@@ -401,8 +401,6 @@ commands:
         }))
     }
 
-    // Todo: Prompt variable - Pass
-
     #[test]
     fn prompt_variable_parsed() {
         let yaml =
@@ -512,14 +510,205 @@ commands:
         }))
     }
 
-    // Todo: Basic command
-    // Todo: Command with all the properties
-    // Todo: Command with subcommands and an action
-    // Todo: Command with subcommands only
-    // Todo: Command with action only
+    #[test]
+    fn single_action_command_parses() {
+        let yaml =
+            "commands:
+    demo:
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(demo_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+            })),
+        });
+    }
+
+    #[test]
+    fn single_action_command_with_optional_fields_parses() {
+        let yaml =
+            "commands:
+    demo:
+        description: Says hello.
+        aliases:
+          - greet
+          - hello
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(demo_command, &CommandConfig {
+            description: Some("Says hello.".to_string()),
+            aliases: vec![
+                "greet".to_string(),
+                "hello".to_string()
+            ],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+            })),
+        });
+    }
+
+    #[test]
+    fn action_with_subcommands_parses() {
+        let yaml =
+            "commands:
+    demo:
+        commands:
+            gday:
+                action: echo \"G'day, World!\"
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let gday_command = demo_command.commands.get("gday").unwrap();
+
+        assert_eq!(gday_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::Execution("echo \"G'day, World!\"".to_string()),
+            })),
+        });
+
+        let mut map = HashMap::new();
+        map.insert("gday".to_string(), gday_command.clone());
+
+        assert_eq!(demo_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: map,
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+            })),
+        });
+    }
+
+    #[test]
+    fn command_with_subcommands_only_parses() {
+        let yaml =
+            "commands:
+    demo:
+        commands:
+            gday:
+                action: echo \"G'day, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let gday_command = demo_command.commands.get("gday").unwrap();
+
+        assert_eq!(gday_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::Execution("echo \"G'day, World!\"".to_string()),
+            })),
+        });
+
+        let mut map = HashMap::new();
+        map.insert("gday".to_string(), gday_command.clone());
+
+        assert_eq!(demo_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: map,
+            action: None,
+        });
+    }
+
     // Todo: Command with no subcommands or action - Fail
 
-    // Todo: Basic execute action
-    // Todo: Extended execute action
-    // Todo: Confirmation action
+    #[test]
+    fn command_with_multiple_actions_parses() {
+        let yaml =
+            "commands:
+    demo:
+        actions:
+            - echo \"Hello, World!\"
+            - echo \"See ya, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(demo_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::MultiStep(MultiCommandActionConfig {
+                actions: vec![
+                    CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+                    CommandActionConfig::Execution("echo \"See ya, World!\"".to_string()),
+                ],
+            })),
+        });
+    }
+
+    #[test]
+    fn command_with_extended_action_parses() {
+        let yaml =
+            "commands:
+    demo:
+        action:
+            shell: Bash
+            exec: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(demo_command, &CommandConfig {
+            description: None,
+            aliases: vec![],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::ExtendedExecution(ExecutionConfig {
+                    shell: Some(Shell::Bash),
+                    shell_command: "echo \"Hello, World!\"".to_string(),
+                }),
+            })),
+        });
+    }
+
+    #[test]
+    fn command_with_confirm_action_parses() {
+        let yaml =
+            "commands:
+    demo:
+        description: Says hello.
+        aliases:
+          - greet
+          - hello
+        action:
+            confirm: Are you sure?";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(demo_command, &CommandConfig {
+            description: Some("Says hello.".to_string()),
+            aliases: vec![
+                "greet".to_string(),
+                "hello".to_string()
+            ],
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
+                action: CommandActionConfig::Confirmation(ConfirmationCommandActionConfig {
+                    confirm: "Are you sure?".to_string(),
+                }),
+            })),
+        });
+    }
 }
