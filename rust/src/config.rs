@@ -51,7 +51,7 @@ impl Error for ConfigError {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub description: String,
+    pub description: Option<String>,
 
     #[serde(default = "default_shell")]
     pub default_shell: Shell,
@@ -194,7 +194,7 @@ pub enum SelectOptionsConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct CommandConfig {
-    pub description: String,
+    pub description: Option<String>,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default = "default_aliases")]
@@ -299,17 +299,218 @@ mod tests {
         assert_eq!("name", prompt_with_arg.arg_name("key"));
     }
 
-    // Todo: Empty root variables allowed - Pass
-    // Todo: Literal variable - Pass
-    // Todo: Extended literal variable - Pass
-    // Todo: Extended literal variable with all the properties - Pass
-    // Todo: Execution variable - Pass
-    // Todo: Execution variable with all the properties - Pass
-    // Todo: Text prompt variable - Pass
-    // Todo: Text prompt variable with all the properties - Pass
-    // Todo: Select prompt - Pass
-    // Todo: Select prompt variable with all the properties - Pass
-    // Todo: Mixed up prompt properties - Fail
+    #[test]
+    fn empty_root_variables_allowed() {
+        let yaml =
+"commands:
+    demo:
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        assert!(config.variables.is_empty());
+    }
+
+    #[test]
+    fn literal_variable_parsed() {
+        let yaml =
+            "variables:
+    my-root-var: My root value
+commands:
+    demo:
+        variables:
+            my-command-var: My command value
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        assert!(!config.variables.is_empty());
+
+        let root_variable = config.variables.get("my-root-var").unwrap();
+        assert_eq!(root_variable, &VariableConfig::Literal("My root value".to_string()));
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let command_variable = demo_command.variables.get("my-command-var").unwrap();
+        assert_eq!(command_variable, &VariableConfig::Literal("My command value".to_string()))
+    }
+
+    #[test]
+    fn extended_variable_parsed() {
+        let yaml =
+            "variables:
+    my-root-var:
+        value: My root value
+commands:
+    demo:
+        variables:
+            my-command-var:
+                value: My command value
+                description: Command level variable
+                arg: command-arg
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        assert!(!config.variables.is_empty());
+
+        let root_variable = config.variables.get("my-root-var").unwrap();
+        assert_eq!(root_variable, &VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
+            value: "My root value".to_string(),
+            description: None,
+            argument_name: None,
+        }));
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let command_variable = demo_command.variables.get("my-command-var").unwrap();
+        assert_eq!(command_variable, &VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
+            value: "My command value".to_string(),
+            description: Some("Command level variable".to_string()),
+            argument_name: Some("command-arg".to_string()),
+        }))
+    }
+
+    #[test]
+    fn exec_variable_parsed() {
+        let yaml =
+            "variables:
+    my-root-var:
+        exec: echo \"My root value\"
+commands:
+    demo:
+        variables:
+            my-command-var:
+                exec: echo \"My command value\"
+                shell: Bash
+                description: Command level variable
+                arg: command-arg
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        assert!(!config.variables.is_empty());
+
+        let root_variable = config.variables.get("my-root-var").unwrap();
+        assert_eq!(root_variable, &VariableConfig::Execution(ExecutionVariableConfig {
+            execution: ExecutionConfig { shell: None, shell_command: "echo \"My root value\"".to_string() },
+            description: None,
+            argument_name: None,
+        }));
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let command_variable = demo_command.variables.get("my-command-var").unwrap();
+        assert_eq!(command_variable, &VariableConfig::Execution(ExecutionVariableConfig {
+            execution: ExecutionConfig { shell: Some(Shell::Bash), shell_command: "echo \"My command value\"".to_string() },
+            description: Some("Command level variable".to_string()),
+            argument_name: Some("command-arg".to_string()),
+        }))
+    }
+
+    // Todo: Prompt variable - Pass
+
+    #[test]
+    fn prompt_variable_parsed() {
+        let yaml =
+            "variables:
+    name:
+        prompt:
+            message: What's your name?
+    food:
+        description: Favourite food
+        arg: food
+        prompt:
+            message: What's your favourite food?
+            options:
+                - Burger
+                - Pizza
+                - Fries
+commands:
+    demo:
+        variables:
+            password:
+                prompt:
+                    message: What's your password?
+                    sensitive: true
+            life-story:
+                prompt:
+                    message: What's your life story?
+                    multi_line: true
+            favourite-line:
+                prompt:
+                    message: What's your favourite line?
+                    options:
+                        exec: cat example.txt
+
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        assert!(!config.variables.is_empty());
+
+        let name_variable = config.variables.get("name").unwrap();
+        assert_eq!(name_variable, &VariableConfig::Prompt(PromptVariableConfig {
+            description: None,
+            argument_name: None,
+            prompt: PromptConfig {
+                message: "What's your name?".to_string(),
+                options: PromptOptionsVariant::Text(TextPromptOptions {
+                    multi_line: false,
+                    sensitive: false,
+                })
+            },
+        }));
+
+        let food_variable = config.variables.get("food").unwrap();
+        assert_eq!(food_variable, &VariableConfig::Prompt(PromptVariableConfig {
+            description: Some("Favourite food".to_string()),
+            argument_name: Some("food".to_string()),
+            prompt: PromptConfig {
+                message: "What's your favourite food?".to_string(),
+                options: PromptOptionsVariant::Select(SelectPromptOptions {
+                    options: SelectOptionsConfig::Literal(vec![
+                        "Burger".to_string(),
+                        "Pizza".to_string(),
+                        "Fries".to_string()
+                    ])
+                })
+            },
+        }));
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let password_variable = demo_command.variables.get("password").unwrap();
+        assert_eq!(password_variable, &VariableConfig::Prompt(PromptVariableConfig {
+            description: None,
+            argument_name: None,
+            prompt: PromptConfig {
+                message: "What's your password?".to_string(),
+                options: PromptOptionsVariant::Text(TextPromptOptions {
+                    multi_line: false,
+                    sensitive: true
+                })
+            },
+        }));
+
+        let life_story_variable = demo_command.variables.get("life-story").unwrap();
+        assert_eq!(life_story_variable, &VariableConfig::Prompt(PromptVariableConfig {
+            description: None,
+            argument_name: None,
+            prompt: PromptConfig {
+                message: "What's your life story?".to_string(),
+                options: PromptOptionsVariant::Text(TextPromptOptions {
+                    multi_line: true,
+                    sensitive: false
+                })
+            },
+        }));
+
+        let fav_line_variable = demo_command.variables.get("favourite-line").unwrap();
+        assert_eq!(fav_line_variable, &VariableConfig::Prompt(PromptVariableConfig {
+            description: None,
+            argument_name: None,
+            prompt: PromptConfig {
+                message: "What's your favourite line?".to_string(),
+                options: PromptOptionsVariant::Select(SelectPromptOptions {
+                    options: SelectOptionsConfig::Execution(ExecutionConfig {
+                        shell: None,
+                        shell_command: "cat example.txt".to_string() }),
+                })
+            },
+        }))
+    }
 
     // Todo: Basic command
     // Todo: Command with all the properties

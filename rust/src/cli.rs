@@ -6,11 +6,14 @@ use crate::config::{CommandConfig, Config, VariableConfig};
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
     let subcommands = create_commands(&config.commands, &config.variables);
-    let root_command = Command::new("shiji")
-        .about(&config.description)
+    let mut root_command = Command::new("shiji")
         .subcommands(subcommands)
         .subcommand_required(true)
         .args(root_args);
+
+    if let Some(description) = &config.description {
+        root_command = root_command.about(description)
+    }
 
     return root_command;
 }
@@ -19,30 +22,33 @@ fn create_commands(
     commands: &HashMap<String, CommandConfig>,
     parent_variables: &HashMap<String, VariableConfig>) -> Vec<Command> {
     commands.iter()
-        .map(|(key, command)| -> Command {
+        .map(|(key, command_config)| -> Command {
 
             // Combine the variable configs provided by the caller (parent) with the variable
             // configs from the current command.
             // This lets us inherit variables from the root config/parent commands.
             let mut variables = parent_variables.clone();
-            variables.extend(command.variables.clone());
+            variables.extend(command_config.variables.clone());
 
             let args = create_args(&variables);
 
             let subcommands = create_commands(
-                &command.commands,
+                &command_config.commands,
                 &variables);
 
             // If this command doesn't have any action, then it needs a subcommand
             // Doesn't make sense to have a command that does nothing and has no subcommands to
             // execute either.
-            let has_action = command.action.is_some();
+            let has_action = command_config.action.is_some();
 
-            let command = Command::new(key)
-                .about(command.description.clone())
+            let mut command = Command::new(key)
                 .subcommands(subcommands)
                 .subcommand_required(!has_action)
                 .args(args);
+
+            if let Some(description) = command_config.description.clone() {
+                command = command.about(description)
+            }
 
             return command;
         })
