@@ -2,7 +2,7 @@ use std::error::Error;
 use std::{fmt, io};
 use std::fmt::{Formatter};
 use std::process::{Command};
-use crate::config::Shell;
+use crate::config::{ExecutionConfig, ShellCommandConfig};
 use crate::shell::ExitStatus::Unknown;
 use crate::variables::Variables;
 
@@ -56,66 +56,65 @@ impl Output {
     }
 }
 
-pub trait ShellExecutorFactory {
-    fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor>;
-    fn create_default(&self) -> Box<dyn ShellExecutor>;
-}
-
-struct ShellExecutorFactoryImpl {
-    default_shell: Shell
-}
-
-impl ShellExecutorFactory for ShellExecutorFactoryImpl {
-    fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor> {
-        return match shell {
-            Shell::Bash => Box::new(BashExecutor{})
-        }
-    }
-
-    fn create_default(&self) -> Box<dyn ShellExecutor> {
-        self.create(&self.default_shell)
-    }
-}
-
-pub fn create_shell_executor_factory(default_shell: &Shell) -> impl ShellExecutorFactory {
-    return ShellExecutorFactoryImpl{
-        default_shell: default_shell.clone()
-    };
-}
-
 pub trait ShellExecutor {
-    fn execute(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionResult;
-    fn get_output(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionOutputResult;
+    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionResult;
+    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionOutputResult;
 }
 
-struct BashExecutor { }
+pub fn create_shell_executor() -> Box<dyn ShellExecutor> {
+    return Box::new(ShellExecutorImpl { })
+}
 
-impl ShellExecutor for BashExecutor {
+struct ShellExecutorImpl { }
 
-    fn execute(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionResult {
+impl ShellExecutor for ShellExecutorImpl {
 
-        let mut binding = Command::new("bash");
-
-        binding.arg("-c")
-            .arg(command)
-            .envs(variables)
+    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionResult {
+        let mut command = get_command_for(execution_config);
+        command.envs(variables)
             .spawn()
             .map_err(|io_err| ShellError::IO(io_err))?;
 
         return Ok(());
     }
 
-    fn get_output(&self, command: &ShellCommand, variables: &Variables) -> ShellExecutionOutputResult {
-
-        let mut binding = Command::new("bash");
-
-        let output = binding.arg("-c")
-            .arg(command)
-            .envs(variables)
+    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionOutputResult {
+        let mut command = get_command_for(execution_config);
+        let output = command.envs(variables)
             .output()
             .map_err(|io_err| ShellError::IO(io_err))?;
 
         return Ok(Output::from_std_output(&output));
+    }
+}
+
+fn get_command_for(execution_config: &ExecutionConfig) -> Command {
+    return match execution_config {
+        ExecutionConfig::ShellCommand(shell_command_config) => {
+            match shell_command_config {
+                ShellCommandConfig::Bash(bash_command_config) => {
+                    let mut binding = Command::new("bash");
+                    binding.arg("-c")
+                        .arg(bash_command_config.clone().command);
+                    binding
+                }
+            }
+        }
+
+        ExecutionConfig::RawCommand(raw_command) => {
+            const DELIMITER: &str = " ";
+            match raw_command.split_once(DELIMITER) {
+                Some((program, args)) => {
+                    let argv = args.split(DELIMITER);
+                    let mut binding = Command::new(program);
+                    binding.args(argv);
+                    binding
+                },
+                None => {
+                    Command::new(raw_command)
+                },
+            }
+        }
     }
 }
 
@@ -127,7 +126,7 @@ pub enum ShellError {
 impl Error for ShellError {}
 
 impl fmt::Display for ShellError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             ShellError::IO(io_error) => io_error.fmt(f),
         }
@@ -137,13 +136,14 @@ impl fmt::Display for ShellError {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use crate::config::BashShellCommandConfig;
     use super::*;
 
     // Todo: Tests for execute (Inherits Stdio, interactive, variables evaluated, etc)
     // Todo: Macro for various shell types
 
     #[test]
-    fn bash_executor_get_output_has_variables() {
+    fn bash_command_get_output_has_variables() {
 
         // Arrange
         let variable_name = "name";
@@ -151,11 +151,13 @@ mod tests {
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let shell_command: ShellCommand = ShellCommand::from(format!("echo \"Hello, ${variable_name}!\""));
-        let shell_executor = BashExecutor{};
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+            command: ShellCommand::from(format!("echo \"Hello, ${variable_name}!\""))
+        }));
+        let shell_executor = create_shell_executor();
 
         // Act
-        let result = shell_executor.get_output(&shell_command, &variables);
+        let result = shell_executor.get_output(&bash_exec_config, &variables);
         assert!(!result.is_err());
 
         // Assert
@@ -168,14 +170,16 @@ mod tests {
     }
 
     #[test]
-    fn bash_executor_get_output_returns_stdout() {
+    fn bash_command_get_output_returns_stdout() {
 
         // Arrange
-        let shell_command: ShellCommand = ShellCommand::from("echo \"Hello, World!\"");
-        let shell_executor = BashExecutor{};
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+            command: ShellCommand::from("echo \"Hello, World!\"")
+        }));
+        let shell_executor = create_shell_executor();
 
         // Act
-        let result = shell_executor.get_output(&shell_command, &HashMap::new());
+        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -188,14 +192,16 @@ mod tests {
     }
 
     #[test]
-    fn bash_executor_get_output_returns_stderr() {
+    fn bash_command_get_output_returns_stderr() {
 
         // Arrange
-        let shell_command: ShellCommand = ShellCommand::from(">&2 echo \"Error message\"");
-        let shell_executor = BashExecutor{};
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+            command: ShellCommand::from(">&2 echo \"Error message\"")
+        }));
+        let shell_executor = create_shell_executor();
 
         // Act
-        let result = shell_executor.get_output(&shell_command, &HashMap::new());
+        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -208,14 +214,16 @@ mod tests {
     }
 
     #[test]
-    fn bash_executor_get_output_returns_exit_code() {
+    fn bash_command_get_output_returns_exit_code() {
 
         // Arrange
-        let shell_command: ShellCommand = ShellCommand::from("exit 42");
-        let shell_executor = BashExecutor{};
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+            command: ShellCommand::from("exit 42")
+        }));
+        let shell_executor = create_shell_executor();
 
         // Act
-        let result = shell_executor.get_output(&shell_command, &HashMap::new());
+        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -223,5 +231,70 @@ mod tests {
         assert_eq!(output.status, ExitStatus::Fail(42));
         assert!(output.stdout.is_empty());
         assert!(output.stderr.is_empty());
+    }
+
+    #[test]
+    fn raw_command_get_output_has_variables() {
+
+        // Arrange
+        let variable_name = "filename";
+        let variable_value = "test";
+        let mut variables = HashMap::new();
+        variables.insert(variable_name.to_string(), variable_value.to_string());
+
+        let exec_config = ExecutionConfig::RawCommand(format!("cat ${variable_name}.txt"));
+        let shell_executor = create_shell_executor();
+
+        // Act
+        let result = shell_executor.get_output(&exec_config, &variables);
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert_eq!(output.status, ExitStatus::Success);
+        assert!(output.stderr.is_empty());
+
+        let output_value = String::from_utf8(output.stdout).unwrap();
+        assert_eq!(output_value, format!("Hello, World!"));
+    }
+
+    #[test]
+    fn raw_command_get_output_returns_stdout() {
+
+        // Arrange
+        let exec_config = ExecutionConfig::RawCommand("cat test.txt".to_string());
+        let shell_executor = create_shell_executor();
+
+        // Act
+        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert_eq!(output.status, ExitStatus::Success);
+        assert!(output.stderr.is_empty());
+
+        let output_value = String::from_utf8(output.stdout).unwrap();
+        assert_eq!(output_value, "Hello, World!");
+    }
+
+    #[test]
+    fn raw_command_get_output_returns_stderr() {
+
+        // Arrange
+        let exec_config = ExecutionConfig::RawCommand(format!("cat does_not_exist.txt"));
+        let shell_executor = create_shell_executor();
+
+        // Act
+        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+        assert!(!result.is_err());
+
+        // Assert
+        let output = result.unwrap();
+        assert_eq!(output.status, ExitStatus::Fail(1));
+        assert!(output.stdout.is_empty());
+
+        let output_value = String::from_utf8(output.stderr).unwrap();
+        assert!(output_value.contains("No such file or directory"));
     }
 }

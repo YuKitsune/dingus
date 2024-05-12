@@ -114,20 +114,12 @@ pub struct ExtendedLiteralVariableConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ExecutionVariableConfig {
 
-    #[serde(flatten)]
+    #[serde(rename = "exec")]
     pub execution: ExecutionConfig,
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
     pub argument_name: Option<String>
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ExecutionConfig {
-    pub shell: Option<Shell>,
-
-    #[serde(rename(deserialize = "exec"))]
-    pub shell_command: ShellCommand
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -219,26 +211,45 @@ fn default_aliases() -> Vec<String> {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum CommandActionConfigVariant {
-    SingleStep(SingleCommandActionConfig),
-    MultiStep(MultiCommandActionConfig),
+    SingleStep(SingleActionConfig),
+    MultiStep(MultiActionConfig),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct SingleCommandActionConfig {
-    pub action: CommandActionConfig
+pub struct SingleActionConfig {
+    pub action: ActionConfig
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct MultiCommandActionConfig {
-    pub actions: Vec<CommandActionConfig>
+pub struct MultiActionConfig {
+    pub actions: Vec<ActionConfig>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
-pub enum CommandActionConfig {
-    Execution(ShellCommand),
-    ExtendedExecution(ExecutionConfig),
+pub enum ActionConfig {
+    Execution(ExecutionConfig),
     Confirmation(ConfirmationCommandActionConfig)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum ExecutionConfig {
+    RawCommand(String),
+    ShellCommand(ShellCommandConfig)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum ShellCommandConfig {
+    Bash(BashShellCommandConfig)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct BashShellCommandConfig {
+    #[serde(rename = "bash")]
+    #[serde(alias = "sh")]
+    pub command: ShellCommand
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -249,6 +260,16 @@ pub struct ConfirmationCommandActionConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn bash_exec(command: &str) -> ExecutionConfig {
+        return ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+            command: command.to_string(),
+        }))
+    }
+
+    fn raw_exec(command: &str) -> ExecutionConfig {
+        return ExecutionConfig::RawCommand(command.to_string())
+    }
 
     #[test]
     fn variable_get_arg_returns_correct_arg_name() {
@@ -271,14 +292,14 @@ mod tests {
         assert_eq!("name", extended_literal_with_arg.arg_name("key"));
 
         let exec_no_arg = VariableConfig::Execution(ExecutionVariableConfig{
-            execution: ExecutionConfig { shell: None, shell_command: "echo \"Dingus\"".to_string() },
+            execution: bash_exec("echo \"Dingus\""),
             description: None,
             argument_name: None,
         });
         assert_eq!("key", exec_no_arg.arg_name("key"));
 
         let exec_with_arg = VariableConfig::Execution(ExecutionVariableConfig{
-            execution: ExecutionConfig { shell: None, shell_command: "echo \"Dingus\"".to_string() },
+            execution: bash_exec("echo \"Dingus\""),
             description: None,
             argument_name: Some("name".to_string()),
         });
@@ -387,7 +408,7 @@ commands:
 
         let root_variable = config.variables.get("my-root-var").unwrap();
         assert_eq!(root_variable, &VariableConfig::Execution(ExecutionVariableConfig {
-            execution: ExecutionConfig { shell: None, shell_command: "echo \"My root value\"".to_string() },
+            execution: bash_exec("echo \"My root value\""),
             description: None,
             argument_name: None,
         }));
@@ -395,7 +416,7 @@ commands:
         let demo_command = config.commands.get("demo").unwrap();
         let command_variable = demo_command.variables.get("my-command-var").unwrap();
         assert_eq!(command_variable, &VariableConfig::Execution(ExecutionVariableConfig {
-            execution: ExecutionConfig { shell: Some(Shell::Bash), shell_command: "echo \"My command value\"".to_string() },
+            execution: bash_exec("echo \"My command value\""),
             description: Some("Command level variable".to_string()),
             argument_name: Some("command-arg".to_string()),
         }))
@@ -502,11 +523,9 @@ commands:
             prompt: PromptConfig {
                 message: "What's your favourite line?".to_string(),
                 options: PromptOptionsVariant::Select(SelectPromptOptions {
-                    options: SelectOptionsConfig::Execution(ExecutionConfig {
-                        shell: None,
-                        shell_command: "cat example.txt".to_string() }),
+                    options: SelectOptionsConfig::Execution(raw_exec("cat example.txt")),
                 })
-            },
+            }
         }))
     }
 
@@ -515,7 +534,7 @@ commands:
         let yaml =
             "commands:
     demo:
-        action: echo \"Hello, World!\"";
+        action: ls";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -524,8 +543,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
             })),
         });
     }
@@ -539,7 +558,7 @@ commands:
         aliases:
           - greet
           - hello
-        action: echo \"Hello, World!\"";
+        action: ls";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -551,8 +570,8 @@ commands:
             ],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
             })),
         });
     }
@@ -564,8 +583,8 @@ commands:
     demo:
         commands:
             gday:
-                action: echo \"G'day, World!\"
-        action: echo \"Hello, World!\"";
+                action: ls
+        action: cat example.txt";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -576,8 +595,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::Execution("echo \"G'day, World!\"".to_string()),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
             })),
         });
 
@@ -589,8 +608,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: map,
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand("cat example.txt".to_string())),
             })),
         });
     }
@@ -602,7 +621,7 @@ commands:
     demo:
         commands:
             gday:
-                action: echo \"G'day, World!\"";
+                action: ls";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -613,8 +632,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::Execution("echo \"G'day, World!\"".to_string()),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
             })),
         });
 
@@ -638,8 +657,8 @@ commands:
             "commands:
     demo:
         actions:
-            - echo \"Hello, World!\"
-            - echo \"See ya, World!\"";
+            - cat example.txt
+            - ls";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -648,23 +667,22 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::MultiStep(MultiCommandActionConfig {
+            action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
                 actions: vec![
-                    CommandActionConfig::Execution("echo \"Hello, World!\"".to_string()),
-                    CommandActionConfig::Execution("echo \"See ya, World!\"".to_string()),
+                    ActionConfig::Execution(ExecutionConfig::RawCommand("cat example.txt".to_string())),
+                    ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
                 ],
             })),
         });
     }
 
     #[test]
-    fn command_with_extended_action_parses() {
+    fn shell_action_parses() {
         let yaml =
             "commands:
     demo:
         action:
-            shell: Bash
-            exec: echo \"Hello, World!\"";
+            bash: echo \"Hello, World!\"";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -673,24 +691,23 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::ExtendedExecution(ExecutionConfig {
-                    shell: Some(Shell::Bash),
-                    shell_command: "echo \"Hello, World!\"".to_string(),
-                }),
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Execution(
+                    ExecutionConfig::ShellCommand(
+                        ShellCommandConfig::Bash(BashShellCommandConfig {
+                            command: "echo \"Hello, World!\"".to_string(),
+                        })
+                    )
+                ),
             })),
         });
     }
 
     #[test]
-    fn command_with_confirm_action_parses() {
+    fn confirm_action_parses() {
         let yaml =
             "commands:
     demo:
-        description: Says hello.
-        aliases:
-          - greet
-          - hello
         action:
             confirm: Are you sure?";
         let config = parse_config(yaml).unwrap();
@@ -704,8 +721,8 @@ commands:
             ],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleCommandActionConfig {
-                action: CommandActionConfig::Confirmation(ConfirmationCommandActionConfig {
+            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
+                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig {
                     confirm: "Are you sure?".to_string(),
                 }),
             })),

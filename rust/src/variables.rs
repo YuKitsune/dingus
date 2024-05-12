@@ -4,12 +4,12 @@ use std::fmt;
 use crate::args::ArgumentResolver;
 use crate::config::VariableConfig;
 use crate::prompt::PromptExecutor;
-use crate::shell::{ExitStatus, ShellExecutorFactory};
+use crate::shell::{ExitStatus, ShellExecutor};
 
 pub type Variables = HashMap<String, String>;
 
 pub struct VariableResolver {
-    pub shell_executor_factory: Box<dyn ShellExecutorFactory>,
+    pub shell_executor: Box<dyn ShellExecutor>,
     pub prompt_executor: Box<dyn PromptExecutor>,
     pub argument_resolver: Box<dyn ArgumentResolver>
 }
@@ -36,14 +36,9 @@ impl VariableResolver {
 
                     VariableConfig::Execution(execution_def) => {
 
-                        let shell_executor = match &execution_def.execution.shell {
-                            Some(shell) => self.shell_executor_factory.create(shell),
-                            None => self.shell_executor_factory.create_default(),
-                        };
+                        let output = self.shell_executor.get_output(&execution_def.execution, &HashMap::new())?;
 
-                        let output = shell_executor.get_output(&execution_def.execution.shell_command, &HashMap::new())?;
-
-                        if let ExitStatus::Fail(code) = output.status {
+                        if let ExitStatus::Fail(_) = output.status {
                             return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
                         }
 
@@ -89,16 +84,17 @@ mod tests {
     use std::collections::HashMap;
     use std::error::Error;
     use crate::args::ArgumentResolver;
-    use crate::config::{ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, Shell, VariableConfig};
+    use crate::config::{BashShellCommandConfig, ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
+    use crate::config::ShellCommandConfig::Bash;
     use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
-    use crate::shell::{ExitStatus, Output, ShellCommand, ShellExecutor, ShellExecutorFactory};
+    use crate::shell::{ExitStatus, Output, ShellExecutor};
 
     #[test]
     fn variable_resolver_resolves_literal_variable() {
 
         // Arrange
-        let shell_executor_factory = Box::new(MockShellExecutorFactory { output: Output {
+        let shell_executor = Box::new(MockShellExecutor { output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -107,7 +103,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
         let variable_resolver = VariableResolver{
-            shell_executor_factory,
+            shell_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -132,7 +128,7 @@ mod tests {
     fn variable_resolver_resolves_extended_literal() {
 
         // Arrange
-        let shell_executor_factory = Box::new(MockShellExecutorFactory{ output: Output {
+        let shell_executor = Box::new(MockShellExecutor{ output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -141,7 +137,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
         let variable_resolver = VariableResolver{
-            shell_executor_factory,
+            shell_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -171,7 +167,7 @@ mod tests {
 
         // Arrange
         let value = "Dingus";
-        let shell_executor_factory = Box::new(MockShellExecutorFactory{
+        let shell_executor = Box::new(MockShellExecutor{
             output: Output {
                 status: ExitStatus::Success,
                 stdout: format!("{value}\n").as_bytes().to_vec(),
@@ -182,18 +178,25 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
         let variable_resolver = VariableResolver{
-            shell_executor_factory,
+            shell_executor,
             prompt_executor,
             argument_resolver,
         };
 
         let name = "name";
         let mut variable_configs = HashMap::new();
-        variable_configs.insert(name.to_string(), VariableConfig::Execution(ExecutionVariableConfig{
-            execution: ExecutionConfig { shell: None, shell_command: format!("echo \"{value}\"") },
-            description: None,
-            argument_name: None,
-        }));
+        variable_configs.insert(
+            name.to_string(),
+            VariableConfig::Execution(ExecutionVariableConfig {
+                description: None,
+                argument_name: None,
+                execution: ExecutionConfig::ShellCommand(
+                    Bash(BashShellCommandConfig {
+                        command: format!("echo \"{value}\"")
+                    })
+                ),
+            })
+        );
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -210,7 +213,7 @@ mod tests {
     fn variable_resolver_resolves_text_prompt_variable() {
 
         // Arrange
-        let shell_executor_factory = Box::new(MockShellExecutorFactory{ output: Output {
+        let shell_executor = Box::new(MockShellExecutor{ output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -221,7 +224,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
 
         let variable_resolver = VariableResolver{
-            shell_executor_factory,
+            shell_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -249,7 +252,7 @@ mod tests {
     fn variable_resolver_resolves_select_prompt_variable() {
 
         // Arrange
-        let shell_executor_factory = Box::new(MockShellExecutorFactory{ output: Output {
+        let shell_executor = Box::new(MockShellExecutor{ output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -260,7 +263,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
 
         let variable_resolver = VariableResolver{
-            shell_executor_factory,
+            shell_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -289,33 +292,17 @@ mod tests {
         assert_eq!(resolved_value, value);
     }
 
-    struct MockShellExecutorFactory {
-        output: Output
-    }
-
     struct MockShellExecutor {
         output: Output
     }
 
     impl ShellExecutor for MockShellExecutor {
-        fn execute(&self, command: &ShellCommand, variables: &Variables) -> crate::shell::ShellExecutionResult {
+        fn execute(&self, _: &ExecutionConfig, _: &Variables) -> crate::shell::ShellExecutionResult {
             Ok(())
         }
 
-        fn get_output(&self, command: &ShellCommand, variables: &Variables) -> crate::shell::ShellExecutionOutputResult {
+        fn get_output(&self, _: &ExecutionConfig, _: &Variables) -> crate::shell::ShellExecutionOutputResult {
             Ok(self.output.clone())
-        }
-    }
-
-    impl ShellExecutorFactory for MockShellExecutorFactory {
-        fn create(&self, shell: &Shell) -> Box<dyn ShellExecutor> {
-            self.create_default()
-        }
-
-        fn create_default(&self) -> Box<dyn ShellExecutor> {
-            Box::new(MockShellExecutor{
-                output: self.output.clone(),
-            })
         }
     }
 
@@ -338,7 +325,7 @@ mod tests {
     }
 
     impl PromptExecutor for MockPromptExecutor {
-        fn execute(&self, prompt_config: &PromptConfig) -> Result<String, Box<dyn Error>> {
+        fn execute(&self, _: &PromptConfig) -> Result<String, Box<dyn Error>> {
             Ok(self.response.clone().unwrap())
         }
     }
