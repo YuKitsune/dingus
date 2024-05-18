@@ -180,8 +180,8 @@ pub struct SelectPromptOptions {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum SelectOptionsConfig {
-    Literal(Vec<String>),
-    Execution(ExecutionConfig)
+    Execution(ExecutionConfig),
+    Literal(Vec<String>)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -235,8 +235,21 @@ pub enum ActionConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ExecutionConfig {
-    RawCommand(String),
+    RawCommand(RawCommandConfig),
     ShellCommand(ShellCommandConfig)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum RawCommandConfig {
+    Shorthand(String),
+    Extended(ExtendedRawCommandConfig)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ExtendedRawCommandConfig {
+    pub working_directory: Option<String>,
+    pub command: String
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -247,6 +260,8 @@ pub enum ShellCommandConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BashShellCommandConfig {
+    pub working_directory: Option<String>,
+
     #[serde(rename = "bash")]
     #[serde(alias = "sh")]
     pub command: ShellCommand
@@ -259,16 +274,18 @@ pub struct ConfirmationCommandActionConfig {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::RawCommandConfig::Shorthand;
     use super::*;
 
-    fn bash_exec(command: &str) -> ExecutionConfig {
+    fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfig {
         return ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+            working_directory: workdir,
             command: command.to_string(),
         }))
     }
 
     fn raw_exec(command: &str) -> ExecutionConfig {
-        return ExecutionConfig::RawCommand(command.to_string())
+        return ExecutionConfig::RawCommand(Shorthand(command.to_string()))
     }
 
     #[test]
@@ -292,14 +309,14 @@ mod tests {
         assert_eq!("name", extended_literal_with_arg.arg_name("key"));
 
         let exec_no_arg = VariableConfig::Execution(ExecutionVariableConfig{
-            execution: bash_exec("echo \"Dingus\""),
+            execution: bash_exec("echo \"Dingus\"", None),
             description: None,
             argument_name: None,
         });
         assert_eq!("key", exec_no_arg.arg_name("key"));
 
         let exec_with_arg = VariableConfig::Execution(ExecutionVariableConfig{
-            execution: bash_exec("echo \"Dingus\""),
+            execution: bash_exec("echo \"Dingus\"", None),
             description: None,
             argument_name: Some("name".to_string()),
         });
@@ -392,13 +409,15 @@ commands:
         let yaml =
             "variables:
     my-root-var:
-        exec: echo \"My root value\"
+        exec:
+            sh: echo \"My root value\"
+            working_directory: ../
 commands:
     demo:
         variables:
             my-command-var:
-                exec: echo \"My command value\"
-                shell: Bash
+                exec:
+                    bash: echo \"My command value\"
                 description: Command level variable
                 arg: command-arg
         action: echo \"Hello, World!\"";
@@ -408,7 +427,7 @@ commands:
 
         let root_variable = config.variables.get("my-root-var").unwrap();
         assert_eq!(root_variable, &VariableConfig::Execution(ExecutionVariableConfig {
-            execution: bash_exec("echo \"My root value\""),
+            execution: bash_exec("echo \"My root value\"", Some("../".to_string())),
             description: None,
             argument_name: None,
         }));
@@ -416,7 +435,7 @@ commands:
         let demo_command = config.commands.get("demo").unwrap();
         let command_variable = demo_command.variables.get("my-command-var").unwrap();
         assert_eq!(command_variable, &VariableConfig::Execution(ExecutionVariableConfig {
-            execution: bash_exec("echo \"My command value\""),
+            execution: bash_exec("echo \"My command value\"", None),
             description: Some("Command level variable".to_string()),
             argument_name: Some("command-arg".to_string()),
         }))
@@ -544,7 +563,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
             })),
         });
     }
@@ -571,7 +590,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
             })),
         });
     }
@@ -596,7 +615,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
             })),
         });
 
@@ -609,7 +628,7 @@ commands:
             variables: Default::default(),
             commands: map,
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand("cat example.txt".to_string())),
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("cat example.txt".to_string()))),
             })),
         });
     }
@@ -633,7 +652,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
+                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
             })),
         });
 
@@ -669,8 +688,8 @@ commands:
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
                 actions: vec![
-                    ActionConfig::Execution(ExecutionConfig::RawCommand("cat example.txt".to_string())),
-                    ActionConfig::Execution(ExecutionConfig::RawCommand("ls".to_string())),
+                    ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("cat example.txt".to_string()))),
+                    ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
                 ],
             })),
         });
@@ -681,8 +700,10 @@ commands:
         let yaml =
             "commands:
     demo:
-        action:
-            bash: echo \"Hello, World!\"";
+        actions:
+            - bash: echo \"Hello, World!\"
+            - bash: pwd
+              working_directory: /";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
@@ -691,14 +712,25 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(
-                    ExecutionConfig::ShellCommand(
-                        ShellCommandConfig::Bash(BashShellCommandConfig {
-                            command: "echo \"Hello, World!\"".to_string(),
-                        })
-                    )
-                ),
+            action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
+                actions: vec![
+                    ActionConfig::Execution(
+                        ExecutionConfig::ShellCommand(
+                            ShellCommandConfig::Bash(BashShellCommandConfig {
+                                working_directory: None,
+                                command: "echo \"Hello, World!\"".to_string(),
+                            })
+                        )
+                    ),
+                    ActionConfig::Execution(
+                        ExecutionConfig::ShellCommand(
+                            ShellCommandConfig::Bash(BashShellCommandConfig {
+                                working_directory: Some("/".to_string()),
+                                command: "pwd".to_string(),
+                            })
+                        )
+                    ),
+                ]
             })),
         });
     }
@@ -714,11 +746,8 @@ commands:
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(demo_command, &CommandConfig {
-            description: Some("Says hello.".to_string()),
-            aliases: vec![
-                "greet".to_string(),
-                "hello".to_string()
-            ],
+            description: None,
+            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {

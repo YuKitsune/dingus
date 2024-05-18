@@ -192,6 +192,7 @@ mod tests {
                 argument_name: None,
                 execution: ExecutionConfig::ShellCommand(
                     Bash(BashShellCommandConfig {
+                        working_directory: None,
                         command: format!("echo \"{value}\"")
                     })
                 ),
