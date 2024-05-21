@@ -39,7 +39,7 @@ impl VariableResolver {
                         let output = self.command_executor.get_output(&execution_def.execution, &HashMap::new())?;
 
                         if let ExitStatus::Fail(_) = output.status {
-                            return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
+                            return Err(Box::new(VariableResolutionError::UnsuccessfulExecution(output.status.clone())));
                         }
 
                         // TODO: Add an option to fail resolution if anything was send to stderr
@@ -64,7 +64,7 @@ impl VariableResolver {
 
 #[derive(Debug)]
 enum VariableResolutionError {
-    UnsuccessfulShellExecution(ExitStatus)
+    UnsuccessfulExecution(ExitStatus)
 }
 
 impl Error for VariableResolutionError {}
@@ -72,7 +72,7 @@ impl Error for VariableResolutionError {}
 impl fmt::Display for VariableResolutionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            VariableResolutionError::UnsuccessfulShellExecution(exit_status) => write!(f, "shell command failed: {}", exit_status),
+            VariableResolutionError::UnsuccessfulExecution(exit_status) => write!(f, "shell command failed: {}", exit_status),
         }
     }
 }
@@ -84,7 +84,7 @@ mod tests {
     use std::collections::HashMap;
     use std::error::Error;
     use crate::args::ArgumentResolver;
-    use crate::config::{BashShellCommandConfig, ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
+    use crate::config::{BashCommandConfig, ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
     use crate::config::ShellCommandConfig::Bash;
     use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
@@ -191,7 +191,7 @@ mod tests {
                 description: None,
                 argument_name: None,
                 execution: ExecutionConfig::ShellCommand(
-                    Bash(BashShellCommandConfig {
+                    Bash(BashCommandConfig {
                         working_directory: None,
                         command: format!("echo \"{value}\"")
                     })

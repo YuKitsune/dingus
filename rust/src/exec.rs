@@ -6,8 +6,8 @@ use crate::config::{ExecutionConfig, RawCommandConfig, ShellCommandConfig};
 use crate::exec::ExitStatus::Unknown;
 use crate::variables::Variables;
 
-pub type ExecutionResult = Result<(), ShellError>;
-pub type ExecutionOutputResult = Result<Output, ShellError>;
+pub type ExecutionResult = Result<(), ExecutionError>;
+pub type ExecutionOutputResult = Result<Output, ExecutionError>;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExitStatus {
@@ -72,7 +72,7 @@ impl CommandExecutor for CommandExecutorImpl {
         let mut command = get_command_for(execution_config);
         command.envs(variables)
             .spawn()
-            .map_err(|io_err| ShellError::IO(io_err))?;
+            .map_err(|io_err| ExecutionError::IO(io_err))?;
 
         return Ok(());
     }
@@ -81,7 +81,7 @@ impl CommandExecutor for CommandExecutorImpl {
         let mut command = get_command_for(execution_config);
         let output = command.envs(variables)
             .output()
-            .map_err(|io_err| ShellError::IO(io_err))?;
+            .map_err(|io_err| ExecutionError::IO(io_err))?;
 
         return Ok(Output::from_std_output(&output));
     }
@@ -132,16 +132,16 @@ fn get_command_for(execution_config: &ExecutionConfig) -> Command {
 }
 
 #[derive(Debug)]
-pub enum ShellError {
+pub enum ExecutionError {
     IO(io::Error)
 }
 
-impl Error for ShellError {}
+impl Error for ExecutionError {}
 
-impl fmt::Display for ShellError {
+impl fmt::Display for ExecutionError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            ShellError::IO(io_error) => io_error.fmt(f),
+            ExecutionError::IO(io_error) => io_error.fmt(f),
         }
     }
 }
@@ -149,7 +149,7 @@ impl fmt::Display for ShellError {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use crate::config::{BashShellCommandConfig, ExtendedRawCommandConfig};
+    use crate::config::{BashCommandConfig, ExtendedRawCommandConfig};
     use crate::config::RawCommandConfig::{Extended, Shorthand};
     use super::*;
 
@@ -165,14 +165,14 @@ mod tests {
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
             working_directory: None,
             command: format!("echo \"Hello, ${variable_name}!\"")
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&bash_exec_config, &variables);
+        let result = command_executor.get_output(&bash_exec_config, &variables);
         assert!(!result.is_err());
 
         // Assert
@@ -188,14 +188,14 @@ mod tests {
     fn bash_command_get_output_returns_stdout() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
             working_directory: None,
             command: "echo \"Hello, World!\"".to_string()
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
+        let result = command_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -211,14 +211,14 @@ mod tests {
     fn bash_command_get_output_returns_stderr() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
             working_directory: None,
             command: ">&2 echo \"Error message\"".to_string()
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
+        let result = command_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -234,14 +234,14 @@ mod tests {
     fn bash_command_get_output_returns_exit_code() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
             working_directory: None,
             command: "exit 42".to_string()
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
+        let result = command_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -255,14 +255,14 @@ mod tests {
     fn bash_command_honours_workdir() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
             working_directory: Some("./src".to_string()),
             command: "pwd".to_string()
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
+        let result = command_executor.get_output(&bash_exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -284,10 +284,10 @@ mod tests {
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
         let exec_config = ExecutionConfig::RawCommand(Shorthand("cargo v".to_string()));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&exec_config, &variables);
+        let result = command_executor.get_output(&exec_config, &variables);
         assert!(!result.is_err());
 
         // Assert
@@ -304,10 +304,10 @@ mod tests {
 
         // Arrange
         let exec_config = ExecutionConfig::RawCommand(Shorthand("cat test.txt".to_string()));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+        let result = command_executor.get_output(&exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -324,10 +324,10 @@ mod tests {
 
         // Arrange
         let exec_config = ExecutionConfig::RawCommand(Shorthand("cat does_not_exist.txt".to_string()));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+        let result = command_executor.get_output(&exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -347,10 +347,10 @@ mod tests {
             working_directory: Some("./src".to_string()),
             command: "pwd".to_string(),
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+        let result = command_executor.get_output(&exec_config, &HashMap::new());
         assert!(!result.is_err());
 
         // Assert
@@ -370,10 +370,10 @@ mod tests {
             working_directory: None,
             command: "shopt -s expand_aliases".to_string(),
         }));
-        let shell_executor = create_command_executor();
+        let command_executor = create_command_executor();
 
         // Act
-        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+        let result = command_executor.get_output(&exec_config, &HashMap::new());
 
         // Assert
         assert!(result.is_err());

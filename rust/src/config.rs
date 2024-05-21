@@ -52,25 +52,15 @@ impl Error for ConfigError {}
 pub struct Config {
     pub description: Option<String>,
 
-    #[serde(default = "default_shell")]
-    pub default_shell: Shell,
-
     #[serde(default = "default_variables")]
     pub variables: HashMap<String, VariableConfig>,
 
     pub commands: HashMap<String, CommandConfig>,
 }
 
-fn default_shell() -> Shell { Shell::Bash }
-
 fn default_variables() -> HashMap<String, VariableConfig> { HashMap::new() }
 
 fn default_commands() -> HashMap<String, CommandConfig> { HashMap::new() }
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub enum Shell {
-    Bash
-}
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
@@ -254,11 +244,11 @@ pub struct ExtendedRawCommandConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ShellCommandConfig {
-    Bash(BashShellCommandConfig)
+    Bash(BashCommandConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct BashShellCommandConfig {
+pub struct BashCommandConfig {
     pub working_directory: Option<String>,
 
     #[serde(rename = "bash")]
@@ -277,7 +267,7 @@ mod tests {
     use super::*;
 
     fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfig {
-        return ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
+        return ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
             working_directory: workdir,
             command: command.to_string(),
         }))
@@ -715,7 +705,7 @@ commands:
                 actions: vec![
                     ActionConfig::Execution(
                         ExecutionConfig::ShellCommand(
-                            ShellCommandConfig::Bash(BashShellCommandConfig {
+                            ShellCommandConfig::Bash(BashCommandConfig {
                                 working_directory: None,
                                 command: "echo \"Hello, World!\"".to_string(),
                             })
@@ -723,7 +713,7 @@ commands:
                     ),
                     ActionConfig::Execution(
                         ExecutionConfig::ShellCommand(
-                            ShellCommandConfig::Bash(BashShellCommandConfig {
+                            ShellCommandConfig::Bash(BashCommandConfig {
                                 working_directory: Some("/".to_string()),
                                 command: "pwd".to_string(),
                             })
