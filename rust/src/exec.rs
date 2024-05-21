@@ -361,4 +361,21 @@ mod tests {
         let output_value = String::from_utf8(output.stdout).unwrap();
         assert!(output_value.ends_with("/src\n"));
     }
+
+    #[test]
+    fn raw_command_does_not_use_shell() {
+
+        // Arrange
+        let exec_config = ExecutionConfig::RawCommand(Extended(ExtendedRawCommandConfig {
+            working_directory: None,
+            command: "shopt -s expand_aliases".to_string(),
+        }));
+        let shell_executor = create_command_executor();
+
+        // Act
+        let result = shell_executor.get_output(&exec_config, &HashMap::new());
+
+        // Assert
+        assert!(result.is_err());
+    }
 }
