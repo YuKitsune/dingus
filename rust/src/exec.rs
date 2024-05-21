@@ -3,12 +3,11 @@ use std::{fmt, io};
 use std::fmt::{Formatter};
 use std::process::{Command};
 use crate::config::{ExecutionConfig, RawCommandConfig, ShellCommandConfig};
-use crate::shell::ExitStatus::Unknown;
+use crate::exec::ExitStatus::Unknown;
 use crate::variables::Variables;
 
-pub type ShellCommand = String;
-pub type ShellExecutionResult = Result<(), ShellError>;
-pub type ShellExecutionOutputResult = Result<Output, ShellError>;
+pub type ExecutionResult = Result<(), ShellError>;
+pub type ExecutionOutputResult = Result<Output, ShellError>;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExitStatus {
@@ -56,20 +55,20 @@ impl Output {
     }
 }
 
-pub trait ShellExecutor {
-    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionResult;
-    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionOutputResult;
+pub trait CommandExecutor {
+    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionResult;
+    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionOutputResult;
 }
 
-pub fn create_shell_executor() -> Box<dyn ShellExecutor> {
-    return Box::new(ShellExecutorImpl { })
+pub fn create_command_executor() -> Box<dyn CommandExecutor> {
+    return Box::new(CommandExecutorImpl { })
 }
 
-struct ShellExecutorImpl { }
+struct CommandExecutorImpl { }
 
-impl ShellExecutor for ShellExecutorImpl {
+impl CommandExecutor for CommandExecutorImpl {
 
-    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionResult {
+    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionResult {
         let mut command = get_command_for(execution_config);
         command.envs(variables)
             .spawn()
@@ -78,7 +77,7 @@ impl ShellExecutor for ShellExecutorImpl {
         return Ok(());
     }
 
-    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ShellExecutionOutputResult {
+    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionOutputResult {
         let mut command = get_command_for(execution_config);
         let output = command.envs(variables)
             .output()
@@ -168,9 +167,9 @@ mod tests {
 
         let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
             working_directory: None,
-            command: ShellCommand::from(format!("echo \"Hello, ${variable_name}!\""))
+            command: format!("echo \"Hello, ${variable_name}!\"")
         }));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&bash_exec_config, &variables);
@@ -191,9 +190,9 @@ mod tests {
         // Arrange
         let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
             working_directory: None,
-            command: ShellCommand::from("echo \"Hello, World!\"")
+            command: "echo \"Hello, World!\"".to_string()
         }));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
@@ -214,9 +213,9 @@ mod tests {
         // Arrange
         let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
             working_directory: None,
-            command: ShellCommand::from(">&2 echo \"Error message\"")
+            command: ">&2 echo \"Error message\"".to_string()
         }));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
@@ -237,9 +236,9 @@ mod tests {
         // Arrange
         let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
             working_directory: None,
-            command: ShellCommand::from("exit 42")
+            command: "exit 42".to_string()
         }));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
@@ -258,9 +257,9 @@ mod tests {
         // Arrange
         let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashShellCommandConfig {
             working_directory: Some("./src".to_string()),
-            command: ShellCommand::from("pwd")
+            command: "pwd".to_string()
         }));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&bash_exec_config, &HashMap::new());
@@ -285,7 +284,7 @@ mod tests {
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
         let exec_config = ExecutionConfig::RawCommand(Shorthand("cargo v".to_string()));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&exec_config, &variables);
@@ -305,7 +304,7 @@ mod tests {
 
         // Arrange
         let exec_config = ExecutionConfig::RawCommand(Shorthand("cat test.txt".to_string()));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&exec_config, &HashMap::new());
@@ -325,7 +324,7 @@ mod tests {
 
         // Arrange
         let exec_config = ExecutionConfig::RawCommand(Shorthand("cat does_not_exist.txt".to_string()));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&exec_config, &HashMap::new());
@@ -348,7 +347,7 @@ mod tests {
             working_directory: Some("./src".to_string()),
             command: "pwd".to_string(),
         }));
-        let shell_executor = create_shell_executor();
+        let shell_executor = create_command_executor();
 
         // Act
         let result = shell_executor.get_output(&exec_config, &HashMap::new());

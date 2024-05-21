@@ -4,12 +4,12 @@ use std::fmt;
 use crate::args::ArgumentResolver;
 use crate::config::VariableConfig;
 use crate::prompt::PromptExecutor;
-use crate::shell::{ExitStatus, ShellExecutor};
+use crate::exec::{ExitStatus, CommandExecutor};
 
 pub type Variables = HashMap<String, String>;
 
 pub struct VariableResolver {
-    pub shell_executor: Box<dyn ShellExecutor>,
+    pub command_executor: Box<dyn CommandExecutor>,
     pub prompt_executor: Box<dyn PromptExecutor>,
     pub argument_resolver: Box<dyn ArgumentResolver>
 }
@@ -36,7 +36,7 @@ impl VariableResolver {
 
                     VariableConfig::Execution(execution_def) => {
 
-                        let output = self.shell_executor.get_output(&execution_def.execution, &HashMap::new())?;
+                        let output = self.command_executor.get_output(&execution_def.execution, &HashMap::new())?;
 
                         if let ExitStatus::Fail(_) = output.status {
                             return Err(Box::new(VariableResolutionError::UnsuccessfulShellExecution(output.status.clone())));
@@ -88,13 +88,13 @@ mod tests {
     use crate::config::ShellCommandConfig::Bash;
     use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
-    use crate::shell::{ExitStatus, Output, ShellExecutor};
+    use crate::exec::{ExitStatus, Output, CommandExecutor};
 
     #[test]
     fn variable_resolver_resolves_literal_variable() {
 
         // Arrange
-        let shell_executor = Box::new(MockShellExecutor { output: Output {
+        let command_executor = Box::new(MockCommandExecutor { output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -103,7 +103,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
         let variable_resolver = VariableResolver{
-            shell_executor,
+            command_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -128,7 +128,7 @@ mod tests {
     fn variable_resolver_resolves_extended_literal() {
 
         // Arrange
-        let shell_executor = Box::new(MockShellExecutor{ output: Output {
+        let command_executor = Box::new(MockCommandExecutor{ output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -137,7 +137,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
         let variable_resolver = VariableResolver{
-            shell_executor,
+            command_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -167,7 +167,7 @@ mod tests {
 
         // Arrange
         let value = "Dingus";
-        let shell_executor = Box::new(MockShellExecutor{
+        let command_executor = Box::new(MockCommandExecutor{
             output: Output {
                 status: ExitStatus::Success,
                 stdout: format!("{value}\n").as_bytes().to_vec(),
@@ -178,7 +178,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
         let variable_resolver = VariableResolver{
-            shell_executor,
+            command_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -214,7 +214,7 @@ mod tests {
     fn variable_resolver_resolves_text_prompt_variable() {
 
         // Arrange
-        let shell_executor = Box::new(MockShellExecutor{ output: Output {
+        let command_executor = Box::new(MockCommandExecutor{ output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -225,7 +225,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
 
         let variable_resolver = VariableResolver{
-            shell_executor,
+            command_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -253,7 +253,7 @@ mod tests {
     fn variable_resolver_resolves_select_prompt_variable() {
 
         // Arrange
-        let shell_executor = Box::new(MockShellExecutor{ output: Output {
+        let command_executor = Box::new(MockCommandExecutor{ output: Output {
             status: ExitStatus::Success,
             stdout: vec![],
             stderr: vec![],
@@ -264,7 +264,7 @@ mod tests {
         let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
 
         let variable_resolver = VariableResolver{
-            shell_executor,
+            command_executor,
             prompt_executor,
             argument_resolver,
         };
@@ -293,16 +293,16 @@ mod tests {
         assert_eq!(resolved_value, value);
     }
 
-    struct MockShellExecutor {
+    struct MockCommandExecutor {
         output: Output
     }
 
-    impl ShellExecutor for MockShellExecutor {
-        fn execute(&self, _: &ExecutionConfig, _: &Variables) -> crate::shell::ShellExecutionResult {
+    impl CommandExecutor for MockCommandExecutor {
+        fn execute(&self, _: &ExecutionConfig, _: &Variables) -> crate::exec::ExecutionResult {
             Ok(())
         }
 
-        fn get_output(&self, _: &ExecutionConfig, _: &Variables) -> crate::shell::ShellExecutionOutputResult {
+        fn get_output(&self, _: &ExecutionConfig, _: &Variables) -> crate::exec::ExecutionOutputResult {
             Ok(self.output.clone())
         }
     }

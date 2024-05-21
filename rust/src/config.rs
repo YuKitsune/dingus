@@ -3,7 +3,6 @@ use std::collections::{HashMap};
 use std::error::Error;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::shell::ShellCommand;
 
 const CONFIG_FILE_NAMES: [&str;2] = ["shiji.yaml", "shiji.yml"];
 
@@ -264,7 +263,7 @@ pub struct BashShellCommandConfig {
 
     #[serde(rename = "bash")]
     #[serde(alias = "sh")]
-    pub command: ShellCommand
+    pub command: String
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]

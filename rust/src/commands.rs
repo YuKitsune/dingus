@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use crate::config::{ActionConfig, VariableConfig};
+use crate::exec::CommandExecutor;
 use crate::prompt::ConfirmExecutor;
-use crate::shell::{ShellExecutor};
 use crate::variables::{VariableResolver};
 
 pub struct ActionExecutor {
-    pub shell_executor: Box<dyn ShellExecutor>,
+    pub command_executor: Box<dyn CommandExecutor>,
     pub confirm_executor: ConfirmExecutor,
     pub variable_resolver: VariableResolver
 }
@@ -23,7 +23,7 @@ impl ActionExecutor {
 
         return match action_config {
             ActionConfig::Execution(execution_config) => {
-                let result = self.shell_executor.execute(&execution_config, &variables);
+                let result = self.command_executor.execute(&execution_config, &variables);
                 if let Err(err) = result {
                     return Err(Box::new(err))
                 }

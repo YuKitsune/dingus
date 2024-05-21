@@ -4,11 +4,11 @@ use crate::args::ClapArgumentResolver;
 
 use crate::commands::ActionExecutor;
 use crate::config::CommandActionConfigVariant;
+use crate::exec::create_command_executor;
 use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
-use crate::shell::{create_shell_executor};
 use crate::variables::VariableResolver;
 
-mod shell;
+mod exec;
 mod prompt;
 mod commands;
 mod cli;
@@ -17,8 +17,6 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Sudo
-// - [ ] Shell-less command execution
 // - [ ] Dry-run support
 // - [ ] Address todos
 // - [ ] Unit tests
@@ -74,13 +72,13 @@ fn run() -> Result<(), Box<dyn Error>> {
             // Set up the dependencies
             let arg_resolver = ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
             let variable_resolver = VariableResolver {
-                shell_executor: create_shell_executor(),
-                prompt_executor: Box::new(TerminalPromptExecutor::new(create_shell_executor())),
+                command_executor: create_command_executor(),
+                prompt_executor: Box::new(TerminalPromptExecutor::new(create_command_executor())),
                 argument_resolver: Box::new(arg_resolver),
             };
 
             let action_executor = ActionExecutor {
-                shell_executor: create_shell_executor(),
+                command_executor: create_command_executor(),
                 confirm_executor: ConfirmExecutor{},
                 variable_resolver,
             };
