@@ -2,7 +2,7 @@ use std::{fmt, process};
 use std::error::Error;
 use crate::args::ClapArgumentResolver;
 
-use crate::commands::ActionExecutor;
+use crate::commands::{ActionExecutor, ActionId, ActionKey};
 use crate::config::CommandActionConfigVariant;
 use crate::exec::create_command_executor;
 use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
@@ -83,10 +83,17 @@ fn run() -> Result<(), Box<dyn Error>> {
             };
 
             // Execute the actions
-            for action in actions {
-                return action_executor.execute(
+            for (idx, action) in actions.iter().enumerate() {
+
+                let action_id = ActionId {
+                    command_name: arg_matches.subcommand_name().unwrap().to_string(),
+                    action: ActionKey::Unnamed(idx)
+                };
+
+                action_executor.execute(
+                    action_id,
                     &action,
-                    &available_variable_definitions);
+                    &available_variable_definitions)?;
             }
         }
     }

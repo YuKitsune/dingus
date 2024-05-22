@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use std::string::FromUtf8Error;
 use crate::args::ArgumentResolver;
 use crate::config::VariableConfig;
-use crate::prompt::PromptExecutor;
-use crate::exec::{ExitStatus, CommandExecutor};
+use crate::prompt::{PromptError, PromptExecutor};
+use crate::exec::{ExitStatus, CommandExecutor, ExecutionError};
 
 pub type Variables = HashMap<String, String>;
 
@@ -17,9 +18,9 @@ pub struct VariableResolver {
 impl VariableResolver {
     pub fn resolve_variables(
         &self,
-        variable_configs: &HashMap<String, VariableConfig>) -> Result<Variables, Box<dyn Error>> {
+        variable_configs: &HashMap<String, VariableConfig>) -> Result<Variables, Box<VariableResolutionError>> {
         variable_configs.iter()
-            .map(|(key, config)| -> Result<(String, String), Box<dyn Error>> {
+            .map(|(key, config)| -> Result<(String, String), Box<VariableResolutionError>> {
 
                 let arg_name = config.arg_name(key);
 
@@ -36,24 +37,22 @@ impl VariableResolver {
 
                     VariableConfig::Execution(execution_def) => {
 
-                        let output = self.command_executor.get_output(&execution_def.execution, &HashMap::new())?;
+                        let output = self.command_executor.get_output(&execution_def.execution, &HashMap::new())
+                            .map_err(|err| VariableResolutionError::Execution(err))?;
 
                         if let ExitStatus::Fail(_) = output.status {
-                            return Err(Box::new(VariableResolutionError::UnsuccessfulExecution(output.status.clone())));
+                            return Err(Box::new(VariableResolutionError::ExitStatus(output.status.clone())));
                         }
 
-                        // TODO: Add an option to fail resolution if anything was send to stderr
-                        // if !output.stderr.is_empty() {
-
-                        // }
-
-                        let value = String::from_utf8(output.stdout)?;
+                        let value = String::from_utf8(output.stdout)
+                            .map_err(|err| VariableResolutionError::Parse(err))?;
                         let trimmed_value = value.trim_end().to_string();
                         Ok((key.clone(), trimmed_value.clone()))
                     }
 
                     VariableConfig::Prompt(prompt_config) => {
-                        let value = self.prompt_executor.execute(&prompt_config.prompt)?;
+                        let value = self.prompt_executor.execute(&prompt_config.prompt)
+                            .map_err(|err| VariableResolutionError::Prompt(err))?;
                         Ok((key.clone(), value.clone()))
                     }
                 }
@@ -63,8 +62,11 @@ impl VariableResolver {
 }
 
 #[derive(Debug)]
-enum VariableResolutionError {
-    UnsuccessfulExecution(ExitStatus)
+pub enum VariableResolutionError {
+    Execution(ExecutionError),
+    ExitStatus(ExitStatus),
+    Parse(FromUtf8Error),
+    Prompt(PromptError)
 }
 
 impl Error for VariableResolutionError {}
@@ -72,11 +74,13 @@ impl Error for VariableResolutionError {}
 impl fmt::Display for VariableResolutionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            VariableResolutionError::UnsuccessfulExecution(exit_status) => write!(f, "shell command failed: {}", exit_status),
+            VariableResolutionError::Execution(execution_err) => write!(f, "failed to evaluate variable: {}", execution_err),
+            VariableResolutionError::ExitStatus(status) => write!(f, "failed to evaluate variable: {}", status),
+            VariableResolutionError::Parse(utf8_err) => write!(f, "failed to evaluate variable: {}", utf8_err),
+            VariableResolutionError::Prompt(prompt_err) => write!(f, "failed to evaluate variable: {}", prompt_err)
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

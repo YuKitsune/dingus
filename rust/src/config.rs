@@ -234,6 +234,24 @@ pub enum ExecutionConfig {
     ShellCommand(ShellCommandConfig)
 }
 
+impl ExecutionConfig {
+    pub fn get_command_string(&self) -> String {
+        match self {
+            ExecutionConfig::RawCommand(raw_command_config) => {
+                match raw_command_config {
+                    RawCommandConfig::Shorthand(command) => command.to_string(),
+                    RawCommandConfig::Extended(extended_command) => extended_command.command.to_string()
+                }
+            }
+            ExecutionConfig::ShellCommand(shell_command) => {
+                match shell_command {
+                    ShellCommandConfig::Bash(bash_command) => bash_command.command.to_string()
+                }
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum RawCommandConfig {

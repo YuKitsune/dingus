@@ -49,3 +49,20 @@ commands:
     actions:
       - confirm: Are you sure?
       - echo "Awesome!"
+
+  fail-sh:
+    description: Always fails
+    action:
+      sh: exit 1
+
+  fail-cmd:
+    description: Always fails
+    action: aaaa
+
+  fail-var:
+    description: Always fails
+    variables:
+      demo:
+        exec: blingus
+    action:
+      sh: echo $demo

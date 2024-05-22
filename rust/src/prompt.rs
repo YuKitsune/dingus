@@ -1,11 +1,33 @@
 use std::collections::HashMap;
 use std::error::Error;
-use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
+use std::fmt;
+use std::fmt::{Formatter};
+use std::string::FromUtf8Error;
+use inquire::{Confirm, InquireError, Password, PasswordDisplayMode, Select, Text};
 use crate::config::{ConfirmationCommandActionConfig, PromptConfig, PromptOptionsVariant, SelectOptionsConfig, SelectPromptOptions, TextPromptOptions};
-use crate::exec::CommandExecutor;
+use crate::exec::{CommandExecutor, ExecutionError};
+
+#[derive(Debug)]
+pub enum PromptError {
+    InquireError(InquireError),
+    ExecutionError(ExecutionError),
+    ParseError(FromUtf8Error)
+}
+
+impl Error for PromptError {}
+
+impl fmt::Display for PromptError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            PromptError::InquireError(err) => write!(f, "failed to execute prompt: {}", err),
+            PromptError::ExecutionError(err) => write!(f, "failed to evaluate prompt options: {}", err),
+            PromptError::ParseError(err) => write!(f, "failed to parse prompt options: {}", err),
+        }
+    }
+}
 
 pub trait PromptExecutor {
-    fn execute(&self, prompt_config: &PromptConfig) -> Result<String, Box<dyn Error>>;
+    fn execute(&self, prompt_config: &PromptConfig) -> Result<String, PromptError>;
 }
 
 pub struct TerminalPromptExecutor {
@@ -19,7 +41,7 @@ impl TerminalPromptExecutor {
 }
 
 impl PromptExecutor for TerminalPromptExecutor {
-    fn execute(&self, prompt_config: &PromptConfig) -> Result<String, Box<dyn Error>> {
+    fn execute(&self, prompt_config: &PromptConfig) -> Result<String, PromptError> {
         match prompt_config.clone().options {
             PromptOptionsVariant::Text(text_prompt_options) =>
                 execute_text_prompt(prompt_config.message.as_str(), &text_prompt_options),
@@ -29,7 +51,7 @@ impl PromptExecutor for TerminalPromptExecutor {
     }
 }
 
-fn execute_text_prompt(message: &str, text_prompt_options: &TextPromptOptions) -> Result<String, Box<dyn Error>> {
+fn execute_text_prompt(message: &str, text_prompt_options: &TextPromptOptions) -> Result<String, PromptError> {
     let result = if text_prompt_options.sensitive {
         Password::new(message)
             .with_display_mode(PasswordDisplayMode::Masked)
@@ -41,30 +63,32 @@ fn execute_text_prompt(message: &str, text_prompt_options: &TextPromptOptions) -
 
     match result {
         Ok(value) => Ok(value),
-        Err(err) => Err(Box::new(err)),
+        Err(err) => Err(PromptError::InquireError(err)),
     }
 }
 
 fn execute_select_prompt(
     message: &str,
     select_prompt_options: &SelectPromptOptions,
-    command_executor: &Box<dyn CommandExecutor>) -> Result<String, Box<dyn Error>> {
+    command_executor: &Box<dyn CommandExecutor>) -> Result<String, PromptError> {
     let options = get_options(&select_prompt_options.options, command_executor)?;
     let result = Select::new(message, options).prompt();
     match result {
         Ok(value) => Ok(value),
-        Err(err) => Err(Box::new(err)),
+        Err(err) => Err(PromptError::InquireError(err)),
     }
 }
 
-fn get_options(select_options_config: &SelectOptionsConfig, command_executor: &Box<dyn CommandExecutor>) -> Result<Vec<String>, Box<dyn Error>> {
+fn get_options(select_options_config: &SelectOptionsConfig, command_executor: &Box<dyn CommandExecutor>) -> Result<Vec<String>, PromptError> {
     match select_options_config {
         SelectOptionsConfig::Literal(options) => {
             Ok(options.clone())
         }
         SelectOptionsConfig::Execution(execution_config) => {
-            let output = command_executor.get_output(&execution_config.execution, &HashMap::new())?;
-            let stdout = String::from_utf8(output.stdout)?;
+            let output = command_executor.get_output(&execution_config.execution, &HashMap::new())
+                .map_err(|err| PromptError::ExecutionError(err))?;
+            let stdout = String::from_utf8(output.stdout)
+                .map_err(|err| PromptError::ParseError(err))?;
             let options = stdout.clone().lines().map(|s| String::from(s)).collect();
             Ok(options)
         }
@@ -74,13 +98,12 @@ fn get_options(select_options_config: &SelectOptionsConfig, command_executor: &B
 pub struct ConfirmExecutor { }
 
 impl ConfirmExecutor {
-    pub fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, Box<dyn Error>> {
+    pub fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, PromptError> {
         let result = Confirm::new(confirmation_config.confirm.as_str())
             .with_default(false)
-            .prompt();
-        match result {
-            Ok(value) => Ok(value),
-            Err(err) => Err(Box::new(err)),
-        }
+            .prompt()
+            .map_err(|err| PromptError::InquireError(err))?;
+
+        return Ok(result)
     }
 }
