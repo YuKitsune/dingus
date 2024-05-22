@@ -63,7 +63,7 @@ fn get_options(select_options_config: &SelectOptionsConfig, command_executor: &B
             Ok(options.clone())
         }
         SelectOptionsConfig::Execution(execution_config) => {
-            let output = command_executor.get_output(&execution_config, &HashMap::new())?;
+            let output = command_executor.get_output(&execution_config.execution, &HashMap::new())?;
             let stdout = String::from_utf8(output.stdout)?;
             let options = stdout.clone().lines().map(|s| String::from(s)).collect();
             Ok(options)

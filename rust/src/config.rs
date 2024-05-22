@@ -169,8 +169,14 @@ pub struct SelectPromptOptions {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum SelectOptionsConfig {
-    Execution(ExecutionConfig),
+    Execution(ExecutionSelectOptionsConfig),
     Literal(Vec<String>)
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ExecutionSelectOptionsConfig {
+    #[serde(rename = "exec")]
+    pub execution: ExecutionConfig
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -531,7 +537,9 @@ commands:
             prompt: PromptConfig {
                 message: "What's your favourite line?".to_string(),
                 options: PromptOptionsVariant::Select(SelectPromptOptions {
-                    options: SelectOptionsConfig::Execution(raw_exec("cat example.txt")),
+                    options: SelectOptionsConfig::Execution(ExecutionSelectOptionsConfig{
+                        execution: raw_exec("cat example.txt")
+                    }),
                 })
             }
         }))

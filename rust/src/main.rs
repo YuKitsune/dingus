@@ -17,7 +17,6 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Dry-run support
 // - [ ] Address todos
 // - [ ] Unit tests
 // - [ ] Integration tests?
