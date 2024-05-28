@@ -4,7 +4,7 @@ use std::error::Error;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
 
-const CONFIG_FILE_NAMES: [&str;2] = ["shiji.yaml", "shiji.yml"];
+const CONFIG_FILE_NAMES: [&str;2] = ["gecko.yaml", "gecko.yml"];
 
 pub fn load() -> Result<Config, ConfigError> {
     for config_file_name in CONFIG_FILE_NAMES {

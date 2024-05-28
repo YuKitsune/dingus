@@ -6,7 +6,7 @@ use crate::config::{CommandConfig, Config, ExecutionConfig, RawCommandConfig, Sh
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
     let subcommands = create_commands(&config.commands, &config.variables);
-    let mut root_command = Command::new("shiji")
+    let mut root_command = Command::new("gecko")
         .subcommands(subcommands)
         .subcommand_required(true)
         .args(root_args);
@@ -423,7 +423,7 @@ mod tests {
         let root_command = create_root_command(&config);
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["shiji", "cmd"]);
+        let matches = root_command.clone().get_matches_from(vec!["gecko", "cmd"]);
         let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap().unwrap();
 
         // Assert
@@ -490,7 +490,7 @@ mod tests {
         let root_command = create_root_command(&config);
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["shiji", "parent", "target"]);
+        let matches = root_command.clone().get_matches_from(vec!["gecko", "parent", "target"]);
         let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap().unwrap();
 
         // Assert
@@ -545,7 +545,7 @@ mod tests {
         let root_command = create_root_command(&config);
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["shiji", "parent", "subcommand"]);
+        let matches = root_command.clone().get_matches_from(vec!["gecko", "parent", "subcommand"]);
         let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap().unwrap();
 
         // Assert

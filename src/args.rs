@@ -46,9 +46,9 @@ mod tests {
 
         // Act
         let value = "Dingus";
-        let matches = Command::new("shiji")
+        let matches = Command::new("gecko")
             .arg(arg)
-            .get_matches_from(vec!["shiji", "--name", value]);
+            .get_matches_from(vec!["gecko", "--name", value]);
 
         let arg_resolver = ClapArgumentResolver::from_arg_matches(&matches);
 
@@ -65,11 +65,11 @@ mod tests {
         let greet_command = Command::new("greet")
             .arg(arg);
 
-        let root_command = Command::new("shiji")
+        let root_command = Command::new("gecko")
             .subcommand(greet_command);
 
         let value = "Dingus";
-        let root_matches = root_command.get_matches_from(vec!["shiji", "greet", "--name", value]);
+        let root_matches = root_command.get_matches_from(vec!["gecko", "greet", "--name", value]);
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "greet");
 
@@ -90,13 +90,13 @@ mod tests {
             .arg(name_arg)
             .arg(age_arg);
 
-        let root_command = Command::new("shiji")
+        let root_command = Command::new("gecko")
             .subcommand(greet_command);
 
         // Act
         let name_value = "Dingus";
         let age_value = "42";
-        let root_matches = root_command.get_matches_from(vec!["shiji", "greet", "--name", name_value, "--age", age_value]);
+        let root_matches = root_command.get_matches_from(vec!["gecko", "greet", "--name", name_value, "--age", age_value]);
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "greet");
 

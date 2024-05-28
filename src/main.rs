@@ -17,10 +17,8 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Address todos
-// - [ ] Unit tests
 // - [ ] Integration tests?
-// - [ ] Consider naming (Commands, actions, shiji, all confusing)
+// - [ ] Consider naming (Commands, actions, all confusing)
 // - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish
 
@@ -28,8 +26,8 @@ mod variables;
 // - Named actions: Actions can be named so that they can be skipped selectively
 // - Command invocation action: Have an action that invokes another command (Or named action ^)
 // - Include other config files
-// - Pipe config file: example.yaml | shiji do something
-// - Aliases: Have a command alias another command (E.g: shiji deps = docker compose -f deps.yaml). remaining args are passed to the child command
+// - Pipe config file: example.yaml | gecko do something
+// - Aliases: Have a command alias another command (E.g: gecko deps = docker compose -f deps.yaml). remaining args are passed to the child command
 // - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
 
 fn main() {
