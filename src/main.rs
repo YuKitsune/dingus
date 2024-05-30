@@ -17,15 +17,20 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Integration tests?
-// - [ ] Consider naming (Commands, actions, all confusing)
+// - [ ] Use vecs instead of maps
+// - [ ] Consider naming (Variables, Commands, Actions, all confusing)
+// - [ ] Offer to create a gecko file if none exists
+// - [ ] Integration tests
+// - [ ] Meta commands
 // - [ ] Documentation (in-code and public-facing)
-// - [ ] Publish
+// - [ ] Publish v0.1.0
 
 // Ideas:
+// - Prerequisites: Specify a list of applications that must be installed before running a command, or a custom script that must succeed
 // - Named actions: Actions can be named so that they can be skipped selectively
-// - Command invocation action: Have an action that invokes another command (Or named action ^)
-// - Include other config files
+// - Command invocation action: Have an action that invokes another command (Or named action ^), can specify the args
+// - Deferred actions: Always executes at the end, even if one of the actions fails
+// - Include other gecko files (on disk or with a GitHub link)
 // - Pipe config file: example.yaml | gecko do something
 // - Aliases: Have a command alias another command (E.g: gecko deps = docker compose -f deps.yaml). remaining args are passed to the child command
 // - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
