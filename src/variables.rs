@@ -330,7 +330,7 @@ mod tests {
     }
 
     impl PromptExecutor for MockPromptExecutor {
-        fn execute(&self, _: &PromptConfig) -> Result<String, Box<dyn Error>> {
+        fn execute(&self, _: &PromptConfig) -> Result<String, PromptError> {
             Ok(self.response.clone().unwrap())
         }
     }
