@@ -1,0 +1,7 @@
+description: My Description
+
+commands:
+
+  test:
+    description: Runs all the tests
+    action: cargo test
