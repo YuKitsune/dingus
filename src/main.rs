@@ -93,6 +93,8 @@ fn run() -> Result<(), Box<dyn Error>> {
                     &action,
                     &available_variable_definitions)?;
             }
+
+            return Ok(());
         }
     }
 
