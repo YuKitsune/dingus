@@ -296,7 +296,7 @@ mod tests {
         assert!(output.stderr.is_empty());
 
         let output_value = String::from_utf8(output.stdout).unwrap();
-        assert_eq!(output_value, "cargo 1.75.0\n");
+        assert_eq!(output_value, "cargo 1.78.0\n");
     }
 
     #[test]
