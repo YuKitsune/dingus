@@ -72,6 +72,8 @@ impl CommandExecutor for CommandExecutorImpl {
         let mut command = get_command_for(execution_config);
         command.envs(variables)
             .spawn()
+            .map_err(|io_err| ExecutionError::IO(io_err))?
+            .wait()
             .map_err(|io_err| ExecutionError::IO(io_err))?;
 
         return Ok(());
