@@ -4,7 +4,7 @@ use std::fmt::{Formatter};
 use std::process::{Command};
 use crate::config::{ExecutionConfig, RawCommandConfig, ShellCommandConfig};
 use crate::exec::ExitStatus::Unknown;
-use crate::variables::Variables;
+use crate::variables::VariableMap;
 
 pub type ExecutionResult = Result<(), ExecutionError>;
 pub type ExecutionOutputResult = Result<Output, ExecutionError>;
@@ -56,8 +56,8 @@ impl Output {
 }
 
 pub trait CommandExecutor {
-    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionResult;
-    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionOutputResult;
+    fn execute(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionResult;
+    fn get_output(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionOutputResult;
 }
 
 pub fn create_command_executor() -> Box<dyn CommandExecutor> {
@@ -68,7 +68,7 @@ struct CommandExecutorImpl { }
 
 impl CommandExecutor for CommandExecutorImpl {
 
-    fn execute(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionResult {
+    fn execute(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionResult {
         let mut command = get_command_for(execution_config);
         command.envs(variables)
             .spawn()
@@ -79,7 +79,7 @@ impl CommandExecutor for CommandExecutorImpl {
         return Ok(());
     }
 
-    fn get_output(&self, execution_config: &ExecutionConfig, variables: &Variables) -> ExecutionOutputResult {
+    fn get_output(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionOutputResult {
         let mut command = get_command_for(execution_config);
         let output = command.envs(variables)
             .output()

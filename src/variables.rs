@@ -3,11 +3,11 @@ use std::error::Error;
 use std::fmt;
 use std::string::FromUtf8Error;
 use crate::args::ArgumentResolver;
-use crate::config::VariableConfig;
+use crate::config::{VariableConfig, VariableConfigMap};
 use crate::prompt::{PromptError, PromptExecutor};
 use crate::exec::{ExitStatus, CommandExecutor, ExecutionError};
 
-pub type Variables = HashMap<String, String>;
+pub type VariableMap = HashMap<String, String>;
 
 pub struct VariableResolver {
     pub command_executor: Box<dyn CommandExecutor>,
@@ -18,7 +18,7 @@ pub struct VariableResolver {
 impl VariableResolver {
     pub fn resolve_variables(
         &self,
-        variable_configs: &HashMap<String, VariableConfig>) -> Result<Variables, Box<VariableResolutionError>> {
+        variable_configs: &VariableConfigMap) -> Result<VariableMap, Box<VariableResolutionError>> {
         variable_configs.iter()
             .map(|(key, config)| -> Result<(String, String), Box<VariableResolutionError>> {
 
@@ -86,7 +86,6 @@ impl fmt::Display for VariableResolutionError {
 mod tests {
     use super::*;
     use std::collections::HashMap;
-    use std::error::Error;
     use crate::args::ArgumentResolver;
     use crate::config::{BashCommandConfig, ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
     use crate::config::ShellCommandConfig::Bash;
@@ -114,7 +113,7 @@ mod tests {
 
         let name = "name";
         let value = "Dingus";
-        let mut variable_configs = HashMap::new();
+        let mut variable_configs = VariableConfigMap::new();
         variable_configs.insert(name.to_string(), VariableConfig::Literal(value.to_string()));
 
         // Act
@@ -148,7 +147,7 @@ mod tests {
 
         let name = "name";
         let value = "Dingus";
-        let mut variable_configs = HashMap::new();
+        let mut variable_configs = VariableConfigMap::new();
         variable_configs.insert(name.to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
             value: value.to_string(),
             description: None,
@@ -188,7 +187,7 @@ mod tests {
         };
 
         let name = "name";
-        let mut variable_configs = HashMap::new();
+        let mut variable_configs = VariableConfigMap::new();
         variable_configs.insert(
             name.to_string(),
             VariableConfig::Execution(ExecutionVariableConfig {
@@ -235,7 +234,7 @@ mod tests {
         };
 
         let name = "name";
-        let mut variable_configs = HashMap::new();
+        let mut variable_configs = VariableConfigMap::new();
         variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{
             description: None,
             argument_name: None,
@@ -274,7 +273,7 @@ mod tests {
         };
 
         let name = "name";
-        let mut variable_configs = HashMap::new();
+        let mut variable_configs = VariableConfigMap::new();
         variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{
             description: None,
             argument_name: None,
@@ -302,11 +301,11 @@ mod tests {
     }
 
     impl CommandExecutor for MockCommandExecutor {
-        fn execute(&self, _: &ExecutionConfig, _: &Variables) -> crate::exec::ExecutionResult {
+        fn execute(&self, _: &ExecutionConfig, _: &VariableMap) -> crate::exec::ExecutionResult {
             Ok(())
         }
 
-        fn get_output(&self, _: &ExecutionConfig, _: &Variables) -> crate::exec::ExecutionOutputResult {
+        fn get_output(&self, _: &ExecutionConfig, _: &VariableMap) -> crate::exec::ExecutionOutputResult {
             Ok(self.output.clone())
         }
     }

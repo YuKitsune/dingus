@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use linked_hash_map::LinkedHashMap;
 use crate::config::{ActionConfig, VariableConfig};
 use crate::exec::CommandExecutor;
 use crate::prompt::ConfirmExecutor;
@@ -17,7 +17,7 @@ impl ActionExecutor {
         &self,
         action_id: ActionId,
         action_config: &ActionConfig,
-        variable_configs: &HashMap<String, VariableConfig>,
+        variable_configs: &LinkedHashMap<String, VariableConfig>,
     ) -> Result<(), Box<ActionError>> {
 
         let variables = self.variable_resolver.resolve_variables(variable_configs)

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::error::Error;
 use clap::{Arg, ArgMatches, Command};
-use crate::config::{CommandConfig, Config, ExecutionConfig, RawCommandConfig, ShellCommandConfig, VariableConfig};
+use linked_hash_map::LinkedHashMap;
+use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfig, RawCommandConfig, ShellCommandConfig, VariableConfig, VariableConfigMap};
 
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
@@ -19,8 +19,8 @@ pub fn create_root_command(config: &Config) -> Command {
 }
 
 fn create_commands(
-    commands: &HashMap<String, CommandConfig>,
-    parent_variables: &HashMap<String, VariableConfig>) -> Vec<Command> {
+    commands: &CommandConfigMap,
+    parent_variables: &VariableConfigMap) -> Vec<Command> {
     commands.iter()
         .map(|(key, command_config)| -> Command {
 
@@ -56,7 +56,7 @@ fn create_commands(
         .collect()
 }
 
-fn create_args(variables: &HashMap<String, VariableConfig>) -> Vec<Arg> {
+fn create_args(variables: &LinkedHashMap<String, VariableConfig>) -> Vec<Arg> {
     variables.iter()
         .map(|(key, var_config)| -> Arg {
 
@@ -108,8 +108,8 @@ fn create_args(variables: &HashMap<String, VariableConfig>) -> Vec<Arg> {
 pub fn find_subcommand(
     arg_matches: &ArgMatches,
     parent_command: &Command,
-    available_commands: &HashMap<String, CommandConfig>,
-    parent_variables: &HashMap<String, VariableConfig>
+    available_commands: &CommandConfigMap,
+    parent_variables: &VariableConfigMap
 ) -> Result<Option<SubcommandSearchResult>, Box<dyn Error>> {
 
     // If we've matched on a subcommand, then lookup the subcommand config
@@ -139,19 +139,18 @@ pub fn find_subcommand(
     return Ok(None);
 }
 
-type SubcommandSearchResult = (CommandConfig, HashMap<String, VariableConfig>, ArgMatches);
+type SubcommandSearchResult = (CommandConfig, LinkedHashMap<String, VariableConfig>, ArgMatches);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use crate::config::{ActionConfig, CommandActionConfigVariant, CommandConfig, ConfirmationCommandActionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
 
     #[test]
     fn create_commands_creates_subcommands() {
 
         // Arrange
-        let mut subcommands = HashMap::new();
+        let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub-1".to_string(), CommandConfig {
             description: Some("Sub 1 description".to_string()),
             aliases: vec!["s1".to_string()],
@@ -162,7 +161,7 @@ mod tests {
             })),
         });
 
-        let mut subcommand_variables = HashMap::new();
+        let mut subcommand_variables = VariableConfigMap::new();
         subcommand_variables.insert("sub-var".to_string(), VariableConfig::Literal("bar".to_string()));
 
         subcommands.insert("sub-2".to_string(), CommandConfig {
@@ -175,7 +174,7 @@ mod tests {
             })),
         });
 
-        let mut parent_variables = HashMap::new();
+        let mut parent_variables = VariableConfigMap::new();
         parent_variables.insert("parent-var".to_string(), VariableConfig::Literal("foo".to_string()));
 
         // Act
@@ -199,7 +198,7 @@ mod tests {
     fn create_commands_creates_correct_args() {
 
         // Arrange
-        let mut subcommand_variables = HashMap::new();
+        let mut subcommand_variables = LinkedHashMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Execution(ExecutionVariableConfig {
             execution: ExecutionConfig::RawCommand(RawCommandConfig::Shorthand("echo \"Hello, World!\"".to_string())),
             description: None,
@@ -211,7 +210,7 @@ mod tests {
             prompt: PromptConfig { message: "What's your name?".to_string(), options: Default::default() },
         }));
 
-        let mut subcommands = HashMap::new();
+        let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
@@ -222,7 +221,7 @@ mod tests {
             })),
         });
 
-        let mut parent_variables = HashMap::new();
+        let mut parent_variables = VariableConfigMap::new();
         parent_variables.insert("parent-var-1".to_string(), VariableConfig::Literal("foo".to_string()));
         parent_variables.insert("parent-var-2".to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
             value: "bar".to_string(),
@@ -259,14 +258,14 @@ mod tests {
     fn create_commands_inherits_args_from_parent_commands() {
 
         // Arrange
-        let mut subsubcommand_variables = HashMap::new();
+        let mut subsubcommand_variables = VariableConfigMap::new();
         subsubcommand_variables.insert("sub-var-2".to_string(), VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: None,
             prompt: PromptConfig { message: "What's your name?".to_string(), options: Default::default() },
         }));
 
-        let mut subsubcommands = HashMap::new();
+        let mut subsubcommands = CommandConfigMap::new();
         subsubcommands.insert("sub-again".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
@@ -277,14 +276,14 @@ mod tests {
             })),
         });
 
-        let mut subcommand_variables = HashMap::new();
+        let mut subcommand_variables = VariableConfigMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Execution(ExecutionVariableConfig {
             execution: ExecutionConfig::RawCommand(RawCommandConfig::Shorthand("echo \"Hello, World!\"".to_string())),
             description: None,
             argument_name: None,
         }));
 
-        let mut subcommands = HashMap::new();
+        let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
@@ -296,7 +295,7 @@ mod tests {
         });
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &HashMap::new());
+        let created_subcommands = create_commands(&subcommands, &LinkedHashMap::new());
 
         // Assert
         let command = created_subcommands.get(0).unwrap();
@@ -318,28 +317,28 @@ mod tests {
     fn create_commands_marks_command_as_required() {
 
         // Arrange
-        let mut subsubcommands = HashMap::new();
+        let mut subsubcommands = CommandConfigMap::new();
         subsubcommands.insert("sub-again".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
-            variables: HashMap::new(),
+            variables: LinkedHashMap::new(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
                 action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
             })),
         });
 
-        let mut subcommands = HashMap::new();
+        let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
-            variables: HashMap::new(),
+            variables: LinkedHashMap::new(),
             commands: subsubcommands,
             action: None,
         });
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &HashMap::new());
+        let created_subcommands = create_commands(&subcommands, &LinkedHashMap::new());
 
         // Assert
         let parent_command = created_subcommands.get(0).unwrap();
@@ -354,7 +353,7 @@ mod tests {
     fn create_args_creates_correct_args() {
 
         // Arrange
-        let mut variables = HashMap::new();
+        let mut variables = LinkedHashMap::new();
         variables.insert("var-1".to_string(), VariableConfig::Literal("foo".to_string()));
         variables.insert("var-2".to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
             value: "bar".to_string(),
@@ -397,13 +396,13 @@ mod tests {
     fn find_subcommand_finds_top_level_command() {
 
         // Arrange
-        let mut root_variables = HashMap::new();
+        let mut root_variables = VariableConfigMap::new();
         root_variables.insert("root-var-1".to_string(), VariableConfig::Literal("root value".to_string()));
 
-        let mut subcommand_variables = HashMap::new();
+        let mut subcommand_variables = VariableConfigMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Literal("subcommand value".to_string()));
 
-        let mut commands = HashMap::new();
+        let mut commands = CommandConfigMap::new();
         commands.insert("cmd".to_string(), CommandConfig {
             description: Some("Top-level command".to_string()),
             aliases: vec![],
@@ -436,30 +435,30 @@ mod tests {
     fn find_subcommand_finds_mid_level_command() {
 
         // Arrange
-        let mut root_variables = HashMap::new();
+        let mut root_variables = VariableConfigMap::new();
         root_variables.insert("root-var-1".to_string(), VariableConfig::Literal("root value".to_string()));
 
-        let mut parent_command_variables = HashMap::new();
+        let mut parent_command_variables = VariableConfigMap::new();
         parent_command_variables.insert("parent-var-1".to_string(), VariableConfig::Literal("parent command value".to_string()));
 
-        let mut command_variables = HashMap::new();
+        let mut command_variables = VariableConfigMap::new();
         command_variables.insert("target-var-1".to_string(), VariableConfig::Literal("command value".to_string()));
 
-        let mut subcommand_variables = HashMap::new();
+        let mut subcommand_variables = VariableConfigMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Literal("subcommand value".to_string()));
 
-        let mut subcommands = HashMap::new();
+        let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: Some("Subcommand".to_string()),
             aliases: vec![],
             variables: subcommand_variables,
-            commands: HashMap::new(),
+            commands: CommandConfigMap::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
                 action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
             })),
         });
 
-        let mut target_commands = HashMap::new();
+        let mut target_commands = CommandConfigMap::new();
         target_commands.insert("target".to_string(), CommandConfig {
             description: Some("Mid-level command".to_string()),
             aliases: vec![],
@@ -470,7 +469,7 @@ mod tests {
             })),
         });
 
-        let mut parent_commands = HashMap::new();
+        let mut parent_commands = CommandConfigMap::new();
         parent_commands.insert("parent".to_string(), CommandConfig {
             description: Some("Top-level command".to_string()),
             aliases: vec![],
@@ -505,27 +504,27 @@ mod tests {
     fn find_subcommand_finds_bottom_level_command() {
 
         // Arrange
-        let mut root_variables = HashMap::new();
+        let mut root_variables = VariableConfigMap::new();
         root_variables.insert("root-var-1".to_string(), VariableConfig::Literal("root value".to_string()));
 
-        let mut parent_command_variables = HashMap::new();
+        let mut parent_command_variables = VariableConfigMap::new();
         parent_command_variables.insert("parent-var-1".to_string(), VariableConfig::Literal("parent command value".to_string()));
 
-        let mut command_variables = HashMap::new();
+        let mut command_variables = VariableConfigMap::new();
         command_variables.insert("sub-var-1".to_string(), VariableConfig::Literal("command value".to_string()));
 
-        let mut target_commands = HashMap::new();
+        let mut target_commands = CommandConfigMap::new();
         target_commands.insert("subcommand".to_string(), CommandConfig {
             description: Some("Bottom-level command".to_string()),
             aliases: vec![],
             variables: command_variables,
-            commands: HashMap::new(),
+            commands: CommandConfigMap::new(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
                 action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
             })),
         });
 
-        let mut parent_commands = HashMap::new();
+        let mut parent_commands = CommandConfigMap::new();
         parent_commands.insert("parent".to_string(), CommandConfig {
             description: Some("Top-level command".to_string()),
             aliases: vec![],

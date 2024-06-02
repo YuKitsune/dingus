@@ -17,7 +17,6 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Use vecs instead of maps
 // - [ ] Consider naming (Variables, Commands, Actions, all confusing)
 // - [ ] Offer to create a gecko file if none exists
 // - [ ] Integration tests

@@ -1,10 +1,16 @@
 use std::{fmt, fs, io};
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::Path;
+use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 
-const CONFIG_FILE_NAMES: [&str;2] = ["gecko.yaml", "gecko.yml"];
+const CONFIG_FILE_NAMES: [&str;4] = [
+    "gecko.yaml",
+    "gecko.yml",
+    "Gecko.yaml",
+    "Gecko.yml"
+];
 
 pub fn load() -> Result<Config, ConfigError> {
     for config_file_name in CONFIG_FILE_NAMES {
@@ -53,14 +59,16 @@ pub struct Config {
     pub description: Option<String>,
 
     #[serde(default = "default_variables")]
-    pub variables: HashMap<String, VariableConfig>,
+    pub variables: VariableConfigMap,
 
-    pub commands: HashMap<String, CommandConfig>,
+    pub commands: CommandConfigMap,
 }
 
-fn default_variables() -> HashMap<String, VariableConfig> { HashMap::new() }
+fn default_variables() -> VariableConfigMap { VariableConfigMap::new() }
 
-fn default_commands() -> HashMap<String, CommandConfig> { HashMap::new() }
+fn default_commands() -> CommandConfigMap { CommandConfigMap::new() }
+
+pub type VariableConfigMap = LinkedHashMap<String, VariableConfig>;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
@@ -179,6 +187,8 @@ pub struct ExecutionSelectOptionsConfig {
     pub execution: ExecutionConfig
 }
 
+pub type CommandConfigMap = HashMap<String, CommandConfig>;
+
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct CommandConfig {
     pub description: Option<String>,
@@ -188,12 +198,12 @@ pub struct CommandConfig {
     pub aliases: Vec<String>,
 
     #[serde(default = "default_variables")]
-    pub variables: HashMap<String, VariableConfig>,
+    pub variables: VariableConfigMap,
 
     // Todo: Need to enforce an invariant here:
     // - If no action exists, then one or more subcommands _must_ exist.
     #[serde(default = "default_commands")]
-    pub commands: HashMap<String, CommandConfig>,
+    pub commands: CommandConfigMap,
 
     #[serde(flatten)]
     pub action: Option<CommandActionConfigVariant>
@@ -564,6 +574,36 @@ commands:
     }
 
     #[test]
+    fn variable_order_is_preserved() {
+        let yaml =
+            "variables:
+    root-var-3: Root value 3
+    root-var-2: Root value 2
+    root-var-1: Root value 1
+commands:
+    demo:
+        variables:
+            command-var-2: Command value 2
+            command-var-1: Command value 1
+            command-var-3: Command value 3
+        action: echo \"Hello, World!\"";
+        let config = parse_config(yaml).unwrap();
+
+        assert!(!config.variables.is_empty());
+
+        let root_variable_names: Vec<String> = config.variables.iter().map(|kv| kv.0.to_string()).collect();
+        assert_eq!(root_variable_names[0], "root-var-3".to_string());
+        assert_eq!(root_variable_names[1], "root-var-2".to_string());
+        assert_eq!(root_variable_names[2], "root-var-1".to_string());
+
+        let demo_command = config.commands.get("demo").unwrap();
+        let command_variable_names: Vec<String> = demo_command.variables.iter().map(|kv| kv.0.to_string()).collect();
+        assert_eq!(command_variable_names[0], "command-var-2".to_string());
+        assert_eq!(command_variable_names[1], "command-var-1".to_string());
+        assert_eq!(command_variable_names[2], "command-var-3".to_string());
+    }
+
+    #[test]
     fn single_action_command_parses() {
         let yaml =
             "commands:
@@ -634,7 +674,7 @@ commands:
             })),
         });
 
-        let mut map = HashMap::new();
+        let mut map = CommandConfigMap::new();
         map.insert("gday".to_string(), gday_command.clone());
 
         assert_eq!(demo_command, &CommandConfig {
@@ -671,7 +711,7 @@ commands:
             })),
         });
 
-        let mut map = HashMap::new();
+        let mut map = CommandConfigMap::new();
         map.insert("gday".to_string(), gday_command.clone());
 
         assert_eq!(demo_command, &CommandConfig {
