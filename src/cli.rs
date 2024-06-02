@@ -56,8 +56,8 @@ fn create_commands(
         .collect()
 }
 
-fn create_args(variables: &LinkedHashMap<String, VariableConfig>) -> Vec<Arg> {
-    variables.iter()
+fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
+    variable_config_map.iter()
         .map(|(key, var_config)| -> Arg {
 
             let arg_name = var_config.arg_name(key);
@@ -139,7 +139,7 @@ pub fn find_subcommand(
     return Ok(None);
 }
 
-type SubcommandSearchResult = (CommandConfig, LinkedHashMap<String, VariableConfig>, ArgMatches);
+type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 
 #[cfg(test)]
 mod tests {
