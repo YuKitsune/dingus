@@ -30,14 +30,14 @@ impl VariableResolver {
                 }
 
                 return match config {
-                    VariableConfig::Literal(value) => Ok((key.clone(), value.clone())),
+                    VariableConfig::ShorthandLiteral(value) => Ok((key.clone(), value.clone())),
 
-                    VariableConfig::LiteralExtended(extended_literal_def) =>
-                        Ok((key.clone(), extended_literal_def.value.clone())),
+                    VariableConfig::Literal(literal_conf) =>
+                        Ok((key.clone(), literal_conf.value.clone())),
 
-                    VariableConfig::Execution(execution_def) => {
+                    VariableConfig::Execution(execution_conf) => {
 
-                        let output = self.command_executor.get_output(&execution_def.execution, &HashMap::new())
+                        let output = self.command_executor.get_output(&execution_conf.execution, &HashMap::new())
                             .map_err(|err| VariableResolutionError::Execution(err))?;
 
                         if let ExitStatus::Fail(_) = output.status {
@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use crate::args::ArgumentResolver;
-    use crate::config::{BashCommandConfig, ExecutionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
+    use crate::config::{BashCommandConfig, ExecutionConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
     use crate::config::ShellCommandConfig::Bash;
     use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
@@ -114,7 +114,7 @@ mod tests {
         let name = "name";
         let value = "Dingus";
         let mut variable_configs = VariableConfigMap::new();
-        variable_configs.insert(name.to_string(), VariableConfig::Literal(value.to_string()));
+        variable_configs.insert(name.to_string(), VariableConfig::ShorthandLiteral(value.to_string()));
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -148,7 +148,7 @@ mod tests {
         let name = "name";
         let value = "Dingus";
         let mut variable_configs = VariableConfigMap::new();
-        variable_configs.insert(name.to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
+        variable_configs.insert(name.to_string(), VariableConfig::Literal(LiteralVariableConfig{
             value: value.to_string(),
             description: None,
             argument_name: None,

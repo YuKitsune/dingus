@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt;
-use linked_hash_map::LinkedHashMap;
-use crate::config::{ActionConfig, VariableConfig};
+use crate::config::{ActionConfig, VariableConfigMap};
 use crate::exec::CommandExecutor;
 use crate::prompt::ConfirmExecutor;
 use crate::variables::{VariableResolver};
@@ -17,10 +16,10 @@ impl ActionExecutor {
         &self,
         action_id: ActionId,
         action_config: &ActionConfig,
-        variable_configs: &LinkedHashMap<String, VariableConfig>,
+        variable_config_map: &VariableConfigMap,
     ) -> Result<(), Box<ActionError>> {
 
-        let variables = self.variable_resolver.resolve_variables(variable_configs)
+        let variables = self.variable_resolver.resolve_variables(variable_config_map)
             .map_err(|err| ActionError::new(action_id.clone(), err))?;
 
         return match action_config {

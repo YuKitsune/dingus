@@ -56,7 +56,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         &config.commands,
         &config.variables)?;
 
-    if let Some((target_command, available_variable_definitions, sucbommand_arg_matches)) = find_result {
+    if let Some((target_command, available_variable_configs, sucbommand_arg_matches)) = find_result {
 
         if let Some(command_action) = target_command.action {
 
@@ -95,7 +95,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                 action_executor.execute(
                     action_id,
                     &action,
-                    &available_variable_definitions)?;
+                    &available_variable_configs)?;
             }
 
             return Ok(());

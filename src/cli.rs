@@ -70,10 +70,10 @@ fn create_args(variables: &LinkedHashMap<String, VariableConfig>) -> Vec<Arg> {
             }
 
             match var_config {
-                VariableConfig::Literal(literal) => {
+                VariableConfig::ShorthandLiteral(literal) => {
                     arg = arg.default_value(literal)
                 }
-                VariableConfig::LiteralExtended(literal) =>  {
+                VariableConfig::Literal(literal) =>  {
                     arg = arg.default_value(&literal.value)
                 }
                 VariableConfig::Execution(exec) => {
@@ -144,7 +144,7 @@ type SubcommandSearchResult = (CommandConfig, LinkedHashMap<String, VariableConf
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ActionConfig, CommandActionConfigVariant, CommandConfig, ConfirmationCommandActionConfig, ExecutionVariableConfig, ExtendedLiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
+    use crate::config::{ActionConfig, CommandActionConfigVariant, CommandConfig, ConfirmationCommandActionConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
 
     #[test]
     fn create_commands_creates_subcommands() {
@@ -162,7 +162,7 @@ mod tests {
         });
 
         let mut subcommand_variables = VariableConfigMap::new();
-        subcommand_variables.insert("sub-var".to_string(), VariableConfig::Literal("bar".to_string()));
+        subcommand_variables.insert("sub-var".to_string(), VariableConfig::ShorthandLiteral("bar".to_string()));
 
         subcommands.insert("sub-2".to_string(), CommandConfig {
             description: Some("Sub 2 description".to_string()),
@@ -175,7 +175,7 @@ mod tests {
         });
 
         let mut parent_variables = VariableConfigMap::new();
-        parent_variables.insert("parent-var".to_string(), VariableConfig::Literal("foo".to_string()));
+        parent_variables.insert("parent-var".to_string(), VariableConfig::ShorthandLiteral("foo".to_string()));
 
         // Act
         let created_subcommands = create_commands(&subcommands, &parent_variables);
@@ -222,8 +222,8 @@ mod tests {
         });
 
         let mut parent_variables = VariableConfigMap::new();
-        parent_variables.insert("parent-var-1".to_string(), VariableConfig::Literal("foo".to_string()));
-        parent_variables.insert("parent-var-2".to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
+        parent_variables.insert("parent-var-1".to_string(), VariableConfig::ShorthandLiteral("foo".to_string()));
+        parent_variables.insert("parent-var-2".to_string(), VariableConfig::Literal(LiteralVariableConfig {
             value: "bar".to_string(),
             description: None,
             argument_name: None,
@@ -354,8 +354,8 @@ mod tests {
 
         // Arrange
         let mut variables = LinkedHashMap::new();
-        variables.insert("var-1".to_string(), VariableConfig::Literal("foo".to_string()));
-        variables.insert("var-2".to_string(), VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
+        variables.insert("var-1".to_string(), VariableConfig::ShorthandLiteral("foo".to_string()));
+        variables.insert("var-2".to_string(), VariableConfig::Literal(LiteralVariableConfig {
             value: "bar".to_string(),
             description: None,
             argument_name: None,
@@ -397,10 +397,10 @@ mod tests {
 
         // Arrange
         let mut root_variables = VariableConfigMap::new();
-        root_variables.insert("root-var-1".to_string(), VariableConfig::Literal("root value".to_string()));
+        root_variables.insert("root-var-1".to_string(), VariableConfig::ShorthandLiteral("root value".to_string()));
 
         let mut subcommand_variables = VariableConfigMap::new();
-        subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Literal("subcommand value".to_string()));
+        subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::ShorthandLiteral("subcommand value".to_string()));
 
         let mut commands = CommandConfigMap::new();
         commands.insert("cmd".to_string(), CommandConfig {
@@ -436,16 +436,16 @@ mod tests {
 
         // Arrange
         let mut root_variables = VariableConfigMap::new();
-        root_variables.insert("root-var-1".to_string(), VariableConfig::Literal("root value".to_string()));
+        root_variables.insert("root-var-1".to_string(), VariableConfig::ShorthandLiteral("root value".to_string()));
 
         let mut parent_command_variables = VariableConfigMap::new();
-        parent_command_variables.insert("parent-var-1".to_string(), VariableConfig::Literal("parent command value".to_string()));
+        parent_command_variables.insert("parent-var-1".to_string(), VariableConfig::ShorthandLiteral("parent command value".to_string()));
 
         let mut command_variables = VariableConfigMap::new();
-        command_variables.insert("target-var-1".to_string(), VariableConfig::Literal("command value".to_string()));
+        command_variables.insert("target-var-1".to_string(), VariableConfig::ShorthandLiteral("command value".to_string()));
 
         let mut subcommand_variables = VariableConfigMap::new();
-        subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Literal("subcommand value".to_string()));
+        subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::ShorthandLiteral("subcommand value".to_string()));
 
         let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
@@ -505,13 +505,13 @@ mod tests {
 
         // Arrange
         let mut root_variables = VariableConfigMap::new();
-        root_variables.insert("root-var-1".to_string(), VariableConfig::Literal("root value".to_string()));
+        root_variables.insert("root-var-1".to_string(), VariableConfig::ShorthandLiteral("root value".to_string()));
 
         let mut parent_command_variables = VariableConfigMap::new();
-        parent_command_variables.insert("parent-var-1".to_string(), VariableConfig::Literal("parent command value".to_string()));
+        parent_command_variables.insert("parent-var-1".to_string(), VariableConfig::ShorthandLiteral("parent command value".to_string()));
 
         let mut command_variables = VariableConfigMap::new();
-        command_variables.insert("sub-var-1".to_string(), VariableConfig::Literal("command value".to_string()));
+        command_variables.insert("sub-var-1".to_string(), VariableConfig::ShorthandLiteral("command value".to_string()));
 
         let mut target_commands = CommandConfigMap::new();
         target_commands.insert("subcommand".to_string(), CommandConfig {

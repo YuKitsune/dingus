@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 const CONFIG_FILE_NAMES: [&str;4] = [
     "gecko.yaml",
-    "gecko.yml",
     "Gecko.yaml",
+    "gecko.yml",
     "Gecko.yml"
 ];
 
@@ -56,11 +56,14 @@ impl Error for ConfigError {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+    #[serde(alias = "desc")]
     pub description: Option<String>,
 
     #[serde(default = "default_variables")]
+    #[serde(alias = "vars")]
     pub variables: VariableConfigMap,
 
+    #[serde(alias = "cmds")]
     pub commands: CommandConfigMap,
 }
 
@@ -73,8 +76,8 @@ pub type VariableConfigMap = LinkedHashMap<String, VariableConfig>;
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum VariableConfig {
-    Literal(String),
-    LiteralExtended(ExtendedLiteralVariableConfig),
+    ShorthandLiteral(String),
+    Literal(LiteralVariableConfig),
     Execution(ExecutionVariableConfig),
     Prompt(PromptVariableConfig)
 }
@@ -82,25 +85,25 @@ pub enum VariableConfig {
 impl VariableConfig {
     pub fn arg_name(&self, key: &str) -> String {
         match self {
-            VariableConfig::Literal(_) => None,
-            VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().argument_name,
-            VariableConfig::Execution(execution_def) => execution_def.clone().argument_name,
-            VariableConfig::Prompt(prompt_config) => prompt_config.clone().argument_name,
+            VariableConfig::ShorthandLiteral(_) => None,
+            VariableConfig::Literal(literal_conf) => literal_conf.clone().argument_name,
+            VariableConfig::Execution(execution_conf) => execution_conf.clone().argument_name,
+            VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().argument_name,
         }.unwrap_or(key.to_string())
     }
 
     pub fn description(&self) -> Option<String> {
         return match self {
-            VariableConfig::Literal(_) => None,
-            VariableConfig::LiteralExtended(extended_literal_def) => extended_literal_def.clone().description,
-            VariableConfig::Execution(execution_def) => execution_def.clone().description,
+            VariableConfig::ShorthandLiteral(_) => None,
+            VariableConfig::Literal(extended_literal_conf) => extended_literal_conf.clone().description,
+            VariableConfig::Execution(execution_conf) => execution_conf.clone().description,
             VariableConfig::Prompt(prompt_config) => prompt_config.clone().description,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ExtendedLiteralVariableConfig {
+pub struct LiteralVariableConfig {
     pub value: String,
     pub description: Option<String>,
 
@@ -244,24 +247,6 @@ pub enum ExecutionConfig {
     ShellCommand(ShellCommandConfig)
 }
 
-impl ExecutionConfig {
-    pub fn get_command_string(&self) -> String {
-        match self {
-            ExecutionConfig::RawCommand(raw_command_config) => {
-                match raw_command_config {
-                    RawCommandConfig::Shorthand(command) => command.to_string(),
-                    RawCommandConfig::Extended(extended_command) => extended_command.command.to_string()
-                }
-            }
-            ExecutionConfig::ShellCommand(shell_command) => {
-                match shell_command {
-                    ShellCommandConfig::Bash(bash_command) => bash_command.command.to_string()
-                }
-            }
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum RawCommandConfig {
@@ -314,22 +299,22 @@ mod tests {
     #[test]
     fn variable_get_arg_returns_correct_arg_name() {
 
-        let literal = VariableConfig::Literal("Dingus".to_string());
+        let literal = VariableConfig::ShorthandLiteral("Dingus".to_string());
         assert_eq!("key", literal.arg_name("key"));
 
-        let extended_literal_no_arg = VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
+        let literal_no_arg = VariableConfig::Literal(LiteralVariableConfig{
             value: "Dingus".to_string(),
             description: None,
             argument_name: None,
         });
-        assert_eq!("key", extended_literal_no_arg.arg_name("key"));
+        assert_eq!("key", literal_no_arg.arg_name("key"));
 
-        let extended_literal_with_arg = VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig{
+        let literal_with_arg = VariableConfig::Literal(LiteralVariableConfig{
             value: "Dingus".to_string(),
             description: None,
             argument_name: Some("name".to_string()),
         });
-        assert_eq!("name", extended_literal_with_arg.arg_name("key"));
+        assert_eq!("name", literal_with_arg.arg_name("key"));
 
         let exec_no_arg = VariableConfig::Execution(ExecutionVariableConfig{
             execution: bash_exec("echo \"Dingus\"", None),
@@ -348,14 +333,14 @@ mod tests {
         let prompt_no_arg = VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: None,
-            prompt: PromptConfig { message: "".to_string(), options: PromptOptionsVariant::default() },
+            prompt: PromptConfig { message: "".to_string(), options: Default::default() },
         });
         assert_eq!("key", prompt_no_arg.arg_name("key"));
 
         let prompt_with_arg = VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: Some("name".to_string()),
-            prompt: PromptConfig { message: "".to_string(), options: PromptOptionsVariant::default() },
+            prompt: PromptConfig { message: "".to_string(), options: Default::default() },
         });
         assert_eq!("name", prompt_with_arg.arg_name("key"));
     }
@@ -372,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn literal_variable_parsed() {
+    fn shorthand_literal_variable_parsed() {
         let yaml =
             "variables:
     my-root-var: My root value
@@ -386,15 +371,15 @@ commands:
         assert!(!config.variables.is_empty());
 
         let root_variable = config.variables.get("my-root-var").unwrap();
-        assert_eq!(root_variable, &VariableConfig::Literal("My root value".to_string()));
+        assert_eq!(root_variable, &VariableConfig::ShorthandLiteral("My root value".to_string()));
 
         let demo_command = config.commands.get("demo").unwrap();
         let command_variable = demo_command.variables.get("my-command-var").unwrap();
-        assert_eq!(command_variable, &VariableConfig::Literal("My command value".to_string()))
+        assert_eq!(command_variable, &VariableConfig::ShorthandLiteral("My command value".to_string()))
     }
 
     #[test]
-    fn extended_variable_parsed() {
+    fn literal_variable_parsed() {
         let yaml =
             "variables:
     my-root-var:
@@ -412,7 +397,7 @@ commands:
         assert!(!config.variables.is_empty());
 
         let root_variable = config.variables.get("my-root-var").unwrap();
-        assert_eq!(root_variable, &VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
+        assert_eq!(root_variable, &VariableConfig::Literal(LiteralVariableConfig {
             value: "My root value".to_string(),
             description: None,
             argument_name: None,
@@ -420,7 +405,7 @@ commands:
 
         let demo_command = config.commands.get("demo").unwrap();
         let command_variable = demo_command.variables.get("my-command-var").unwrap();
-        assert_eq!(command_variable, &VariableConfig::LiteralExtended(ExtendedLiteralVariableConfig {
+        assert_eq!(command_variable, &VariableConfig::Literal(LiteralVariableConfig {
             value: "My command value".to_string(),
             description: Some("Command level variable".to_string()),
             argument_name: Some("command-arg".to_string()),
