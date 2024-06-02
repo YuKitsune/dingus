@@ -95,7 +95,7 @@ impl VariableConfig {
     pub fn description(&self) -> Option<String> {
         return match self {
             VariableConfig::ShorthandLiteral(_) => None,
-            VariableConfig::Literal(extended_literal_conf) => extended_literal_conf.clone().description,
+            VariableConfig::Literal(literal_conf) => literal_conf.clone().description,
             VariableConfig::Execution(execution_conf) => execution_conf.clone().description,
             VariableConfig::Prompt(prompt_config) => prompt_config.clone().description,
         }
@@ -105,6 +105,8 @@ impl VariableConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct LiteralVariableConfig {
     pub value: String,
+
+    #[serde(alias = "desc")]
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
@@ -115,7 +117,9 @@ pub struct LiteralVariableConfig {
 pub struct ExecutionVariableConfig {
 
     #[serde(rename = "exec")]
-    pub execution: ExecutionConfig,
+    pub execution: ExecutionConfigVariant,
+
+    #[serde(alias = "desc")]
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
@@ -124,6 +128,7 @@ pub struct ExecutionVariableConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptVariableConfig {
+    #[serde(alias = "desc")]
     pub description: Option<String>,
 
     #[serde(rename(deserialize = "arg"))]
@@ -187,7 +192,7 @@ pub enum SelectOptionsConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ExecutionSelectOptionsConfig {
     #[serde(rename = "exec")]
-    pub execution: ExecutionConfig
+    pub execution: ExecutionConfigVariant
 }
 
 pub type CommandConfigMap = HashMap<String, CommandConfig>;
@@ -236,38 +241,44 @@ pub struct MultiActionConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ActionConfig {
-    Execution(ExecutionConfig),
+    Execution(ExecutionConfigVariant),
     Confirmation(ConfirmationCommandActionConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
-pub enum ExecutionConfig {
-    RawCommand(RawCommandConfig),
-    ShellCommand(ShellCommandConfig)
+pub enum ExecutionConfigVariant {
+    RawCommand(RawCommandConfigVariant),
+    ShellCommand(ShellCommandConfigVariant)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
-pub enum RawCommandConfig {
+pub enum RawCommandConfigVariant {
     Shorthand(String),
-    Extended(ExtendedRawCommandConfig)
+    Extended(RawCommandConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ExtendedRawCommandConfig {
+pub struct RawCommandConfig {
+    #[serde(alias = "wd")]
+    #[serde(alias = "workdir")]
     pub working_directory: Option<String>,
+
+    #[serde(alias = "cmd")]
     pub command: String
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
-pub enum ShellCommandConfig {
+pub enum ShellCommandConfigVariant {
     Bash(BashCommandConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BashCommandConfig {
+    #[serde(alias = "wd")]
+    #[serde(alias = "workdir")]
     pub working_directory: Option<String>,
 
     #[serde(rename = "bash")]
@@ -282,18 +293,17 @@ pub struct ConfirmationCommandActionConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::RawCommandConfig::Shorthand;
     use super::*;
 
-    fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfig {
-        return ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
+    fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfigVariant {
+        return ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
             working_directory: workdir,
             command: command.to_string(),
         }))
     }
 
-    fn raw_exec(command: &str) -> ExecutionConfig {
-        return ExecutionConfig::RawCommand(Shorthand(command.to_string()))
+    fn raw_exec(command: &str) -> ExecutionConfigVariant {
+        return ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(command.to_string()))
     }
 
     #[test]
@@ -603,7 +613,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
+                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
             })),
         });
     }
@@ -630,7 +640,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
+                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
             })),
         });
     }
@@ -655,7 +665,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
+                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
             })),
         });
 
@@ -668,7 +678,7 @@ commands:
             variables: Default::default(),
             commands: map,
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("cat example.txt".to_string()))),
+                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat example.txt".to_string()))),
             })),
         });
     }
@@ -692,7 +702,7 @@ commands:
             variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
+                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
             })),
         });
 
@@ -728,8 +738,8 @@ commands:
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
                 actions: vec![
-                    ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("cat example.txt".to_string()))),
-                    ActionConfig::Execution(ExecutionConfig::RawCommand(Shorthand("ls".to_string()))),
+                    ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat example.txt".to_string()))),
+                    ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
                 ],
             })),
         });
@@ -755,16 +765,16 @@ commands:
             action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
                 actions: vec![
                     ActionConfig::Execution(
-                        ExecutionConfig::ShellCommand(
-                            ShellCommandConfig::Bash(BashCommandConfig {
+                        ExecutionConfigVariant::ShellCommand(
+                            ShellCommandConfigVariant::Bash(BashCommandConfig {
                                 working_directory: None,
                                 command: "echo \"Hello, World!\"".to_string(),
                             })
                         )
                     ),
                     ActionConfig::Execution(
-                        ExecutionConfig::ShellCommand(
-                            ShellCommandConfig::Bash(BashCommandConfig {
+                        ExecutionConfigVariant::ShellCommand(
+                            ShellCommandConfigVariant::Bash(BashCommandConfig {
                                 working_directory: Some("/".to_string()),
                                 command: "pwd".to_string(),
                             })

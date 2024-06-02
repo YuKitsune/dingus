@@ -1,7 +1,7 @@
 use std::error::Error;
 use clap::{Arg, ArgMatches, Command};
 use linked_hash_map::LinkedHashMap;
-use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfig, RawCommandConfig, ShellCommandConfig, VariableConfig, VariableConfigMap};
+use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
 
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
@@ -79,15 +79,15 @@ fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
                 VariableConfig::Execution(exec) => {
 
                     let command = match exec.execution.clone() {
-                        ExecutionConfig::RawCommand(command) => {
+                        ExecutionConfigVariant::RawCommand(command) => {
                             match command {
-                                RawCommandConfig::Shorthand(command_text) => command_text,
-                                RawCommandConfig::Extended(extended_command) => extended_command.command
+                                RawCommandConfigVariant::Shorthand(command_text) => command_text,
+                                RawCommandConfigVariant::Extended(extended_command) => extended_command.command
                             }
                         }
-                        ExecutionConfig::ShellCommand(shell_command) =>
+                        ExecutionConfigVariant::ShellCommand(shell_command) =>
                             match shell_command {
-                                ShellCommandConfig::Bash(bash_command) => bash_command.command
+                                ShellCommandConfigVariant::Bash(bash_command) => bash_command.command
                             },
                     };
 
@@ -200,7 +200,7 @@ mod tests {
         // Arrange
         let mut subcommand_variables = LinkedHashMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Execution(ExecutionVariableConfig {
-            execution: ExecutionConfig::RawCommand(RawCommandConfig::Shorthand("echo \"Hello, World!\"".to_string())),
+            execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("echo \"Hello, World!\"".to_string())),
             description: None,
             argument_name: None,
         }));
@@ -278,7 +278,7 @@ mod tests {
 
         let mut subcommand_variables = VariableConfigMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Execution(ExecutionVariableConfig {
-            execution: ExecutionConfig::RawCommand(RawCommandConfig::Shorthand("echo \"Hello, World!\"".to_string())),
+            execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("echo \"Hello, World!\"".to_string())),
             description: None,
             argument_name: None,
         }));
@@ -361,7 +361,7 @@ mod tests {
             argument_name: None,
         }));
         variables.insert("var-3".to_string(), VariableConfig::Execution(ExecutionVariableConfig {
-            execution: ExecutionConfig::RawCommand(RawCommandConfig::Shorthand("echo \"Hello, World!\"".to_string())),
+            execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("echo \"Hello, World!\"".to_string())),
             description: None,
             argument_name: None,
         }));

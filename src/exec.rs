@@ -2,7 +2,7 @@ use std::error::Error;
 use std::{fmt, io};
 use std::fmt::{Formatter};
 use std::process::{Command};
-use crate::config::{ExecutionConfig, RawCommandConfig, ShellCommandConfig};
+use crate::config::{ExecutionConfigVariant, RawCommandConfig, RawCommandConfigVariant, ShellCommandConfigVariant};
 use crate::exec::ExitStatus::Unknown;
 use crate::variables::VariableMap;
 
@@ -56,8 +56,8 @@ impl Output {
 }
 
 pub trait CommandExecutor {
-    fn execute(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionResult;
-    fn get_output(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionOutputResult;
+    fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult;
+    fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult;
 }
 
 pub fn create_command_executor() -> Box<dyn CommandExecutor> {
@@ -68,7 +68,7 @@ struct CommandExecutorImpl { }
 
 impl CommandExecutor for CommandExecutorImpl {
 
-    fn execute(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionResult {
+    fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult {
         let mut command = get_command_for(execution_config);
         command.envs(variables)
             .spawn()
@@ -79,7 +79,7 @@ impl CommandExecutor for CommandExecutorImpl {
         return Ok(());
     }
 
-    fn get_output(&self, execution_config: &ExecutionConfig, variables: &VariableMap) -> ExecutionOutputResult {
+    fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult {
         let mut command = get_command_for(execution_config);
         let output = command.envs(variables)
             .output()
@@ -89,11 +89,11 @@ impl CommandExecutor for CommandExecutorImpl {
     }
 }
 
-fn get_command_for(execution_config: &ExecutionConfig) -> Command {
+fn get_command_for(execution_config: &ExecutionConfigVariant) -> Command {
     match execution_config {
-        ExecutionConfig::ShellCommand(shell_command_config) => {
+        ExecutionConfigVariant::ShellCommand(shell_command_config) => {
             match shell_command_config {
-                ShellCommandConfig::Bash(bash_command_config) => {
+                ShellCommandConfigVariant::Bash(bash_command_config) => {
                     let mut binding = Command::new("bash");
                     binding.arg("-c")
                         .arg(bash_command_config.clone().command);
@@ -107,10 +107,10 @@ fn get_command_for(execution_config: &ExecutionConfig) -> Command {
             }
         }
 
-        ExecutionConfig::RawCommand(raw_command_config) => {
+        ExecutionConfigVariant::RawCommand(raw_command_config) => {
             let (command, working_directory) = match raw_command_config {
-                RawCommandConfig::Shorthand(command) => (command.clone(), None),
-                RawCommandConfig::Extended(extended_config) => (extended_config.clone().command, extended_config.clone().working_directory),
+                RawCommandConfigVariant::Shorthand(command) => (command.clone(), None),
+                RawCommandConfigVariant::Extended(extended_config) => (extended_config.clone().command, extended_config.clone().working_directory),
             };
 
             const DELIMITER: &str = " ";
@@ -151,8 +151,8 @@ impl fmt::Display for ExecutionError {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use crate::config::{BashCommandConfig, ExtendedRawCommandConfig};
-    use crate::config::RawCommandConfig::{Extended, Shorthand};
+    use crate::config::{BashCommandConfig};
+    use crate::config::RawCommandConfigVariant::{Extended, Shorthand};
     use super::*;
 
     // Todo: Tests for execute (Inherits Stdio, interactive, variables evaluated, etc)
@@ -167,7 +167,7 @@ mod tests {
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
             working_directory: None,
             command: format!("echo \"Hello, ${variable_name}!\"")
         }));
@@ -190,7 +190,7 @@ mod tests {
     fn bash_command_get_output_returns_stdout() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
             working_directory: None,
             command: "echo \"Hello, World!\"".to_string()
         }));
@@ -213,7 +213,7 @@ mod tests {
     fn bash_command_get_output_returns_stderr() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
             working_directory: None,
             command: ">&2 echo \"Error message\"".to_string()
         }));
@@ -236,7 +236,7 @@ mod tests {
     fn bash_command_get_output_returns_exit_code() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
             working_directory: None,
             command: "exit 42".to_string()
         }));
@@ -257,7 +257,7 @@ mod tests {
     fn bash_command_honours_workdir() {
 
         // Arrange
-        let bash_exec_config = ExecutionConfig::ShellCommand(ShellCommandConfig::Bash(BashCommandConfig {
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
             working_directory: Some("./src".to_string()),
             command: "pwd".to_string()
         }));
@@ -285,7 +285,7 @@ mod tests {
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let exec_config = ExecutionConfig::RawCommand(Shorthand("cargo v".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(Shorthand("cargo v".to_string()));
         let command_executor = create_command_executor();
 
         // Act
@@ -305,7 +305,7 @@ mod tests {
     fn raw_command_get_output_returns_stdout() {
 
         // Arrange
-        let exec_config = ExecutionConfig::RawCommand(Shorthand("cat test.txt".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(Shorthand("cat test.txt".to_string()));
         let command_executor = create_command_executor();
 
         // Act
@@ -325,7 +325,7 @@ mod tests {
     fn raw_command_get_output_returns_stderr() {
 
         // Arrange
-        let exec_config = ExecutionConfig::RawCommand(Shorthand("cat does_not_exist.txt".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(Shorthand("cat does_not_exist.txt".to_string()));
         let command_executor = create_command_executor();
 
         // Act
@@ -345,7 +345,7 @@ mod tests {
     fn raw_command_honours_workdir() {
 
         // Arrange
-        let exec_config = ExecutionConfig::RawCommand(Extended(ExtendedRawCommandConfig {
+        let exec_config = ExecutionConfigVariant::RawCommand(Extended(RawCommandConfig {
             working_directory: Some("./src".to_string()),
             command: "pwd".to_string(),
         }));
@@ -368,7 +368,7 @@ mod tests {
     fn raw_command_does_not_use_shell() {
 
         // Arrange
-        let exec_config = ExecutionConfig::RawCommand(Extended(ExtendedRawCommandConfig {
+        let exec_config = ExecutionConfigVariant::RawCommand(Extended(RawCommandConfig {
             working_directory: None,
             command: "shopt -s expand_aliases".to_string(),
         }));

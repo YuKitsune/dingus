@@ -87,8 +87,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use crate::args::ArgumentResolver;
-    use crate::config::{BashCommandConfig, ExecutionConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, VariableConfig};
-    use crate::config::ShellCommandConfig::Bash;
+    use crate::config::{BashCommandConfig, ExecutionConfigVariant, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, ShellCommandConfigVariant, VariableConfig};
     use crate::config::VariableConfig::Prompt;
     use crate::prompt::PromptExecutor;
     use crate::exec::{ExitStatus, Output, CommandExecutor};
@@ -193,8 +192,8 @@ mod tests {
             VariableConfig::Execution(ExecutionVariableConfig {
                 description: None,
                 argument_name: None,
-                execution: ExecutionConfig::ShellCommand(
-                    Bash(BashCommandConfig {
+                execution: ExecutionConfigVariant::ShellCommand(
+                    ShellCommandConfigVariant::Bash(BashCommandConfig {
                         working_directory: None,
                         command: format!("echo \"{value}\"")
                     })
@@ -301,11 +300,11 @@ mod tests {
     }
 
     impl CommandExecutor for MockCommandExecutor {
-        fn execute(&self, _: &ExecutionConfig, _: &VariableMap) -> crate::exec::ExecutionResult {
+        fn execute(&self, _: &ExecutionConfigVariant, _: &VariableMap) -> crate::exec::ExecutionResult {
             Ok(())
         }
 
-        fn get_output(&self, _: &ExecutionConfig, _: &VariableMap) -> crate::exec::ExecutionOutputResult {
+        fn get_output(&self, _: &ExecutionConfigVariant, _: &VariableMap) -> crate::exec::ExecutionOutputResult {
             Ok(self.output.clone())
         }
     }
