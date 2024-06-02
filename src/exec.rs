@@ -110,7 +110,7 @@ fn get_command_for(execution_config: &ExecutionConfigVariant) -> Command {
         ExecutionConfigVariant::RawCommand(raw_command_config) => {
             let (command, working_directory) = match raw_command_config {
                 RawCommandConfigVariant::Shorthand(command) => (command.clone(), None),
-                RawCommandConfigVariant::Extended(extended_config) => (extended_config.clone().command, extended_config.clone().working_directory),
+                RawCommandConfigVariant::RawCommandConfig(raw_command_config) => (raw_command_config.clone().command, raw_command_config.clone().working_directory),
             };
 
             const DELIMITER: &str = " ";
@@ -152,7 +152,6 @@ impl fmt::Display for ExecutionError {
 mod tests {
     use std::collections::HashMap;
     use crate::config::{BashCommandConfig};
-    use crate::config::RawCommandConfigVariant::{Extended, Shorthand};
     use super::*;
 
     // Todo: Tests for execute (Inherits Stdio, interactive, variables evaluated, etc)
@@ -285,7 +284,7 @@ mod tests {
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let exec_config = ExecutionConfigVariant::RawCommand(Shorthand("cargo v".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cargo v".to_string()));
         let command_executor = create_command_executor();
 
         // Act
@@ -305,7 +304,7 @@ mod tests {
     fn raw_command_get_output_returns_stdout() {
 
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(Shorthand("cat test.txt".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat test.txt".to_string()));
         let command_executor = create_command_executor();
 
         // Act
@@ -325,7 +324,7 @@ mod tests {
     fn raw_command_get_output_returns_stderr() {
 
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(Shorthand("cat does_not_exist.txt".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat does_not_exist.txt".to_string()));
         let command_executor = create_command_executor();
 
         // Act
@@ -345,7 +344,7 @@ mod tests {
     fn raw_command_honours_workdir() {
 
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(Extended(RawCommandConfig {
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::RawCommandConfig(RawCommandConfig {
             working_directory: Some("./src".to_string()),
             command: "pwd".to_string(),
         }));
@@ -368,7 +367,7 @@ mod tests {
     fn raw_command_does_not_use_shell() {
 
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(Extended(RawCommandConfig {
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::RawCommandConfig(RawCommandConfig {
             working_directory: None,
             command: "shopt -s expand_aliases".to_string(),
         }));

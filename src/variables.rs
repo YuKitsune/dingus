@@ -93,7 +93,7 @@ mod tests {
     use crate::exec::{ExitStatus, Output, CommandExecutor};
 
     #[test]
-    fn variable_resolver_resolves_literal_variable() {
+    fn variable_resolver_resolves_shorthand_literal() {
 
         // Arrange
         let command_executor = Box::new(MockCommandExecutor { output: Output {
@@ -127,7 +127,7 @@ mod tests {
     }
 
     #[test]
-    fn variable_resolver_resolves_extended_literal() {
+    fn variable_resolver_resolves_literal() {
 
         // Arrange
         let command_executor = Box::new(MockCommandExecutor{ output: Output {

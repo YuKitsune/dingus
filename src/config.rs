@@ -256,7 +256,7 @@ pub enum ExecutionConfigVariant {
 #[serde(untagged)]
 pub enum RawCommandConfigVariant {
     Shorthand(String),
-    Extended(RawCommandConfig)
+    RawCommandConfig(RawCommandConfig)
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]

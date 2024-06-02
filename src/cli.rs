@@ -82,7 +82,7 @@ fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
                         ExecutionConfigVariant::RawCommand(command) => {
                             match command {
                                 RawCommandConfigVariant::Shorthand(command_text) => command_text,
-                                RawCommandConfigVariant::Extended(extended_command) => extended_command.command
+                                RawCommandConfigVariant::RawCommandConfig(raw_command_config) => raw_command_config.command
                             }
                         }
                         ExecutionConfigVariant::ShellCommand(shell_command) =>
