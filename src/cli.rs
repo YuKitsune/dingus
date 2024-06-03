@@ -9,6 +9,7 @@ pub fn create_root_command(config: &Config) -> Command {
     let mut root_command = Command::new("gecko")
         .subcommands(subcommands)
         .subcommand_required(true)
+        .arg_required_else_help(true)
         .args(root_args);
 
     if let Some(description) = &config.description {
