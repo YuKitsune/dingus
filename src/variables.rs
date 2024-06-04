@@ -61,6 +61,54 @@ impl VariableResolver {
     }
 }
 
+pub fn substitute_variables(template: &str, variables: &VariableMap) -> String {
+    let mut result = String::new();
+    let mut chars = template.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            // Look ahead to the next character
+            if let Some(&next_ch) = chars.peek() {
+                if next_ch == '$' {
+                    // It's an escaped '$', so just append it and consume the next character
+                    result.push('$');
+                    chars.next();
+                } else {
+                    // It's a regular backslash, append it
+                    result.push(ch);
+                }
+            } else {
+                // It's a single backslash at the end of the string
+                result.push(ch);
+            }
+        } else if ch == '$' {
+            // Start of a variable, collect the variable name
+            let mut var_name = String::new();
+            while let Some(&next_ch) = chars.peek() {
+                if next_ch.is_alphanumeric() || next_ch == '_' {
+                    var_name.push(next_ch);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            // Substitute the variable if it exists
+            if let Some(value) = variables.get(&var_name) {
+                result.push_str(value);
+            } else {
+                // If the variable is not found, leave it as is (including the $ sign)
+                result.push('$');
+                result.push_str(&var_name);
+            }
+        } else {
+            // Regular character, just append it
+            result.push(ch);
+        }
+    }
+
+    result
+}
+
 #[derive(Debug)]
 pub enum VariableResolutionError {
     Execution(ExecutionError),
@@ -293,6 +341,86 @@ mod tests {
         let binding = resolved_variables.unwrap().clone();
         let resolved_value = binding.get(name).unwrap().as_str();
         assert_eq!(resolved_value, value);
+    }
+
+    #[test]
+    fn substitute_variables_substitutes_variables(){
+
+        // Arrange
+        let template = "Hello, $name! You are $age years old.";
+        let mut variables = VariableMap::new();
+        variables.insert("name".to_string(), "Dingus".to_string());
+        variables.insert("age".to_string(), "100".to_string());
+
+        // Act
+        let result = substitute_variables(template, &variables);
+
+        // Assert
+        assert_eq!(result, "Hello, Dingus! You are 100 years old.")
+    }
+
+    #[test]
+    fn substitute_variables_ignores_escaped(){
+
+        // Arrange
+        let template = "Hello, $name! You are \\$age years old.";
+        let mut variables = VariableMap::new();
+        variables.insert("name".to_string(), "Dingus".to_string());
+        variables.insert("age".to_string(), "100".to_string());
+
+        // Act
+        let result = substitute_variables(template, &variables);
+
+        // Assert
+        assert_eq!(result, "Hello, Dingus! You are $age years old.")
+    }
+
+    #[test]
+    fn substitute_variables_allows_underscores(){
+
+        // Arrange
+        let template = "Hello, $first_name $last_name!";
+        let mut variables = VariableMap::new();
+        variables.insert("first_name".to_string(), "Dingus".to_string());
+        variables.insert("last_name".to_string(), "Bingus".to_string());
+
+        // Act
+        let result = substitute_variables(template, &variables);
+
+        // Assert
+        assert_eq!(result, "Hello, Dingus Bingus!")
+    }
+
+    #[test]
+    fn substitute_variables_allows_adjacent(){
+
+        // Arrange
+        let template = "Hello, $first_name$last_name!";
+        let mut variables = VariableMap::new();
+        variables.insert("first_name".to_string(), "Dingus".to_string());
+        variables.insert("last_name".to_string(), "Bingus".to_string());
+
+        // Act
+        let result = substitute_variables(template, &variables);
+
+        // Assert
+        assert_eq!(result, "Hello, DingusBingus!")
+    }
+
+    #[test]
+    fn substitute_variables_does_not_parse_hyphen(){
+
+        // Arrange
+        let template = "Hello, $first_name-the-$last_name!";
+        let mut variables = VariableMap::new();
+        variables.insert("first_name".to_string(), "Dingus".to_string());
+        variables.insert("last_name".to_string(), "Bingus".to_string());
+
+        // Act
+        let result = substitute_variables(template, &variables);
+
+        // Assert
+        assert_eq!(result, "Hello, Dingus-the-Bingus!")
     }
 
     struct MockCommandExecutor {
