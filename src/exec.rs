@@ -2,7 +2,7 @@ use std::error::Error;
 use std::{fmt, io};
 use std::fmt::{Formatter};
 use std::process::{Command};
-use crate::config::{ExecutionConfigVariant, RawCommandConfig, RawCommandConfigVariant, ShellCommandConfigVariant};
+use crate::config::{ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant};
 use crate::exec::ExitStatus::Unknown;
 use crate::variables;
 use crate::variables::VariableMap;

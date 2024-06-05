@@ -58,7 +58,9 @@ fn run() -> Result<(), Box<dyn Error>> {
                     return Err(Box::new(config_err))
                 }
 
-                config::init().map_err(|err| Box::new(err))
+                let file_name = config::init().map_err(|err| Box::new(err))?;
+                println!("created {file_name}");
+                return Ok(())
             },
             _ => Err(Box::new(config_err))
         }

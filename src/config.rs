@@ -20,8 +20,7 @@ variables:
 
 commands:
   greet:
-    action:
-      sh: echo \"Hello, $name!\"";
+    action: echo \"Hello, $name!\"";
 
 pub fn load() -> Result<Config, ConfigError> {
     for config_file_name in CONFIG_FILE_NAMES {
@@ -38,11 +37,11 @@ pub fn load() -> Result<Config, ConfigError> {
     return Err(ConfigError::FileNotFound)
 }
 
-pub fn init() -> Result<(), ConfigError> {
+pub fn init() -> Result<String, ConfigError> {
     let file_name = CONFIG_FILE_NAMES[0];
 
     fs::write(file_name, DEFAULT_CONFIG_FILE).map_err(|io_err| ConfigError::WriteFailed(io_err))?;
-    return Ok(());
+    return Ok(file_name.to_string());
 }
 
 fn parse_config(text: &str) -> Result<Config, ConfigError> {

@@ -1,6 +1,5 @@
 use std::error::Error;
 use clap::{Arg, ArgMatches, Command};
-use linked_hash_map::LinkedHashMap;
 use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
 
 pub fn create_root_command(config: &Config) -> Command {
