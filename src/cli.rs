@@ -4,7 +4,10 @@ use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfigVari
 
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
-    let subcommands = create_commands(&config.commands, &config.variables);
+    let mut subcommands = create_commands(&config.commands, &config.variables);
+    let mut meta_commands = create_meta_commands();
+    subcommands.append(&mut meta_commands);
+
     let mut root_command = Command::new("gecko")
         .subcommands(subcommands)
         .subcommand_required(true)
@@ -16,6 +19,13 @@ pub fn create_root_command(config: &Config) -> Command {
     }
 
     return root_command;
+}
+
+fn create_meta_commands() -> Vec<Command> {
+    vec![
+        Command::new("version")
+            .about("Shows version information")
+    ]
 }
 
 fn create_commands(
@@ -103,6 +113,27 @@ fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
             return arg
         })
         .collect()
+}
+
+pub fn find_meta_command(arg_matches: &ArgMatches) -> MetaCommandResult {
+    match arg_matches.subcommand_name() {
+        Some(command_name) => {
+            match command_name {
+                "version" => {
+                    let version: &str = env!("CARGO_PKG_VERSION");
+                    println!("{}", version);
+                    MetaCommandResult::Executed
+                }
+                _ => MetaCommandResult::NotFound
+            }
+        }
+        None => MetaCommandResult::NotFound
+    }
+}
+
+pub enum MetaCommandResult {
+    Executed,
+    NotFound
 }
 
 pub fn find_subcommand(
@@ -198,7 +229,7 @@ mod tests {
     fn create_commands_creates_correct_args() {
 
         // Arrange
-        let mut subcommand_variables = LinkedHashMap::new();
+        let mut subcommand_variables = VariableConfigMap::new();
         subcommand_variables.insert("sub-var-1".to_string(), VariableConfig::Execution(ExecutionVariableConfig {
             execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("echo \"Hello, World!\"".to_string())),
             description: None,
@@ -295,7 +326,7 @@ mod tests {
         });
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &LinkedHashMap::new());
+        let created_subcommands = create_commands(&subcommands, &VariableConfigMap::new());
 
         // Assert
         let command = created_subcommands.get(0).unwrap();
@@ -321,7 +352,7 @@ mod tests {
         subsubcommands.insert("sub-again".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
-            variables: LinkedHashMap::new(),
+            variables: Default::default(),
             commands: Default::default(),
             action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
                 action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
@@ -332,13 +363,13 @@ mod tests {
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
             aliases: vec![],
-            variables: LinkedHashMap::new(),
+            variables: Default::default(),
             commands: subsubcommands,
             action: None,
         });
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &LinkedHashMap::new());
+        let created_subcommands = create_commands(&subcommands, &VariableConfigMap::new());
 
         // Assert
         let parent_command = created_subcommands.get(0).unwrap();
@@ -353,7 +384,7 @@ mod tests {
     fn create_args_creates_correct_args() {
 
         // Arrange
-        let mut variables = LinkedHashMap::new();
+        let mut variables = VariableConfigMap::new();
         variables.insert("var-1".to_string(), VariableConfig::ShorthandLiteral("foo".to_string()));
         variables.insert("var-2".to_string(), VariableConfig::Literal(LiteralVariableConfig {
             value: "bar".to_string(),

@@ -157,7 +157,7 @@ mod tests {
     use std::collections::HashMap;
     use std::io::Write;
     use tempfile::NamedTempFile;
-    use crate::config::{BashCommandConfig};
+    use crate::config::{BashCommandConfig, RawCommandConfig};
     use super::*;
 
     // Todo: Tests for execute (Inherits Stdio, interactive, variables evaluated, etc)

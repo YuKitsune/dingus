@@ -1,7 +1,7 @@
 use std::{fmt, process};
 use std::error::Error;
 use crate::args::ClapArgumentResolver;
-
+use crate::cli::MetaCommandResult;
 use crate::commands::{ActionExecutor, ActionId, ActionKey};
 use crate::config::{CommandActionConfigVariant, ConfigError};
 use crate::exec::create_command_executor;
@@ -72,6 +72,13 @@ fn run() -> Result<(), Box<dyn Error>> {
     // This will exit on any match failures
     let arg_matches = root_command.clone().get_matches();
 
+    // Check if the command was a meta command first
+    let meta_command_result = cli::find_meta_command(&arg_matches);
+    if matches!(meta_command_result, MetaCommandResult::Executed) {
+        return Ok(())
+    }
+
+    // Otherwise, look for a configured command
     let find_result = cli::find_subcommand(
         &arg_matches,
         &root_command,
