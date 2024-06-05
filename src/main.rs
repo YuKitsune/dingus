@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::args::ClapArgumentResolver;
 
 use crate::commands::{ActionExecutor, ActionId, ActionKey};
-use crate::config::CommandActionConfigVariant;
+use crate::config::{CommandActionConfigVariant, ConfigError};
 use crate::exec::create_command_executor;
 use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
 use crate::variables::VariableResolver;
@@ -18,7 +18,6 @@ mod variables;
 
 // Todo:
 // - [ ] Consider naming (Variables, Commands, Actions, all confusing)
-// - [ ] Offer to create a gecko file if none exists
 // - [ ] Integration tests
 // - [ ] Meta commands
 // - [ ] Documentation (in-code and public-facing)
@@ -45,8 +44,27 @@ fn main() {
 }
 
 fn run() -> Result<(), Box<dyn Error>> {
-    let config = config::load()?;
+    let config_result = config::load();
 
+    // Offer to create the config file if one doesn't exist
+    if let Err(config_err) = config_result {
+        return match config_err {
+            ConfigError::FileNotFound => {
+                let should_init = inquire::Confirm::new("Couldn't find a gecko file in this directory. Do you want to create one?")
+                    .with_default(true)
+                    .prompt()?;
+
+                if !should_init {
+                    return Err(Box::new(config_err))
+                }
+
+                config::init().map_err(|err| Box::new(err))
+            },
+            _ => Err(Box::new(config_err))
+        }
+    }
+
+    let config = config_result.unwrap();
     let root_command = cli::create_root_command(&config);
 
     // This will exit on any match failures

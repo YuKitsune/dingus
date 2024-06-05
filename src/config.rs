@@ -12,6 +12,17 @@ const CONFIG_FILE_NAMES: [&str;4] = [
     "Gecko.yml"
 ];
 
+const DEFAULT_CONFIG_FILE: &str =
+    "description: My Gecko file
+
+variables:
+  name: Godzilla
+
+commands:
+  greet:
+    action:
+      sh: echo \"Hello, $name!\"";
+
 pub fn load() -> Result<Config, ConfigError> {
     for config_file_name in CONFIG_FILE_NAMES {
         if !Path::new(config_file_name).exists() {
@@ -27,6 +38,13 @@ pub fn load() -> Result<Config, ConfigError> {
     return Err(ConfigError::FileNotFound)
 }
 
+pub fn init() -> Result<(), ConfigError> {
+    let file_name = CONFIG_FILE_NAMES[0];
+
+    fs::write(file_name, DEFAULT_CONFIG_FILE).map_err(|io_err| ConfigError::WriteFailed(io_err))?;
+    return Ok(());
+}
+
 fn parse_config(text: &str) -> Result<Config, ConfigError> {
     let result = serde_yaml::from_str(text);
     return match result {
@@ -39,6 +57,7 @@ fn parse_config(text: &str) -> Result<Config, ConfigError> {
 pub enum ConfigError {
     FileNotFound,
     ReadFailed(io::Error),
+    WriteFailed(io::Error),
     ParseFailed(serde_yaml::Error)
 }
 
@@ -47,7 +66,8 @@ impl fmt::Display for ConfigError {
         match self {
             ConfigError::FileNotFound => write!(f, "config file not found"),
             ConfigError::ReadFailed(io_err) => write!(f, "failed to read config file: {}", io_err),
-            ConfigError::ParseFailed(parse_err) => write!(f, "failed to parse config file: {}", parse_err)
+            ConfigError::WriteFailed(io_err) => write!(f, "failed to write config file: {}", io_err),
+            ConfigError::ParseFailed(parse_err) => write!(f, "failed to parse config file: {}", parse_err),
         }
     }
 }
