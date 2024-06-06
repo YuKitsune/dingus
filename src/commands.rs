@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 use crate::config::{ActionConfig, VariableConfigMap};
-use crate::exec::{CommandExecutor, ExecutionError};
+use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
 use crate::prompt::{ConfirmExecutor, PromptError};
 use crate::variables::{VariableResolutionError, VariableResolver};
 
@@ -25,11 +25,16 @@ impl ActionExecutor {
         return match action_config {
             ActionConfig::Execution(execution_config) => {
                 let result = self.command_executor.execute(&execution_config, &variables);
-                if let Err(err) = result {
-                    return Err(ActionError::new(action_id.clone(), InnerActionError::ExecutionError(err)))
-                }
 
-                Ok(())
+                return match result {
+                    Ok(status) => {
+                        return match status {
+                            ExitStatus::Success => Ok(()),
+                            _ => Err(ActionError::new(action_id.clone(), InnerActionError::StatusCode(status))),
+                        }
+                    }
+                    Err(err) => Err(ActionError::new(action_id.clone(), InnerActionError::ExecutionError(err)))
+                }
             },
             ActionConfig::Confirmation(confirm_config) => {
                 let result = self.confirm_executor.execute(confirm_config)
@@ -69,6 +74,7 @@ pub enum ActionKey {
 pub enum InnerActionError {
     VariableResolutionError(VariableResolutionError),
     ExecutionError(ExecutionError),
+    StatusCode(ExitStatus),
     ConfirmationError(ConfirmationError),
     PromptError(PromptError)
 }
@@ -80,8 +86,9 @@ impl fmt::Display for InnerActionError {
         match self {
             InnerActionError::VariableResolutionError(err) => write!(f, "{}", err),
             InnerActionError::ExecutionError(err) => write!(f, "{}", err),
+            InnerActionError::StatusCode(err) => write!(f, "{}", err),
             InnerActionError::ConfirmationError(err) => write!(f, "{}", err),
-            InnerActionError::PromptError(err) => write!(f, "{}", err)
+            InnerActionError::PromptError(err) => write!(f, "{}", err),
         }
     }
 }
