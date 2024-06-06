@@ -18,13 +18,12 @@ pub struct VariableResolver {
 impl VariableResolver {
     pub fn resolve_variables(
         &self,
-        variable_configs: &VariableConfigMap) -> Result<VariableMap, Box<VariableResolutionError>> {
+        variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError> {
         variable_configs.iter()
-            .map(|(key, config)| -> Result<(String, String), Box<VariableResolutionError>> {
+            .map(|(key, config)| -> Result<(String, String), VariableResolutionError> {
 
+                // Args from the command-line have the highest priority, check there first
                 let arg_name = config.arg_name(key);
-
-                // Check the args first
                 if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
                     return Ok((key.clone(), arg_value.clone()))
                 }
@@ -41,7 +40,7 @@ impl VariableResolver {
                             .map_err(|err| VariableResolutionError::Execution(err))?;
 
                         if let ExitStatus::Fail(_) = output.status {
-                            return Err(Box::new(VariableResolutionError::ExitStatus(output.status.clone())));
+                            return Err(VariableResolutionError::ExitStatus(output.status.clone()));
                         }
 
                         let value = String::from_utf8(output.stdout)

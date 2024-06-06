@@ -1,9 +1,9 @@
 use std::error::Error;
 use std::fmt;
 use crate::config::{ActionConfig, VariableConfigMap};
-use crate::exec::CommandExecutor;
-use crate::prompt::ConfirmExecutor;
-use crate::variables::VariableResolver;
+use crate::exec::{CommandExecutor, ExecutionError};
+use crate::prompt::{ConfirmExecutor, PromptError};
+use crate::variables::{VariableResolutionError, VariableResolver};
 
 pub struct ActionExecutor {
     pub command_executor: Box<dyn CommandExecutor>,
@@ -20,22 +20,22 @@ impl ActionExecutor {
     ) -> Result<(), Box<ActionError>> {
 
         let variables = self.variable_resolver.resolve_variables(variable_config_map)
-            .map_err(|err| ActionError::new(action_id.clone(), err))?;
+            .map_err(|err| ActionError::new(action_id.clone(), InnerActionError::VariableResolutionError(err)))?;
 
         return match action_config {
             ActionConfig::Execution(execution_config) => {
                 let result = self.command_executor.execute(&execution_config, &variables);
                 if let Err(err) = result {
-                    return Err(ActionError::new(action_id.clone(), Box::new(err)))
+                    return Err(ActionError::new(action_id.clone(), InnerActionError::ExecutionError(err)))
                 }
 
                 Ok(())
             },
             ActionConfig::Confirmation(confirm_config) => {
                 let result = self.confirm_executor.execute(confirm_config)
-                    .map_err(|err| ActionError::new(action_id.clone(), Box::new(err)))?;
+                    .map_err(|err| ActionError::new(action_id.clone(), InnerActionError::PromptError(err)))?;
                 if result == false {
-                    return Err(ActionError::new(action_id, Box::new(ConfirmationError)))
+                    return Err(ActionError::new(action_id, InnerActionError::ConfirmationError(ConfirmationError)))
                 }
 
                 Ok(())
@@ -66,15 +66,37 @@ pub enum ActionKey {
 }
 
 #[derive(Debug)]
+pub enum InnerActionError {
+    VariableResolutionError(VariableResolutionError),
+    ExecutionError(ExecutionError),
+    ConfirmationError(ConfirmationError),
+    PromptError(PromptError)
+}
+
+impl Error for InnerActionError {}
+
+impl fmt::Display for InnerActionError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            InnerActionError::VariableResolutionError(err) => write!(f, "{}", err),
+            InnerActionError::ExecutionError(err) => write!(f, "{}", err),
+            InnerActionError::ConfirmationError(err) => write!(f, "{}", err),
+            InnerActionError::PromptError(err) => write!(f, "{}", err)
+        }
+    }
+}
+
+
+#[derive(Debug)]
 pub struct ActionError {
     action_id: ActionId,
-    inner: Box<dyn Error>
+    inner: InnerActionError
 }
 
 impl Error for ActionError {}
 
 impl ActionError {
-    fn new(id: ActionId, error: Box<dyn Error>) -> Box<ActionError> {
+    fn new(id: ActionId, error: InnerActionError) -> Box<ActionError> {
         return Box::new(ActionError {
             action_id: id,
             inner: error

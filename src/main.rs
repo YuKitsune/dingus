@@ -83,7 +83,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         &arg_matches,
         &root_command,
         &config.commands,
-        &config.variables)?;
+        &config.variables);
 
     if let Some((target_command, available_variable_configs, sucbommand_arg_matches)) = find_result {
 

@@ -1,4 +1,3 @@
-use std::error::Error;
 use clap::{Arg, ArgMatches, Command};
 use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
 
@@ -141,10 +140,10 @@ pub fn find_subcommand(
     parent_command: &Command,
     available_commands: &CommandConfigMap,
     parent_variables: &VariableConfigMap
-) -> Result<Option<SubcommandSearchResult>, Box<dyn Error>> {
-
-    // If we've matched on a subcommand, then lookup the subcommand config
+) -> Option<SubcommandSearchResult> {
     if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
+
+        // Safe to unwrap: we wouldn't have matched on anything if the command didn't exist
         let subcommand = parent_command.find_subcommand(subcommand_name).unwrap();
         let command_config = available_commands.get(subcommand_name).unwrap().to_owned();
 
@@ -157,17 +156,17 @@ pub fn find_subcommand(
             &subcommand_matches,
             &subcommand,
             &command_config.commands,
-            &available_variables)?;
+            &available_variables);
         if matched_subcommand.is_some() {
-            return Ok(matched_subcommand)
+            return matched_subcommand
         }
 
         // If no more subcommand matches exist, then return the current subcommand
         let result: SubcommandSearchResult = (command_config.clone(), available_variables, subcommand_matches.clone());
-        return Ok(Some(result));
+        return Some(result);
     }
 
-    return Ok(None);
+    return None;
 }
 
 type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
@@ -454,7 +453,7 @@ mod tests {
 
         // Act
         let matches = root_command.clone().get_matches_from(vec!["gecko", "cmd"]);
-        let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap().unwrap();
+        let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 
         // Assert
         assert_eq!(found_command.description, Some("Top-level command".to_string()));
@@ -521,7 +520,7 @@ mod tests {
 
         // Act
         let matches = root_command.clone().get_matches_from(vec!["gecko", "parent", "target"]);
-        let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap().unwrap();
+        let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 
         // Assert
         assert_eq!(found_command.description, Some("Mid-level command".to_string()));
@@ -576,7 +575,7 @@ mod tests {
 
         // Act
         let matches = root_command.clone().get_matches_from(vec!["gecko", "parent", "subcommand"]);
-        let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap().unwrap();
+        let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 
         // Assert
         assert_eq!(found_command.description, Some("Bottom-level command".to_string()));
