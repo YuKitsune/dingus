@@ -7,7 +7,7 @@ use crate::exec::ExitStatus::Unknown;
 use crate::variables;
 use crate::variables::VariableMap;
 
-pub type ExecutionResult = Result<(), ExecutionError>;
+pub type ExecutionResult = Result<ExitStatus, ExecutionError>;
 pub type ExecutionOutputResult = Result<Output, ExecutionError>;
 
 #[derive(PartialEq, Debug, Clone)]
@@ -71,12 +71,12 @@ impl CommandExecutor for CommandExecutorImpl {
 
     fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult {
         let mut command = get_command_for(execution_config, variables);
-        command.spawn()
+        let exit_status = command.spawn()
             .map_err(|io_err| ExecutionError::IO(io_err))?
             .wait()
             .map_err(|io_err| ExecutionError::IO(io_err))?;
 
-        return Ok(());
+        return Ok(ExitStatus::from_std_exitstatus(&exit_status));
     }
 
     fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult {
@@ -155,13 +155,82 @@ impl fmt::Display for ExecutionError {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::fs;
     use std::io::Write;
-    use tempfile::NamedTempFile;
+    use std::path::Path;
+    use tempfile::{NamedTempFile, TempDir};
     use crate::config::{BashCommandConfig, RawCommandConfig};
     use super::*;
 
-    // Todo: Tests for execute (Inherits Stdio, interactive, variables evaluated, etc)
-    // Todo: Macro for various shell types
+    // Todo: Testing with stdin?
+
+    #[test]
+    fn bash_command_execute_executes_command() {
+
+        // Arrange
+        let temp_file = create_empty_temp_file();
+        let temp_file_path = get_path(&temp_file.path());
+
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
+            working_directory: None,
+            command: format!("echo \"Hello, World!\" > {temp_file_path}")
+        }));
+        let command_executor = create_command_executor();
+
+        // Act
+        let result = command_executor.execute(&bash_exec_config, &Default::default());
+        assert!(!result.is_err());
+
+        // Assert
+        let file_content = fs::read_to_string(temp_file_path).unwrap();
+        assert_eq!(file_content, format!("Hello, World!\n"));
+    }
+
+    #[test]
+    fn bash_command_execute_evaluates_variables() {
+
+        // Arrange
+        let variable_name = "name";
+        let variable_value = "Dingus";
+        let mut variables = HashMap::new();
+        variables.insert(variable_name.to_string(), variable_value.to_string());
+
+        let temp_file = create_empty_temp_file();
+        let temp_file_path = get_path(&temp_file.path());
+
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
+            working_directory: None,
+            command: format!("echo \"Hello, ${variable_name}!\" > {temp_file_path}")
+        }));
+        let command_executor = create_command_executor();
+
+        // Act
+        let result = command_executor.execute(&bash_exec_config, &variables);
+        assert!(!result.is_err());
+
+        // Assert
+        let file_content = fs::read_to_string(temp_file_path).unwrap();
+        assert_eq!(file_content, format!("Hello, {variable_value}!\n"));
+    }
+
+    #[test]
+    fn bash_command_execute_returns_exit_code() {
+
+        // Arrange
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
+            working_directory: None,
+            command: "exit 42".to_string()
+        }));
+        let command_executor = create_command_executor();
+
+        // Act
+        let result = command_executor.execute(&bash_exec_config, &Default::default());
+        assert!(!result.is_err());
+
+        // Assert
+        let exit_status = result.unwrap();
+        assert!(matches!(exit_status, ExitStatus::Fail(42)));
+    }
 
     #[test]
     fn bash_command_get_output_evaluates_variables() {
@@ -281,7 +350,74 @@ mod tests {
         assert!(output_value.ends_with("/src\n"));
     }
 
-    // Todo: Similar test for execute
+    #[test]
+    fn raw_command_execute_executes_command() {
+
+        // Arrange
+        let temp_dir = create_temp_dir();
+        let file_name = "dingus.txt";
+        let test_file_path = temp_dir.path().join(file_name);
+
+        // Sanity check
+        assert_eq!(test_file_path.exists(), false);
+
+        let bash_exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(format!("touch {}", get_path(&test_file_path))));
+        let command_executor = create_command_executor();
+
+        // Act
+        let result = command_executor.execute(&bash_exec_config, &Default::default());
+        assert!(!result.is_err());
+
+        // Assert
+        let exit_status = result.unwrap();
+        assert!(matches!(exit_status, ExitStatus::Success));
+        assert_eq!(test_file_path.exists(), true);
+    }
+
+    #[test]
+    fn raw_command_execute_substitutes_variables_in_invocation() {
+
+        // Arrange
+        let temp_dir = create_temp_dir();
+        let file_name = "dingus.txt";
+        let test_file_path = temp_dir.path().join(file_name);
+
+        // Sanity check
+        assert_eq!(Path::new(&test_file_path).exists(), false);
+
+        let variable_name = "file_name";
+        let mut variables = HashMap::new();
+        variables.insert(variable_name.to_string(), get_path(&test_file_path));
+
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("touch $file_name".to_string()));
+        let command_executor = create_command_executor();
+
+        // Act
+        let result = command_executor.execute(&exec_config, &variables);
+        assert!(!result.is_err());
+
+        // Assert
+        let exit_status = result.unwrap();
+        assert!(matches!(exit_status, ExitStatus::Success));
+        assert_eq!(test_file_path.exists(), true);
+    }
+
+    #[test]
+    fn raw_command_execute_returns_exit_code() {
+
+        // Arrange
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cargo silly".to_string()));
+        let command_executor = create_command_executor();
+
+        // Act
+        let result = command_executor.execute(&exec_config, &Default::default());
+        assert!(!result.is_err());
+
+        // Assert
+        let exit_status = result.unwrap();
+        assert!(matches!(exit_status, ExitStatus::Fail(101)));
+    }
+
     #[test]
     fn raw_command_get_output_substitutes_variables_in_invocation() {
 
@@ -419,9 +555,23 @@ mod tests {
         assert!(result.is_err());
     }
 
+    fn create_temp_dir() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        return temp_dir;
+    }
+
+    fn create_empty_temp_file() -> NamedTempFile {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        return temp_file;
+    }
+
     fn create_temp_file(content: &str) -> NamedTempFile {
         let mut temp_file = NamedTempFile::new().unwrap();
         temp_file.write_all(content.as_bytes()).unwrap();
         return temp_file;
+    }
+
+    fn get_path(path: &Path) -> String {
+        return  path.to_str().unwrap().to_string();
     }
 }

@@ -428,7 +428,7 @@ mod tests {
 
     impl CommandExecutor for MockCommandExecutor {
         fn execute(&self, _: &ExecutionConfigVariant, _: &VariableMap) -> crate::exec::ExecutionResult {
-            Ok(())
+            Ok(self.output.status.clone())
         }
 
         fn get_output(&self, _: &ExecutionConfigVariant, _: &VariableMap) -> crate::exec::ExecutionOutputResult {
