@@ -1,0 +1,40 @@
+description: ACME Web Server
+
+commands:
+  build:
+    description: Builds the ACME Web Server binary
+    commands:
+      docker:
+        description: Builds the ACME Web Server Docker image
+        action:
+          sh: gum spin --title "Building Docker image" -- sleep 2 && echo "Done!"
+    action: 
+      sh: gum spin --title "Building" -- sleep 2 && echo "Done!"
+
+  test:
+    description: Runs tests
+    commands:
+      unit:
+        description: Runs unit tests
+        action: 
+          sh: gum spin --title "Running unit tests" -- sleep 2 && echo "Passed!"
+
+      integration:
+        description: Runs integration tests
+        action: 
+          sh: gum spin --title "Running integration tests" -- sleep 2 && echo "Passed!"
+  
+  deploy:
+    description: Deploys the ACME Web Server
+    variables:
+      environment:
+        description: The environment to deploy to
+        prompt:
+          message: "Which environment do you want to deploy to?"
+          options:
+            - local
+            - preprod
+            - production
+
+    action: 
+      sh: gum spin --title "Deploying to $environment" -- sleep 2 && echo "Deployed!"
