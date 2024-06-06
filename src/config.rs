@@ -617,6 +617,8 @@ commands:
         assert_eq!(command_variable_names[2], "command-var-3".to_string());
     }
 
+    // Todo: Command order is preserved
+
     #[test]
     fn single_action_command_parses() {
         let yaml =
