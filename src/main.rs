@@ -34,6 +34,7 @@ mod variables;
 // - Platform-specific commands.
 // - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
 // - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
+// - GitHub Actions integration: Run gecko commands as part of a GitHub Actions workflow
 
 fn main() {
     let result = run();
