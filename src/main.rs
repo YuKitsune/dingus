@@ -17,22 +17,22 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Consider naming (Variables, Commands, Actions, all confusing)
-// - [ ] Integration tests
-// - [ ] Meta commands
+// - [ ] Second pass for tests
+// - [ ] Consider that whole action key thing
+// - [ ] Replace offer with an init command
 // - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish v0.1.0
 
 // Ideas:
-// - Preconditions: Specify a list of applications that must be installed before running a command, or a custom script that must succeed
-// - Named actions: Actions can be named so that they can be skipped selectively
-// - Command invocation action: Have an action that invokes another command (Or named action ^), can specify the args
-// - Deferred actions: Always executes at the end, even if one of the actions fails
+// - Named actions: Actions can be named so that they can be skipped selectively (--skip arg vs custom conditional stuff per action)
+// - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
+// - Command invocation action: Actions can invoke other commands (Or named action ^). Variables can be passed to the command.
+// - Deferred actions: Always executes at the end, even if one of the actions fails.
 // - Include other gecko files (on disk or with a GitHub link)
 // - Pipe config file: example.yaml | gecko do something
-// - Aliases: Have a command alias another command (E.g: gecko deps = docker compose -f deps.yaml). remaining args are passed to the child command
+// - Aliases: Commands can act as an alias for another command (E.g: gecko deps = docker compose -f deps.yaml). Remaining args are passed to the child command. (Naming issue here since commands can have aliases)
 // - Platform-specific commands.
-// - Cached variable results: Allow the results of an execution variable to be cached for future use.
+// - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
 // - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
 
 fn main() {

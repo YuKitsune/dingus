@@ -3,7 +3,7 @@ use std::fmt;
 use crate::config::{ActionConfig, VariableConfigMap};
 use crate::exec::CommandExecutor;
 use crate::prompt::ConfirmExecutor;
-use crate::variables::{VariableResolver};
+use crate::variables::VariableResolver;
 
 pub struct ActionExecutor {
     pub command_executor: Box<dyn CommandExecutor>,
