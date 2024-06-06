@@ -285,6 +285,7 @@ pub struct RawCommandConfig {
     pub working_directory: Option<String>,
 
     #[serde(alias = "cmd")]
+    #[serde(alias = "exec")]
     pub command: String
 }
 

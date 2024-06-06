@@ -19,7 +19,7 @@ mod variables;
 // Todo:
 // - [ ] Second pass for tests
 // - [ ] Consider that whole action key thing
-// - [ ] Replace offer with an init command
+// - [ ] Config validation
 // - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish v0.1.0
 
