@@ -1,5 +1,9 @@
 commands:
 
+  build:
+    description: Builds the binary
+    action: cargo build
+
   test:
     description: Runs all the tests
     action: cargo test
