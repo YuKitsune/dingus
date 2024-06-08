@@ -117,7 +117,7 @@ impl fmt::Display for ActionError {
 }
 
 #[derive(Debug, Clone)]
-struct ConfirmationError;
+pub struct ConfirmationError;
 
 impl fmt::Display for ConfirmationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
