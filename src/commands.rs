@@ -128,6 +128,6 @@ impl fmt::Display for ConfirmationError {
 impl Error for ConfirmationError { }
 
 // Todo: Tests
-// - Fails when variable resolution fails
 // - Executes command with resolved variables
+// - Fails when variable resolution fails
 // - Command failures are propagated
