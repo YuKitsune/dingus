@@ -58,7 +58,7 @@ pub struct ActionId {
 impl fmt::Display for ActionId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.action.clone() {
-            ActionKey::Named(action_name) => write!(f, "{}/[\"{}\"]", self.command_name, action_name),
+            // ActionKey::Named(action_name) => write!(f, "{}/[\"{}\"]", self.command_name, action_name),
             ActionKey::Unnamed(action_index) => write!(f, "{}[{}]", self.command_name, action_index)
         }
     }
@@ -66,7 +66,6 @@ impl fmt::Display for ActionId {
 
 #[derive(Debug, Clone)]
 pub enum ActionKey {
-    Named(String),
     Unnamed(usize)
 }
 
