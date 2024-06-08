@@ -107,3 +107,5 @@ impl ConfirmExecutor {
         return Ok(result)
     }
 }
+
+// This is hard to write tests for. Fow now, let's assume the Inquire crate has sufficient tests.

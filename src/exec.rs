@@ -56,6 +56,8 @@ impl Output {
     }
 }
 
+// Todo: Consider refactoring these to take stdio as args so we can test with stdin.
+
 pub trait CommandExecutor {
     fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult;
     fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult;
@@ -561,7 +563,7 @@ mod tests {
     }
 
     fn create_empty_temp_file() -> NamedTempFile {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         return temp_file;
     }
 

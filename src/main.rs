@@ -20,6 +20,7 @@ mod variables;
 // - [ ] Second pass for tests
 // - [ ] Consider that whole action key thing
 // - [ ] Config validation
+// - [ ] Refine error messages (and have tests for them)
 // - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish v0.1.0
 
