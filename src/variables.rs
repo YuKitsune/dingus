@@ -9,14 +9,18 @@ use crate::exec::{ExitStatus, CommandExecutor, ExecutionError};
 
 pub type VariableMap = HashMap<String, String>;
 
-pub struct VariableResolver {
+pub trait VariableResolver {
+    fn resolve_variables(&self, variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError>;
+}
+
+pub struct RealVariableResolver {
     pub command_executor: Box<dyn CommandExecutor>,
     pub prompt_executor: Box<dyn PromptExecutor>,
     pub argument_resolver: Box<dyn ArgumentResolver>
 }
 
-impl VariableResolver {
-    pub fn resolve_variables(
+impl VariableResolver for RealVariableResolver {
+    fn resolve_variables(
         &self,
         variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError> {
         variable_configs.iter()
@@ -151,7 +155,7 @@ mod tests {
         let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
-        let variable_resolver = VariableResolver{
+        let variable_resolver = RealVariableResolver{
             command_executor,
             prompt_executor,
             argument_resolver,
@@ -185,7 +189,7 @@ mod tests {
         let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
-        let variable_resolver = VariableResolver{
+        let variable_resolver = RealVariableResolver{
             command_executor,
             prompt_executor,
             argument_resolver,
@@ -226,7 +230,7 @@ mod tests {
         let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
         let prompt_executor = Box::new(MockPromptExecutor{ response: None });
 
-        let variable_resolver = VariableResolver{
+        let variable_resolver = RealVariableResolver{
             command_executor,
             prompt_executor,
             argument_resolver,
@@ -273,7 +277,7 @@ mod tests {
         let value = "Dingus";
         let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
 
-        let variable_resolver = VariableResolver{
+        let variable_resolver = RealVariableResolver{
             command_executor,
             prompt_executor,
             argument_resolver,
@@ -312,7 +316,7 @@ mod tests {
         let value = "Dingus";
         let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
 
-        let variable_resolver = VariableResolver{
+        let variable_resolver = RealVariableResolver{
             command_executor,
             prompt_executor,
             argument_resolver,

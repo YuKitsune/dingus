@@ -6,7 +6,7 @@ use crate::commands::{ActionExecutor, ActionId, ActionKey};
 use crate::config::{CommandActionConfigVariant, ConfigError};
 use crate::exec::create_command_executor;
 use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
-use crate::variables::VariableResolver;
+use crate::variables::{RealVariableResolver, VariableResolver};
 
 mod exec;
 mod prompt;
@@ -103,7 +103,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
             // Set up the dependencies
             let arg_resolver = ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
-            let variable_resolver = VariableResolver {
+            let variable_resolver = RealVariableResolver {
                 command_executor: create_command_executor(),
                 prompt_executor: Box::new(TerminalPromptExecutor::new(create_command_executor())),
                 argument_resolver: Box::new(arg_resolver),
@@ -112,7 +112,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             let action_executor = ActionExecutor {
                 command_executor: create_command_executor(),
                 confirm_executor: ConfirmExecutor{},
-                variable_resolver,
+                variable_resolver: Box::new(variable_resolver),
             };
 
             // Execute the actions
