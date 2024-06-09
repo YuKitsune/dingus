@@ -2,7 +2,7 @@ use std::{fmt, process};
 use std::error::Error;
 use crate::args::ClapArgumentResolver;
 use crate::cli::MetaCommandResult;
-use crate::commands::{ActionExecutor, ActionId, ActionKey};
+use crate::actions::{ActionExecutor, ActionId};
 use crate::config::{CommandActionConfigVariant, ConfigError};
 use crate::exec::create_command_executor;
 use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
@@ -10,7 +10,7 @@ use crate::variables::{RealVariableResolver, VariableResolver};
 
 mod exec;
 mod prompt;
-mod commands;
+mod actions;
 mod cli;
 mod config;
 mod args;
@@ -120,7 +120,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
                 let action_id = ActionId {
                     command_name: arg_matches.subcommand_name().unwrap().to_string(),
-                    action: ActionKey::Unnamed(idx)
+                    action_index: idx
                 };
 
                 action_executor.execute(
