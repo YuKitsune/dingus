@@ -7,8 +7,8 @@ use crate::variables::{VariableResolutionError, VariableResolver};
 
 pub struct ActionExecutor {
     pub command_executor: Box<dyn CommandExecutor>,
-    pub confirm_executor: ConfirmExecutor,
-    pub variable_resolver: VariableResolver
+    pub confirm_executor: Box<dyn ConfirmExecutor>,
+    pub variable_resolver: Box<dyn VariableResolver>
 }
 
 impl ActionExecutor {
@@ -17,7 +17,7 @@ impl ActionExecutor {
         action_id: ActionId,
         action_config: &ActionConfig,
         variable_config_map: &VariableConfigMap,
-    ) -> Result<(), Box<ActionError>> {
+    ) -> Result<(), ActionError> {
 
         let variables = self.variable_resolver.resolve_variables(variable_config_map)
             .map_err(|err| ActionError::new(action_id.clone(), InnerActionError::VariableResolutionError(err)))?;
@@ -49,24 +49,16 @@ impl ActionExecutor {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ActionId {
     pub command_name: String,
-    pub action: ActionKey
+    pub action_index: usize
 }
 
 impl fmt::Display for ActionId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.action.clone() {
-            // ActionKey::Named(action_name) => write!(f, "{}/[\"{}\"]", self.command_name, action_name),
-            ActionKey::Unnamed(action_index) => write!(f, "{}[{}]", self.command_name, action_index)
-        }
+        write!(f, "{}[{}]", self.command_name, self.action_index)
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum ActionKey {
-    Unnamed(usize)
 }
 
 #[derive(Debug)]
@@ -102,11 +94,11 @@ pub struct ActionError {
 impl Error for ActionError {}
 
 impl ActionError {
-    fn new(id: ActionId, error: InnerActionError) -> Box<ActionError> {
-        return Box::new(ActionError {
+    fn new(id: ActionId, error: InnerActionError) -> ActionError {
+        return ActionError {
             action_id: id,
             inner: error
-        })
+        }
     }
 }
 
@@ -129,5 +121,9 @@ impl Error for ConfirmationError { }
 
 // Todo: Tests
 // - Executes command with resolved variables
-// - Fails when variable resolution fails
+// - Variable resolution failures are propagated
 // - Command failures are propagated
+// - Confirmation (positive and negative)
+
+// Note for future me:
+// Mocking everything was too hard, just set up the whole universe with real implementations.

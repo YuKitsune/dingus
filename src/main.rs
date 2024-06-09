@@ -5,8 +5,8 @@ use crate::cli::MetaCommandResult;
 use crate::actions::{ActionExecutor, ActionId};
 use crate::config::{CommandActionConfigVariant, ConfigError};
 use crate::exec::create_command_executor;
-use crate::variables::{RealVariableResolver, VariableResolver};
 use crate::prompt::{InquireConfirmExecutor, TerminalPromptExecutor};
+use crate::variables::{RealVariableResolver};
 
 mod exec;
 mod prompt;
