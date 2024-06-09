@@ -95,10 +95,15 @@ fn get_options(select_options_config: &SelectOptionsConfig, command_executor: &B
     }
 }
 
-pub struct ConfirmExecutor { }
+pub trait ConfirmExecutor {
+    fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, PromptError>;
+}
 
-impl ConfirmExecutor {
-    pub fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, PromptError> {
+
+pub struct InquireConfirmExecutor { }
+
+impl ConfirmExecutor for InquireConfirmExecutor{
+    fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, PromptError> {
         let result = Confirm::new(confirmation_config.confirm.as_str())
             .with_default(false)
             .prompt()

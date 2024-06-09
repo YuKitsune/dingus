@@ -5,8 +5,8 @@ use crate::cli::MetaCommandResult;
 use crate::actions::{ActionExecutor, ActionId};
 use crate::config::{CommandActionConfigVariant, ConfigError};
 use crate::exec::create_command_executor;
-use crate::prompt::{ConfirmExecutor, TerminalPromptExecutor};
 use crate::variables::{RealVariableResolver, VariableResolver};
+use crate::prompt::{InquireConfirmExecutor, TerminalPromptExecutor};
 
 mod exec;
 mod prompt;
@@ -111,7 +111,7 @@ fn run() -> Result<(), Box<dyn Error>> {
 
             let action_executor = ActionExecutor {
                 command_executor: create_command_executor(),
-                confirm_executor: ConfirmExecutor{},
+                confirm_executor: Box::new(InquireConfirmExecutor{}),
                 variable_resolver: Box::new(variable_resolver),
             };
 
