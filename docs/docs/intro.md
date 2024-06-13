@@ -2,13 +2,25 @@
 sidebar_position: 1
 ---
 
-# Tutorial Intro
+<!-- 
+TODO:
+- Introduction: What is Gecko? What does it do? How can I benefit from it?
+- Installation
+- Configuration: Examples of each configuration scenario
+- Contributing: Guidelines for making contributions
+- Changelog
+- Sponsorship
+- Feature sections (Front page)
+- Artwork
+-->
 
-Let's discover **Docusaurus in less than 5 minutes**.
+# Introduction
+
+Gecko is a task runner.
 
 ## Getting Started
 
-Get started by **creating a new site**.
+Get started by **creating a YAML file**.
 
 Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
 
