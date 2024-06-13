@@ -12,6 +12,7 @@ TODO:
 - Sponsorship
 - Feature sections (Front page)
 - Artwork
+- Privacy (No tracking by gecko, disclaimer about tracking from package managers, Plausible tracking on docs page)
 -->
 
 # Introduction
