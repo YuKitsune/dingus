@@ -4,49 +4,73 @@ import styles from './styles.module.css';
 
 type FeatureItem = {
   title: string;
-  // Svg: React.ComponentType<React.ComponentProps<'svg'>>;
+  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
   description: JSX.Element;
 };
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
-    // Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Script Consolidation',
+    Svg: require('@site/static/img/twemoji/package.svg').default,
     description: (
       <>
-        Gecko was designed from the ground up to be easily installed and provide
-        a simple and intuitive interface for automating tasks.
+        Keep all your build, CI, and configuration scripts in one place with Gecko, ensuring every developer has access to the same streamlined workflows.
       </>
     ),
   },
   {
-    title: 'Flexible',
-    // Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Consistent User Experience',
+    Svg: require('@site/static/img/twemoji/globe.svg').default,
     description: (
       <>
-        Gecko can be used to automate a wide variety of tasks, from simple
-        build scripts to complex deployment pipelines.
+        Gecko provides a POSIX-style interface for your commands, offering a familiar and consistent user experience.
       </>
     ),
   },
   {
-    title: 'Portable',
-    // Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Faster Onboarding',
+    Svg: require('@site/static/img/twemoji/rocket.svg').default,
     description: (
       <>
-        Gecko is written in Rust and is completely self-contained. It doesn't
-        require any external dependencies or runtimes to be installed.
+        Bring new contributors up to speed with a single, well-documented Geckofile, reducing onboarding time and ensuring consistency in development environments.
       </>
     ),
   },
+  {
+    title: 'Collaboration and Sharing',
+    Svg: require('@site/static/img/twemoji/handshake.svg').default,
+    description: (
+      <>
+        Easily share your Geckofiles with team members or the community, and extend others' configurations to fit your needs.
+      </>
+    ),
+  },
+  {
+    title: 'Remote Execution',
+    Svg: require('@site/static/img/twemoji/satellite.svg').default,
+    description: (
+      <>
+        Execute tasks on remote machines via SSH with Gecko, simplifying remote infrastructure management and routine maintenance tasks.
+      </>
+    ),
+  },
+  {
+    title: 'Dotfiles',
+    Svg: require('@site/static/img/twemoji/folder.svg').default,
+    description: (
+      <>
+        Replace bash aliases and functions with Gecko to create a cross-platform, shell-agnostic solution with native support for flags, arguments, and more.
+      </>
+    ),
+  }
 ];
 
-function Feature({title, /*Svg, */description}: FeatureItem) {
+function Feature({title, Svg, description}: FeatureItem) {
   return (
     <div className={clsx('col col--4')}>
-      {/* <div className="text--center">
+      <div className="text--center">
         <Svg className={styles.featureSvg} role="img" />
-      </div> */}
+      </div>
       <div className="text--center padding-horiz--md">
         <Heading as="h3">{title}</Heading>
         <p>{description}</p>

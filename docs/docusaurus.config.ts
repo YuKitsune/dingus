@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Gecko CLI',
-  tagline: 'A flexible task runner for you and your team.',
+  tagline: 'Effortless task automation.',
   favicon: 'img/favicon.png',
 
   // Set the production url of your site here
@@ -57,7 +57,7 @@ const config: Config = {
       title: 'Gecko CLI',
       logo: {
         alt: 'Gecko CLI Logo',
-        src: 'img/lizard.svg',
+        src: 'img/twemoji/lizard.svg',
       },
       items: [
         {

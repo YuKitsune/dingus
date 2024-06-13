@@ -34,7 +34,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={`${siteConfig.title}`}
-      description="A flexible task runner for you and your team.">
+      description="Simplify Task Automation with Ease.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

@@ -17,7 +17,9 @@ TODO:
 
 # Introduction
 
-Gecko is a task runner.
+Gecko is a versatile command-line application designed to streamline task automation through a simple YAML configuration file.
+With Gecko, users can define top-level variables, create complex command workflows, and execute tasks locally or remotely via SSH.
+Perfect for developers, system administrators, and power users, Gecko consolidates your scripts and commands into an easily manageable format, enhancing productivity and simplifying automation.
 
 ## Getting Started
 
