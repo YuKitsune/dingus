@@ -4,8 +4,8 @@ use std::fmt;
 use std::string::FromUtf8Error;
 use crate::args::ArgumentResolver;
 use crate::config::{VariableConfig, VariableConfigMap};
+use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
 use crate::prompt::{PromptError, PromptExecutor};
-use crate::exec::{ExitStatus, CommandExecutor, ExecutionError};
 
 pub type VariableMap = HashMap<String, String>;
 
@@ -41,21 +41,21 @@ impl VariableResolver for RealVariableResolver {
                     VariableConfig::Execution(execution_conf) => {
 
                         let output = self.command_executor.get_output(&execution_conf.execution, &HashMap::new())
-                            .map_err(|err| VariableResolutionError::Execution(err))?;
+                            .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Execution(err)))?;
 
                         if let ExitStatus::Fail(_) = output.status {
-                            return Err(VariableResolutionError::ExitStatus(output.status.clone()));
+                            return Err(VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::ExitStatus(output.status.clone())));
                         }
 
                         let value = String::from_utf8(output.stdout)
-                            .map_err(|err| VariableResolutionError::Parse(err))?;
+                            .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Parse(err)))?;
                         let trimmed_value = value.trim_end().to_string();
                         Ok((key.clone(), trimmed_value.clone()))
                     }
 
                     VariableConfig::Prompt(prompt_config) => {
                         let value = self.prompt_executor.execute(&prompt_config.prompt)
-                            .map_err(|err| VariableResolutionError::Prompt(err))?;
+                            .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Prompt(err)))?;
                         Ok((key.clone(), value.clone()))
                     }
                 }
@@ -113,22 +113,37 @@ pub fn substitute_variables(template: &str, variables: &VariableMap) -> String {
 }
 
 #[derive(Debug)]
-pub enum VariableResolutionError {
+pub enum VariableResolutionErrorKind {
     Execution(ExecutionError),
     ExitStatus(ExitStatus),
     Parse(FromUtf8Error),
     Prompt(PromptError)
 }
 
+#[derive(Debug)]
+pub struct VariableResolutionError {
+    pub name: String,
+    pub kind: VariableResolutionErrorKind
+}
+
+impl VariableResolutionError {
+    pub fn new(name: String, kind: VariableResolutionErrorKind) -> VariableResolutionError {
+        VariableResolutionError {
+            name,
+            kind
+        }
+    }
+}
+
 impl Error for VariableResolutionError {}
 
 impl fmt::Display for VariableResolutionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            VariableResolutionError::Execution(execution_err) => write!(f, "failed to evaluate variable: {}", execution_err),
-            VariableResolutionError::ExitStatus(status) => write!(f, "failed to evaluate variable: {}", status),
-            VariableResolutionError::Parse(utf8_err) => write!(f, "failed to evaluate variable: {}", utf8_err),
-            VariableResolutionError::Prompt(prompt_err) => write!(f, "failed to evaluate variable: {}", prompt_err)
+        match &self.kind {
+            VariableResolutionErrorKind::Execution(execution_err) => write!(f, "cannot resolve \"{}\": {}", self.name, execution_err),
+            VariableResolutionErrorKind::ExitStatus(status) => write!(f, "cannot resolve \"{}\": {}", self.name, status),
+            VariableResolutionErrorKind::Parse(utf8_err) => write!(f, "cannot resolve options for \"{}\": {}", self.name, utf8_err),
+            VariableResolutionErrorKind::Prompt(prompt_err) => write!(f, "cannot resolve \"{}\": {}", self.name, prompt_err)
         }
     }
 }
