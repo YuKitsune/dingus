@@ -19,8 +19,8 @@ impl Error for PromptError {}
 impl fmt::Display for PromptError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            PromptError::InquireError(err) => write!(f, "failed to execute prompt: {}", err),
-            PromptError::ExecutionError(err) => write!(f, "failed to evaluate prompt options: {}", err),
+            PromptError::InquireError(err) => write!(f, "prompt failed: {}", err),
+            PromptError::ExecutionError(err) => write!(f, "failed to determine prompt options: {}", err),
             PromptError::ParseError(err) => write!(f, "failed to parse prompt options: {}", err),
         }
     }
