@@ -233,7 +233,7 @@ pub struct CommandConfig {
     pub commands: CommandConfigMap,
 
     #[serde(flatten)]
-    pub action: Option<CommandActionConfigVariant>
+    pub action: Option<ActionConfig>
 }
 
 fn default_aliases() -> Vec<String> {
@@ -242,26 +242,19 @@ fn default_aliases() -> Vec<String> {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
-pub enum CommandActionConfigVariant {
+pub enum ActionConfig {
     SingleStep(SingleActionConfig),
     MultiStep(MultiActionConfig),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SingleActionConfig {
-    pub action: ActionConfig
+    pub action: ExecutionConfigVariant
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct MultiActionConfig {
-    pub actions: Vec<ActionConfig>
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[serde(untagged)]
-pub enum ActionConfig {
-    Execution(ExecutionConfigVariant),
-    Confirmation(ConfirmationCommandActionConfig)
+    pub actions: Vec<ExecutionConfigVariant>
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -304,11 +297,6 @@ pub struct BashCommandConfig {
     #[serde(rename = "bash")]
     #[serde(alias = "sh")]
     pub command: String
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ConfirmationCommandActionConfig {
-    pub confirm: String,
 }
 
 #[cfg(test)]
@@ -634,8 +622,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
+            action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string())),
             })),
         });
     }
@@ -661,8 +649,8 @@ commands:
             ],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
+            action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string())),
             })),
         });
     }
@@ -686,8 +674,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
+            action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string())),
             })),
         });
 
@@ -699,8 +687,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: map,
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat example.txt".to_string()))),
+            action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat example.txt".to_string())),
             })),
         });
     }
@@ -723,8 +711,8 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
+            action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string())),
             })),
         });
 
@@ -758,10 +746,10 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
+            action: Some(ActionConfig::MultiStep(MultiActionConfig {
                 actions: vec![
-                    ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat example.txt".to_string()))),
-                    ActionConfig::Execution(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string()))),
+                    ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat example.txt".to_string())),
+                    ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string())),
                 ],
             })),
         });
@@ -784,48 +772,21 @@ commands:
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::MultiStep(MultiActionConfig {
+            action: Some(ActionConfig::MultiStep(MultiActionConfig {
                 actions: vec![
-                    ActionConfig::Execution(
-                        ExecutionConfigVariant::ShellCommand(
-                            ShellCommandConfigVariant::Bash(BashCommandConfig {
-                                working_directory: None,
-                                command: "echo \"Hello, World!\"".to_string(),
-                            })
-                        )
+                    ExecutionConfigVariant::ShellCommand(
+                        ShellCommandConfigVariant::Bash(BashCommandConfig {
+                            working_directory: None,
+                            command: "echo \"Hello, World!\"".to_string(),
+                        })
                     ),
-                    ActionConfig::Execution(
-                        ExecutionConfigVariant::ShellCommand(
-                            ShellCommandConfigVariant::Bash(BashCommandConfig {
-                                working_directory: Some("/".to_string()),
-                                command: "pwd".to_string(),
-                            })
-                        )
+                    ExecutionConfigVariant::ShellCommand(
+                        ShellCommandConfigVariant::Bash(BashCommandConfig {
+                            working_directory: Some("/".to_string()),
+                            command: "pwd".to_string(),
+                        })
                     ),
                 ]
-            })),
-        });
-    }
-
-    #[test]
-    fn confirm_action_parses() {
-        let yaml =
-            "commands:
-    demo:
-        action:
-            confirm: Are you sure?";
-        let config = parse_config(yaml).unwrap();
-
-        let demo_command = config.commands.get("demo").unwrap();
-        assert_eq!(demo_command, &CommandConfig {
-            description: None,
-            aliases: vec![],
-            variables: Default::default(),
-            commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig {
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig {
-                    confirm: "Are you sure?".to_string(),
-                }),
             })),
         });
     }

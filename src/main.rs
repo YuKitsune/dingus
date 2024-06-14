@@ -2,11 +2,11 @@ use std::{fmt, process};
 use std::error::Error;
 use crate::args::ClapArgumentResolver;
 use crate::cli::MetaCommandResult;
-use crate::actions::{ActionExecutor, ActionId};
-use crate::config::{CommandActionConfigVariant, ConfigError};
+use crate::actions::{ActionExecutor};
+use crate::config::{ConfigError};
 use crate::exec::create_command_executor;
-use crate::prompt::{InquireConfirmExecutor, TerminalPromptExecutor};
-use crate::variables::{RealVariableResolver};
+use crate::prompt::{TerminalPromptExecutor};
+use crate::variables::{RealVariableResolver, VariableResolver};
 
 mod exec;
 mod prompt;
@@ -17,7 +17,6 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Second pass for tests
 // - [ ] Consider that whole action key thing
 // - [ ] Config validation
 // - [ ] Refine error messages (and have tests for them)
@@ -61,7 +60,7 @@ fn run() -> Result<(), Box<dyn Error>> {
                     return Err(Box::new(config_err))
                 }
 
-                let file_name = config::init().map_err(|err| Box::new(err))?;
+                let file_name = config::init()?;
                 println!("created {file_name}");
                 return Ok(())
             },
@@ -92,16 +91,6 @@ fn run() -> Result<(), Box<dyn Error>> {
 
         if let Some(command_action) = target_command.action {
 
-            // Coalesce single actions into multistep actions.
-            // Makes the execution part easier.
-            let actions = match command_action {
-                CommandActionConfigVariant::SingleStep(single_command_action) =>
-                    vec![single_command_action.action],
-
-                CommandActionConfigVariant::MultiStep(multi_command_action) =>
-                    multi_command_action.actions
-            };
-
             // Set up the dependencies
             let arg_resolver = ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
             let variable_resolver = RealVariableResolver {
@@ -110,27 +99,13 @@ fn run() -> Result<(), Box<dyn Error>> {
                 argument_resolver: Box::new(arg_resolver),
             };
 
+            let variables = variable_resolver.resolve_variables(&available_variable_configs)?;
+
             let action_executor = ActionExecutor {
-                command_executor: create_command_executor(),
-                confirm_executor: Box::new(InquireConfirmExecutor{}),
-                variable_resolver: Box::new(variable_resolver),
+                command_executor: create_command_executor()
             };
 
-            // Execute the actions
-            for (idx, action) in actions.iter().enumerate() {
-
-                let action_id = ActionId {
-                    command_name: arg_matches.subcommand_name().unwrap().to_string(),
-                    action_index: idx
-                };
-
-                action_executor.execute(
-                    action_id,
-                    &action,
-                    &available_variable_configs)?;
-            }
-
-            return Ok(());
+            action_executor.execute(&command_action, &variables)?;
         }
     }
 

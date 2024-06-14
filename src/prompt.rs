@@ -3,8 +3,8 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::{Formatter};
 use std::string::FromUtf8Error;
-use inquire::{Confirm, InquireError, Password, PasswordDisplayMode, Select, Text};
-use crate::config::{ConfirmationCommandActionConfig, PromptConfig, PromptOptionsVariant, SelectOptionsConfig, SelectPromptOptions, TextPromptOptions};
+use inquire::{InquireError, Password, PasswordDisplayMode, Select, Text};
+use crate::config::{PromptConfig, PromptOptionsVariant, SelectOptionsConfig, SelectPromptOptions, TextPromptOptions};
 use crate::exec::{CommandExecutor, ExecutionError};
 
 #[derive(Debug)]
@@ -92,24 +92,6 @@ fn get_options(select_options_config: &SelectOptionsConfig, command_executor: &B
             let options = stdout.clone().lines().map(|s| String::from(s)).collect();
             Ok(options)
         }
-    }
-}
-
-pub trait ConfirmExecutor {
-    fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, PromptError>;
-}
-
-
-pub struct InquireConfirmExecutor { }
-
-impl ConfirmExecutor for InquireConfirmExecutor{
-    fn execute(&self, confirmation_config: &ConfirmationCommandActionConfig) -> Result<bool, PromptError> {
-        let result = Confirm::new(confirmation_config.confirm.as_str())
-            .with_default(false)
-            .prompt()
-            .map_err(|err| PromptError::InquireError(err))?;
-
-        return Ok(result)
     }
 }
 

@@ -174,7 +174,8 @@ type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ActionConfig, CommandActionConfigVariant, CommandConfig, ConfirmationCommandActionConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
+    use crate::config::{ActionConfig, CommandConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
+    use crate::config::RawCommandConfigVariant::Shorthand;
 
     #[test]
     fn create_commands_creates_subcommands() {
@@ -186,8 +187,8 @@ mod tests {
             aliases: vec!["s1".to_string()],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -199,8 +200,8 @@ mod tests {
             aliases: vec!["s2".to_string()],
             variables: subcommand_variables,
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -246,8 +247,8 @@ mod tests {
             aliases: vec![],
             variables: subcommand_variables,
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -301,8 +302,8 @@ mod tests {
             aliases: vec![],
             variables: subsubcommand_variables,
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -319,8 +320,8 @@ mod tests {
             aliases: vec![],
             variables: subcommand_variables,
             commands: subsubcommands,
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -353,8 +354,8 @@ mod tests {
             aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -438,8 +439,8 @@ mod tests {
             aliases: vec![],
             variables: subcommand_variables,
             commands: Default::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -483,8 +484,8 @@ mod tests {
             aliases: vec![],
             variables: subcommand_variables,
             commands: CommandConfigMap::default(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -494,8 +495,8 @@ mod tests {
             aliases: vec![],
             variables: command_variables,
             commands: subcommands,
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -505,8 +506,8 @@ mod tests {
             aliases: vec![],
             variables: parent_command_variables,
             commands: target_commands,
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -549,8 +550,8 @@ mod tests {
             aliases: vec![],
             variables: command_variables,
             commands: CommandConfigMap::new(),
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
@@ -560,8 +561,8 @@ mod tests {
             aliases: vec![],
             variables: parent_command_variables,
             commands: target_commands,
-            action: Some(CommandActionConfigVariant::SingleStep(SingleActionConfig{
-                action: ActionConfig::Confirmation(ConfirmationCommandActionConfig { confirm: "Are you sure?".to_string() })
+            action: Some(ActionConfig::SingleStep(SingleActionConfig{
+                action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Hello, World!\"".to_string()))
             })),
         });
 
