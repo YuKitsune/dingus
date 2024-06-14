@@ -34,12 +34,12 @@ impl ActionExecutor {
                     match status {
                         ExitStatus::Success => continue,
                         _ => {
-                            return Err(ActionError::StatusCode((idx, status)))
+                            return Err(ActionError::new(idx, ActionErrorKind::StatusCode(status)))
                         },
                     }
                 }
                 Err(err) => {
-                    return Err(ActionError::ExecutionError((idx, err)))
+                    return Err(ActionError::new(idx, ActionErrorKind::ExecutionError(err)))
                 }
             }
         }
@@ -49,17 +49,33 @@ impl ActionExecutor {
 }
 
 #[derive(Debug)]
-pub enum ActionError {
-    ExecutionError((usize, ExecutionError)),
-    StatusCode((usize, ExitStatus))
+pub enum ActionErrorKind {
+    ExecutionError(ExecutionError),
+    StatusCode(ExitStatus)
 }
+
+#[derive(Debug)]
+pub struct ActionError {
+    index: usize,
+    kind: ActionErrorKind
+}
+
+impl ActionError {
+    pub fn new(index: usize, kind: ActionErrorKind) -> ActionError {
+        ActionError {
+            index,
+            kind
+        }
+    }
+}
+
 impl Error for ActionError {}
 
 impl fmt::Display for ActionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ActionError::ExecutionError((idx, err)) => write!(f, "failed to execute action {}: {}", idx, err),
-            ActionError::StatusCode((idx, err)) => write!(f, "failed to execute action {}: {}", idx, err),
+        match &self.kind {
+            ActionErrorKind::ExecutionError(err) => write!(f, "failed to execute action {}: {}", self.index, err),
+            ActionErrorKind::StatusCode(err) => write!(f, "failed to execute action {}: {}", self.index, err),
         }
     }
 }
