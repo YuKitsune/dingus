@@ -58,8 +58,15 @@ impl Output {
 
 // Todo: Consider refactoring these to take stdio as args so we can test with stdin.
 
+/// Capable of executing an [`ExecutionConfigVariant`].
 pub trait CommandExecutor {
+
+    /// Executes the provided [`ExecutionConfigVariant`] with the provided [`VariableMap`]
+    /// inheriting stdin, stdout, and stderr from the current process.
     fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult;
+
+    /// Executes the provided [`ExecutionConfigVariant`] with the provided [`VariableMap`]
+    /// and returns the output from stdout and stderr.
     fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult;
 }
 
@@ -139,6 +146,8 @@ fn get_command_for(execution_config: &ExecutionConfigVariant, variables: &Variab
     }
 }
 
+/// The error type for any errors that have occurred during the execution of a command.
+/// Note that non-zero exit codes are not considered to be errors.
 #[derive(Debug)]
 pub enum ExecutionError {
     IO(io::Error)

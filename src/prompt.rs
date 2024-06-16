@@ -7,10 +7,17 @@ use inquire::{InquireError, Password, PasswordDisplayMode, Select, Text};
 use crate::config::{PromptConfig, PromptOptionsVariant, SelectOptionsConfig, SelectPromptOptions, TextPromptOptions};
 use crate::exec::{CommandExecutor, ExecutionError};
 
+/// The error type for prompt related errors.
 #[derive(Debug)]
 pub enum PromptError {
+
+    /// Wraps an error from the [`Inquire`] crate.
     InquireError(InquireError),
+
+    /// Encapsulates an [`ExecutionError`].
     ExecutionError(ExecutionError),
+
+    /// Encapsulates a [`FromUtf8Error`].
     ParseError(FromUtf8Error)
 }
 
@@ -27,6 +34,8 @@ impl fmt::Display for PromptError {
 }
 
 pub trait PromptExecutor {
+
+    /// Prompts the user using the provided [`PromptConfig`], returning the user's response.
     fn execute(&self, prompt_config: &PromptConfig) -> Result<String, PromptError>;
 }
 

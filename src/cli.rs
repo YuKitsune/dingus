@@ -1,6 +1,7 @@
 use clap::{Arg, ArgMatches, Command};
 use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
 
+/// Creates a root-level [`Command`] for the provided [`Config`].
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
     let mut subcommands = create_commands(&config.commands, &config.variables);
@@ -20,6 +21,9 @@ pub fn create_root_command(config: &Config) -> Command {
     return root_command;
 }
 
+// Todo: Refactor this to use an arg?
+// Nah better idea. Expose it as a built-in variable. Offer to create a root-level Geckofile that
+// can just print it out.
 fn create_meta_commands() -> Vec<Command> {
     vec![
         Command::new("version")
@@ -135,6 +139,8 @@ pub enum MetaCommandResult {
     NotFound
 }
 
+/// Finds the [`CommandConfig`], [`VariableConfigMap`], and [`ArgMatches`], matching the provided `arg_matches`.
+/// This essentially returns the command to invoke (and it's relevent [`ArgMatches`]), all the variables available to the command.
 pub fn find_subcommand(
     arg_matches: &ArgMatches,
     parent_command: &Command,

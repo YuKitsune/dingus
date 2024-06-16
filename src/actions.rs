@@ -9,6 +9,8 @@ pub struct ActionExecutor {
 }
 
 impl ActionExecutor {
+
+    /// Executes the provided [`ActionConfig`] with the provided [`VariableMap`].
     pub fn execute(
         &self,
         action_config: &ActionConfig,

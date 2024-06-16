@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use clap::ArgMatches;
 
+/// Capable of resolving command-line argument values.
 pub trait ArgumentResolver {
+
+    /// For a given `key`, this will return `Some(String)` with the argument value matching the
+    /// key, otherwise `None` is returned.
     fn get(&self, key: &String) -> Option<String>;
 }
 

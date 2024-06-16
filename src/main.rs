@@ -17,9 +17,6 @@ mod args;
 mod variables;
 
 // Todo:
-// - [ ] Consider that whole action key thing
-// - [ ] Config validation
-// - [ ] Refine error messages (and have tests for them)
 // - [ ] Yaml schema
 // - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish v0.1.0
@@ -106,6 +103,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             };
 
             action_executor.execute(&command_action, &variables)?;
+            return Ok(())
         }
     }
 

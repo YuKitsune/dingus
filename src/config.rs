@@ -22,6 +22,9 @@ commands:
   greet:
     action: echo \"Hello, $name!\"";
 
+// Todo: Support reading from parent directories
+
+/// Loads the [`Config`] from a Geckofile in the current directory.
 pub fn load() -> Result<Config, ConfigError> {
     for config_file_name in CONFIG_FILE_NAMES {
         if !Path::new(config_file_name).exists() {
@@ -37,6 +40,7 @@ pub fn load() -> Result<Config, ConfigError> {
     return Err(ConfigError::FileNotFound)
 }
 
+/// Creates a new Geckofile in the current directory.
 pub fn init() -> Result<String, ConfigError> {
     let file_name = CONFIG_FILE_NAMES[0];
 
@@ -52,6 +56,7 @@ fn parse_config(text: &str) -> Result<Config, ConfigError> {
     }
 }
 
+/// The error type for configuration related errors.
 #[derive(Debug)]
 pub enum ConfigError {
     FileNotFound,
@@ -73,15 +78,20 @@ impl fmt::Display for ConfigError {
 
 impl Error for ConfigError {}
 
+/// The root-level of the Configuration.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+
+    /// A user-friendly description.
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
+    /// Root-level [`VariableConfig`]s that are available to all subsequent commands.
     #[serde(default = "default_variables")]
     #[serde(alias = "vars")]
     pub variables: VariableConfigMap,
 
+    /// Top-level [`CommandConfig`]s.
     #[serde(alias = "cmds")]
     pub commands: CommandConfigMap,
 }
@@ -90,14 +100,30 @@ fn default_variables() -> VariableConfigMap { VariableConfigMap::new() }
 
 fn default_commands() -> CommandConfigMap { CommandConfigMap::new() }
 
+/// A set of [`VariableConfig`].
+/// Note that this uses a [`LinkedHashMap`] so that the order of insertion is retained.
 pub type VariableConfigMap = LinkedHashMap<String, VariableConfig>;
 
+/// The kind of variable.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum VariableConfig {
+
+    /// Denotes a shorthand literal variable.
+    ///
+    /// Example:
+    /// ```yaml
+    /// name: Dingus
+    /// ```
     ShorthandLiteral(String),
+
+    /// Encapsulates a [`LiteralVariableConfig`].
     Literal(LiteralVariableConfig),
+
+    /// Encapsulates a [`ExecutionVariableConfig`].
     Execution(ExecutionVariableConfig),
+
+    /// Encapsulates a [`PromptVariableConfig`].
     Prompt(PromptVariableConfig)
 }
 
@@ -121,45 +147,94 @@ impl VariableConfig {
     }
 }
 
+/// Denotes a literal variable where the value is hard-coded.
+///
+/// Example:
+/// ```yaml
+/// name:
+///     description: Your name
+///     arg: name
+///     value: Dingus
+/// ```
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct LiteralVariableConfig {
-    pub value: String,
 
+    /// An optional description for the variable.
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
-    #[serde(rename(deserialize = "arg"))]
-    pub argument_name: Option<String>
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ExecutionVariableConfig {
-
-    #[serde(rename = "exec")]
-    pub execution: ExecutionConfigVariant,
-
-    #[serde(alias = "desc")]
-    pub description: Option<String>,
-
-    #[serde(rename(deserialize = "arg"))]
-    pub argument_name: Option<String>
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct PromptVariableConfig {
-    #[serde(alias = "desc")]
-    pub description: Option<String>,
-
+    /// An optional argument name.
+    /// If specified, the corresponding command-line argument for this variable will be re-named to
+    /// the provided value.
     #[serde(rename(deserialize = "arg"))]
     pub argument_name: Option<String>,
 
-    pub prompt: PromptConfig
+    /// The value of the variable
+    pub value: String
 }
 
+/// Denotes a variable whose value is determined by the output of a command.
+///
+/// Example:
+/// ```yaml
+/// name:
+///     description: Your name
+///     arg: name
+///     exec: cat name.txt
+/// ```
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ExecutionVariableConfig {
+
+    /// An optional description for the variable.
+    #[serde(alias = "desc")]
+    pub description: Option<String>,
+
+    /// An optional argument name.
+    /// If specified, the corresponding command-line argument for this variable will be re-named to
+    /// the provided value.
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>,
+
+    /// The [`ExecutionConfigVariant`] to use to determine the value of this variable.
+    #[serde(rename = "exec")]
+    pub execution: ExecutionConfigVariant
+}
+
+/// Denotes a variable whose value is determined by prompting the user for input.
+///
+/// Example:
+/// ```yaml
+/// name:
+///     description: Your name
+///     arg: name
+///     prompt:
+///         message: What is your name?
+/// ```
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct PromptVariableConfig {
+
+    /// An optional description for the variable.
+    #[serde(alias = "desc")]
+    pub description: Option<String>,
+
+    /// An optional argument name.
+    /// If specified, the corresponding command-line argument for this variable will be re-named to
+    /// the provided value.
+    #[serde(rename(deserialize = "arg"))]
+    pub argument_name: Option<String>,
+
+    /// The [`PromptConfig`] to use for the prompt.
+    pub prompt: PromptConfig,
+}
+
+/// The configuration for a prompt to the user for input.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptConfig {
+
+    /// The message to display to the user.
     pub message: String,
 
+    /// Additional, type-specific options for the prompt.
     #[serde(flatten)]
     pub options: PromptOptionsVariant
 }
@@ -173,21 +248,30 @@ impl Default for PromptOptionsVariant {
     }
 }
 
+/// The kind of prompt options.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum PromptOptionsVariant {
     // Note: Select needs to come first here because SelectPromptOptions is the most specific.
     // Serde will use the type it matches on.
+    /// Encapsulates a [`SelectPromptOptions]`, indicating that the prompt should be a select-style
+    /// prompt.
     Select(SelectPromptOptions),
+
+    /// Encapsulates a [`TextPromptOptions]`, indicating that the prompt should be a text prompt.
     Text(TextPromptOptions)
 }
 
+/// The options for a text prompt
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct TextPromptOptions {
 
+    /// Whether the prompt should be multi-line.
     #[serde(default = "default_multi_line")]
     pub multi_line: bool,
 
+    /// Whether the prompt is for a sensitive value.
+    /// When set to `true`, the input value will be obscured.
     #[serde(default = "default_sensitive")]
     pub sensitive: bool
 }
@@ -196,42 +280,63 @@ fn default_multi_line() -> bool { false }
 
 fn default_sensitive() -> bool { false }
 
+/// The options for a select prompt.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SelectPromptOptions {
+
+    /// The [`SelectOptionsConfig`] for determining the options the user can choose from.
     pub options: SelectOptionsConfig,
 }
 
+/// The kind of select prompt options.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum SelectOptionsConfig {
+
+    /// Encapsulates an [`ExecutionSelectOptionsConfig`], indicating that the options should be
+    /// sourced from the output of a command.
     Execution(ExecutionSelectOptionsConfig),
+
+    /// Encapsulates a `Vec<String>` where each element is an option that the user can choose.
     Literal(Vec<String>)
 }
 
+/// Encapsulates a [`ExecutionConfigVariant`] for use in [`SelectOptionsConfig::Execution`].
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ExecutionSelectOptionsConfig {
+
+    /// The [`ExecutionConfigVariant`] to use to determine the options.
     #[serde(rename = "exec")]
     pub execution: ExecutionConfigVariant
 }
 
 pub type CommandConfigMap = HashMap<String, CommandConfig>;
 
+/// The configuration for a command.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct CommandConfig {
+
+    /// An optional description for the command.
+    #[serde(alias = "desc")]
     pub description: Option<String>,
 
+    /// Any aliases that the command can also be invoked using.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default = "default_aliases")]
     pub aliases: Vec<String>,
 
+    /// The [`VariableConfig`]s associated with this [`CommandConfig`] and it's subcommands.
     #[serde(default = "default_variables")]
     pub variables: VariableConfigMap,
 
     // Todo: Need to enforce an invariant here:
     // - If no action exists, then one or more subcommands _must_ exist.
+
+    /// Any sub-[`CommandConfig`]s.
     #[serde(default = "default_commands")]
     pub commands: CommandConfigMap,
 
+    /// The [`ActionConfig`] that this command will perform when executed.
     #[serde(flatten)]
     pub action: Option<ActionConfig>
 }
@@ -240,6 +345,8 @@ fn default_aliases() -> Vec<String> {
     Vec::new()
 }
 
+/// Encapsulates either a single [`ExecutionConfigVariant`] ([`ActionConfig::SingleStep`] with a [`SingleActionConfig`])
+/// or multiple [`ExecutionConfigVariant`] ([`ActionConfig::MultiStep`] with a [`MultiActionConfig`]).
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ActionConfig {
@@ -257,43 +364,72 @@ pub struct MultiActionConfig {
     pub actions: Vec<ExecutionConfigVariant>
 }
 
+/// The kind of command to execute.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ExecutionConfigVariant {
+
+    /// Encapsulates a [`RawCommandConfigVariant`].
     RawCommand(RawCommandConfigVariant),
+
+    /// Encapsulates a [`ShellCommandConfigVariant`].
     ShellCommand(ShellCommandConfigVariant)
 }
 
+/// The configuration for a raw command.
+/// Raw commands are simply commands executed without a shell.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum RawCommandConfigVariant {
+
+    /// Denotes a shorthand execution.
+    ///
+    /// Example:
+    /// ```yaml
+    /// exec: cat example.txt
+    /// ```
     Shorthand(String),
+
+    /// Encapsulates a [`RawCommandConfig`].
     RawCommandConfig(RawCommandConfig)
 }
 
+/// The configuration for a raw command.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct RawCommandConfig {
+
+    /// An optional working directory for the command to be executed in.
+    /// If not specified, then the command will be executed in the current directory.
     #[serde(alias = "wd")]
     #[serde(alias = "workdir")]
     pub working_directory: Option<String>,
 
+    /// The command to execute.
     #[serde(alias = "cmd")]
     #[serde(alias = "exec")]
     pub command: String
 }
 
+/// The configuration for a shell command.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ShellCommandConfigVariant {
+
+    /// Encapsulates a [`BashCommandConfig`].
     Bash(BashCommandConfig)
 }
 
+/// The configuration for a bash command.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BashCommandConfig {
+
+    /// An optional working directory for the command to be executed in.
+    /// If not specified, then the command will be executed in the current directory.
     #[serde(alias = "wd")]
     #[serde(alias = "workdir")]
     pub working_directory: Option<String>,
 
+    /// The command to execute.
     #[serde(rename = "bash")]
     #[serde(alias = "sh")]
     pub command: String

@@ -7,9 +7,11 @@ use crate::config::{VariableConfig, VariableConfigMap};
 use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
 use crate::prompt::{PromptError, PromptExecutor};
 
+/// A [`HashMap`] where the key is the variable name, and the value is that variables value.
 pub type VariableMap = HashMap<String, String>;
 
 pub trait VariableResolver {
+    /// Resolves variables from the provided [`VariableConfigMap`] into a [`VariableMap`].
     fn resolve_variables(&self, variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError>;
 }
 
@@ -26,7 +28,7 @@ impl VariableResolver for RealVariableResolver {
         variable_configs.iter()
             .map(|(key, config)| -> Result<(String, String), VariableResolutionError> {
 
-                // Args from the command-line have the highest priority, check there first
+                // Args from the command-line have the highest priority, check there first.
                 let arg_name = config.arg_name(key);
                 if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
                     return Ok((key.clone(), arg_value.clone()))
@@ -43,12 +45,17 @@ impl VariableResolver for RealVariableResolver {
                         let output = self.command_executor.get_output(&execution_conf.execution, &HashMap::new())
                             .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Execution(err)))?;
 
+                        // TODO: Make this configurable.
+                        // If the command has a non-zero exit code, we probably shouldn't trust it's output.
+                        // Return an error instead.
                         if let ExitStatus::Fail(_) = output.status {
                             return Err(VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::ExitStatus(output.status.clone())));
                         }
 
                         let value = String::from_utf8(output.stdout)
                             .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Parse(err)))?;
+
+                        // Command output has whitespace on the end.
                         let trimmed_value = value.trim_end().to_string();
                         Ok((key.clone(), trimmed_value.clone()))
                     }
@@ -64,6 +71,7 @@ impl VariableResolver for RealVariableResolver {
     }
 }
 
+/// Uses bash-style variable substitution to replace variable names with their values.
 pub fn substitute_variables(template: &str, variables: &VariableMap) -> String {
     let mut result = String::new();
     let mut chars = template.chars().peekable();
