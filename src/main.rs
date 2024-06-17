@@ -99,7 +99,8 @@ fn run() -> Result<(), Box<dyn Error>> {
             let variables = variable_resolver.resolve_variables(&available_variable_configs)?;
 
             let action_executor = ActionExecutor {
-                command_executor: create_command_executor()
+                command_executor: create_command_executor(),
+                arg_resolver: Box::new(ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches))
             };
 
             action_executor.execute(&command_action, &variables)?;

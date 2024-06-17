@@ -1,5 +1,6 @@
-use std::collections::HashMap;
 use clap::ArgMatches;
+
+pub const ALIAS_ARGS_NAME: &str = "ARGS";
 
 /// Capable of resolving command-line argument values.
 pub trait ArgumentResolver {
@@ -7,30 +8,42 @@ pub trait ArgumentResolver {
     /// For a given `key`, this will return `Some(String)` with the argument value matching the
     /// key, otherwise `None` is returned.
     fn get(&self, key: &String) -> Option<String>;
+
+    /// For a given `key`, this will return `Some(Vec<String>)` with the argument values matching
+    /// the key, otherwise `None` is returned.
+    fn get_many(&self, key: &String) -> Option<Vec<String>>;
 }
 
 pub struct ClapArgumentResolver {
-    args: HashMap<String, String>
+    arg_matches: ArgMatches
 }
 
 impl ClapArgumentResolver {
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> ClapArgumentResolver {
-        let ids = arg_matches.ids();
-        let mut args = HashMap::new();
-        for id in ids {
-            if let Some(value) = arg_matches.get_one::<String>(id.as_str()) {
-                args.insert(id.to_string(), value.clone());
-            }
+        return ClapArgumentResolver {
+            arg_matches: arg_matches.clone()
         }
-
-        return ClapArgumentResolver {args}
     }
 }
 
 impl ArgumentResolver for ClapArgumentResolver {
     fn get(&self, key: &String) -> Option<String> {
-        if let Some(value) = self.args.get(key) {
-            return Some(value.clone());
+        if let Some(found_value) = self.arg_matches.get_one::<String>(key) {
+            return Some(found_value.clone())
+        }
+
+        return None;
+    }
+
+    fn get_many(&self, key: &String) -> Option<Vec<String>> {
+        if let Some(found_values) = self.arg_matches.get_many::<String>(key) {
+            let mut values: Vec<String> = Vec::new();
+
+            for found_value in found_values {
+                values.push(found_value.clone());
+            }
+
+            return Some(values)
         }
 
         return None;
@@ -40,7 +53,7 @@ impl ArgumentResolver for ClapArgumentResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::{Arg, Command};
+    use clap::{Arg, ArgAction, Command};
 
     #[test]
     fn argresolver_resolves_arg() {
@@ -88,34 +101,38 @@ mod tests {
     fn argresolver_resolves_multiple_args() {
 
         // Arrange
-        let name_arg = arg_long(&"name".to_string());
-        let age_arg = arg_long(&"age".to_string());
-        let greet_command = Command::new("greet")
-            .arg(name_arg)
-            .arg(age_arg);
+        let file_arg = many_arg(&"file".to_string());
+        let print_command = Command::new("print")
+            .arg(file_arg);
 
         let root_command = Command::new("gecko")
-            .subcommand(greet_command);
+            .subcommand(print_command);
 
         // Act
-        let name_value = "Dingus";
-        let age_value = "42";
-        let root_matches = root_command.get_matches_from(vec!["gecko", "greet", "--name", name_value, "--age", age_value]);
+        let file_name_1 = "first.txt";
+        let file_name_2 = "second.txt";
+        let root_matches = root_command.get_matches_from(vec!["gecko", "print", "--file", file_name_1, file_name_2]);
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
-        assert_eq!(subcommand_name, "greet");
+        assert_eq!(subcommand_name, "print");
 
         let arg_resolver = ClapArgumentResolver::from_arg_matches(&subcommand_matches);
 
         // Assert
-        let found_name_value = arg_resolver.get(&"name".to_string());
-        assert_eq!(found_name_value, Some(name_value.to_string()));
-
-        let found_age_value = arg_resolver.get(&"age".to_string());
-        assert_eq!(found_age_value, Some(age_value.to_string()));
+        let found_file_names = arg_resolver.get_many(&"file".to_string());
+        assert_eq!(found_file_names, Some(vec!["first.txt".to_string(), "second.txt".to_string()]));
     }
 
     fn arg_long(name: &String) -> Arg {
         return Arg::new(name.clone())
-            .long(name.clone());
+            .long(name.clone())
+            .action(ArgAction::Append);
+    }
+
+    fn many_arg(name: &String) -> Arg {
+        return Arg::new(name.clone())
+            .long(name.clone())
+            .allow_hyphen_values(true)
+            .action(ArgAction::Append)
+            .num_args(0..)
     }
 }

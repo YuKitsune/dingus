@@ -475,6 +475,13 @@ mod tests {
 
             return None;
         }
+        fn get_many(&self, key: &String) -> Option<Vec<String>> {
+            if let Some(value) = self.args.get(key) {
+                return Some(vec![value.clone()])
+            }
+
+            return None;
+        }
     }
 
     struct MockPromptExecutor {

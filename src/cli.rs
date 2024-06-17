@@ -1,5 +1,6 @@
-use clap::{Arg, ArgMatches, Command};
-use crate::config::{CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
+use clap::{Arg, ArgMatches, Command, ValueHint};
+use crate::args::ALIAS_ARGS_NAME;
+use crate::config::{ActionConfig, CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
 
 /// Creates a root-level [`Command`] for the provided [`Config`].
 pub fn create_root_command(config: &Config) -> Command {
@@ -57,8 +58,18 @@ fn create_commands(
             let mut command = Command::new(key)
                 .subcommands(subcommands)
                 .subcommand_required(!has_action)
-                .aliases(&command_config.aliases)
                 .args(args);
+
+            if let Some(ActionConfig::Alias(_)) = command_config.action.clone() {
+                let raw_args = Arg::new(ALIAS_ARGS_NAME)
+                    .num_args(1..)
+                    .allow_hyphen_values(true)
+                    .trailing_var_arg(true)
+                    .value_hint(ValueHint::CommandWithArguments)
+                    .help("Arguments and options for the aliased command.");
+
+                command = command.arg(raw_args)
+            }
 
             if let Some(description) = command_config.description.clone() {
                 command = command.about(description)
@@ -180,7 +191,7 @@ type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ActionConfig, CommandConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
+    use crate::config::{ActionConfig, AliasActionConfig, CommandConfig, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
     use crate::config::RawCommandConfigVariant::Shorthand;
 
     #[test]
@@ -190,7 +201,6 @@ mod tests {
         let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub-1".to_string(), CommandConfig {
             description: Some("Sub 1 description".to_string()),
-            aliases: vec!["s1".to_string()],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -203,7 +213,6 @@ mod tests {
 
         subcommands.insert("sub-2".to_string(), CommandConfig {
             description: Some("Sub 2 description".to_string()),
-            aliases: vec!["s2".to_string()],
             variables: subcommand_variables,
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -221,14 +230,8 @@ mod tests {
         let subcommand_1 = created_subcommands.iter().find(|cmd| cmd.get_name() == "sub-1").unwrap();
         assert_eq!(subcommand_1.get_about().unwrap().to_string(), "Sub 1 description");
 
-        let subcommand_1_aliases: Vec<&str> = subcommand_1.get_all_aliases().collect();
-        assert_eq!(subcommand_1_aliases, vec!["s1"]);
-
         let subcommand_2 = created_subcommands.iter().find(|cmd| cmd.get_name() == "sub-2").unwrap();
         assert_eq!(subcommand_2.get_about().unwrap().to_string(), "Sub 2 description");
-
-        let subcommand_2_aliases: Vec<&str> = subcommand_2.get_all_aliases().collect();
-        assert_eq!(subcommand_2_aliases, vec!["s2"]);
     }
 
     #[test]
@@ -250,7 +253,6 @@ mod tests {
         let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
-            aliases: vec![],
             variables: subcommand_variables,
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -305,7 +307,6 @@ mod tests {
         let mut subsubcommands = CommandConfigMap::new();
         subsubcommands.insert("sub-again".to_string(), CommandConfig {
             description: None,
-            aliases: vec![],
             variables: subsubcommand_variables,
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -323,7 +324,6 @@ mod tests {
         let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
-            aliases: vec![],
             variables: subcommand_variables,
             commands: subsubcommands,
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -357,7 +357,6 @@ mod tests {
         let mut subsubcommands = CommandConfigMap::new();
         subsubcommands.insert("sub-again".to_string(), CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -368,7 +367,6 @@ mod tests {
         let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: subsubcommands,
             action: None,
@@ -384,6 +382,32 @@ mod tests {
         let subcommands: Vec<&Command> = parent_command.get_subcommands().collect();
         let subcommand = subcommands.get(0).unwrap();
         assert_eq!(subcommand.is_subcommand_required_set(), false);
+    }
+
+    #[test]
+    fn create_commands_creates_correct_command_for_alias_command() {
+
+        // Arrange
+        let mut subcommands = CommandConfigMap::new();
+        subcommands.insert("alias".to_string(), CommandConfig {
+            description: None,
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(ActionConfig::Alias(AliasActionConfig{ alias: "docker compose".to_string() })),
+        });
+
+        // Act
+        let created_subcommands = create_commands(&subcommands, &VariableConfigMap::new());
+
+        // Assert
+        let command = created_subcommands.get(0).unwrap();
+        let command_args: Vec<&Arg> = command.get_arguments().collect();
+        assert_eq!(command_args.len(), 1);
+
+        let alias_arg = command_args.iter().find(|arg| arg.get_id() == "ARGS").unwrap();
+        assert_eq!(alias_arg.get_help().unwrap().to_string(), "Arguments and options for the aliased command.".to_string());
+        assert_eq!(alias_arg.is_allow_hyphen_values_set(), true);
+        assert_eq!(alias_arg.is_trailing_var_arg_set(), true);
     }
 
     #[test]
@@ -442,7 +466,6 @@ mod tests {
         let mut commands = CommandConfigMap::new();
         commands.insert("cmd".to_string(), CommandConfig {
             description: Some("Top-level command".to_string()),
-            aliases: vec![],
             variables: subcommand_variables,
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -487,7 +510,6 @@ mod tests {
         let mut subcommands = CommandConfigMap::new();
         subcommands.insert("sub".to_string(), CommandConfig {
             description: Some("Subcommand".to_string()),
-            aliases: vec![],
             variables: subcommand_variables,
             commands: CommandConfigMap::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -498,7 +520,6 @@ mod tests {
         let mut target_commands = CommandConfigMap::new();
         target_commands.insert("target".to_string(), CommandConfig {
             description: Some("Mid-level command".to_string()),
-            aliases: vec![],
             variables: command_variables,
             commands: subcommands,
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -509,7 +530,6 @@ mod tests {
         let mut parent_commands = CommandConfigMap::new();
         parent_commands.insert("parent".to_string(), CommandConfig {
             description: Some("Top-level command".to_string()),
-            aliases: vec![],
             variables: parent_command_variables,
             commands: target_commands,
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -553,7 +573,6 @@ mod tests {
         let mut target_commands = CommandConfigMap::new();
         target_commands.insert("subcommand".to_string(), CommandConfig {
             description: Some("Bottom-level command".to_string()),
-            aliases: vec![],
             variables: command_variables,
             commands: CommandConfigMap::new(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig{
@@ -564,7 +583,6 @@ mod tests {
         let mut parent_commands = CommandConfigMap::new();
         parent_commands.insert("parent".to_string(), CommandConfig {
             description: Some("Top-level command".to_string()),
-            aliases: vec![],
             variables: parent_command_variables,
             commands: target_commands,
             action: Some(ActionConfig::SingleStep(SingleActionConfig{

@@ -320,13 +320,9 @@ pub struct CommandConfig {
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
-    /// Any aliases that the command can also be invoked using.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    #[serde(default = "default_aliases")]
-    pub aliases: Vec<String>,
-
     /// The [`VariableConfig`]s associated with this [`CommandConfig`] and it's subcommands.
     #[serde(default = "default_variables")]
+    #[serde(alias = "vars")]
     pub variables: VariableConfigMap,
 
     // Todo: Need to enforce an invariant here:
@@ -334,15 +330,12 @@ pub struct CommandConfig {
 
     /// Any sub-[`CommandConfig`]s.
     #[serde(default = "default_commands")]
+    #[serde(alias = "cmds")]
     pub commands: CommandConfigMap,
 
     /// The [`ActionConfig`] that this command will perform when executed.
     #[serde(flatten)]
-    pub action: Option<ActionConfig>
-}
-
-fn default_aliases() -> Vec<String> {
-    Vec::new()
+    pub action: Option<ActionConfig>,
 }
 
 /// Encapsulates either a single [`ExecutionConfigVariant`] ([`ActionConfig::SingleStep`] with a [`SingleActionConfig`])
@@ -352,6 +345,13 @@ fn default_aliases() -> Vec<String> {
 pub enum ActionConfig {
     SingleStep(SingleActionConfig),
     MultiStep(MultiActionConfig),
+    Alias(AliasActionConfig)
+}
+
+/// Contains the prefix for a command to execute.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct AliasActionConfig {
+    pub alias: String
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -755,11 +755,29 @@ commands:
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(demo_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig {
                 action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("ls".to_string())),
+            })),
+        });
+    }
+
+    #[test]
+    fn alias_command_parses() {
+        let yaml =
+            "commands:
+    deps:
+        alias: docker compose -f docker-compose.deps.yml";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("deps").unwrap();
+        assert_eq!(demo_command, &CommandConfig {
+            description: None,
+            variables: Default::default(),
+            commands: Default::default(),
+            action: Some(ActionConfig::Alias(AliasActionConfig{
+                alias: "docker compose -f docker-compose.deps.yml".to_string()
             })),
         });
     }
@@ -770,19 +788,12 @@ commands:
             "commands:
     demo:
         description: Says hello.
-        aliases:
-          - greet
-          - hello
         action: ls";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(demo_command, &CommandConfig {
             description: Some("Says hello.".to_string()),
-            aliases: vec![
-                "greet".to_string(),
-                "hello".to_string()
-            ],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -807,7 +818,6 @@ commands:
 
         assert_eq!(gday_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -820,7 +830,6 @@ commands:
 
         assert_eq!(demo_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: map,
             action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -844,7 +853,6 @@ commands:
 
         assert_eq!(gday_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -857,7 +865,6 @@ commands:
 
         assert_eq!(demo_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: map,
             action: None,
@@ -879,7 +886,6 @@ commands:
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(demo_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::MultiStep(MultiActionConfig {
@@ -905,7 +911,6 @@ commands:
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(demo_command, &CommandConfig {
             description: None,
-            aliases: vec![],
             variables: Default::default(),
             commands: Default::default(),
             action: Some(ActionConfig::MultiStep(MultiActionConfig {
