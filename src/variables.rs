@@ -25,49 +25,54 @@ impl VariableResolver for RealVariableResolver {
     fn resolve_variables(
         &self,
         variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError> {
-        variable_configs.iter()
-            .map(|(key, config)| -> Result<(String, String), VariableResolutionError> {
 
-                // Args from the command-line have the highest priority, check there first.
-                let arg_name = config.arg_name(key);
-                if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
-                    return Ok((key.clone(), arg_value.clone()))
-                }
+        let mut resolved_variables = VariableMap::new();
+        for (key, config) in variable_configs.iter() {
 
-                return match config {
-                    VariableConfig::ShorthandLiteral(value) => Ok((key.clone(), value.clone())),
+            // Args from the command-line have the highest priority, check there first.
+            let arg_name = config.arg_name(key);
+            if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
+                resolved_variables.insert(key.clone(), arg_value.clone());
+            }
 
-                    VariableConfig::Literal(literal_conf) =>
-                        Ok((key.clone(), literal_conf.value.clone())),
+            _ = match config {
+                VariableConfig::ShorthandLiteral(value) =>
+                    resolved_variables.insert(key.clone(), value.clone()),
 
-                    VariableConfig::Execution(execution_conf) => {
+                VariableConfig::Literal(literal_conf) =>
+                    resolved_variables.insert(key.clone(), literal_conf.value.clone()),
 
-                        let output = self.command_executor.get_output(&execution_conf.execution, &HashMap::new())
-                            .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Execution(err)))?;
+                VariableConfig::Execution(execution_conf) => {
 
-                        // TODO: Make this configurable.
-                        // If the command has a non-zero exit code, we probably shouldn't trust it's output.
-                        // Return an error instead.
-                        if let ExitStatus::Fail(_) = output.status {
-                            return Err(VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::ExitStatus(output.status.clone())));
-                        }
+                    // TODO: Document this
+                    // Exec variables will have access to the variables defined above it.
+                    let output = self.command_executor.get_output(&execution_conf.execution, &resolved_variables)
+                        .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Execution(err)))?;
 
-                        let value = String::from_utf8(output.stdout)
-                            .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Parse(err)))?;
-
-                        // Command output has whitespace on the end.
-                        let trimmed_value = value.trim_end().to_string();
-                        Ok((key.clone(), trimmed_value.clone()))
+                    // TODO: Make this configurable.
+                    // If the command has a non-zero exit code, we probably shouldn't trust it's output.
+                    // Return an error instead.
+                    if let ExitStatus::Fail(_) = output.status {
+                        return Err(VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::ExitStatus(output.status.clone())));
                     }
 
-                    VariableConfig::Prompt(prompt_config) => {
-                        let value = self.prompt_executor.execute(&prompt_config.prompt)
-                            .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Prompt(err)))?;
-                        Ok((key.clone(), value.clone()))
-                    }
+                    let value = String::from_utf8(output.stdout)
+                        .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Parse(err)))?;
+
+                    // Command output has whitespace on the end.
+                    let trimmed_value = value.trim_end().to_string();
+                    resolved_variables.insert(key.clone(), trimmed_value.clone())
                 }
-            })
-            .collect()
+
+                VariableConfig::Prompt(prompt_config) => {
+                    let value = self.prompt_executor.execute(&prompt_config.prompt)
+                        .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Prompt(err)))?;
+                    resolved_variables.insert(key.clone(), value.clone())
+                }
+            }
+        }
+
+        return Ok(resolved_variables)
     }
 }
 
