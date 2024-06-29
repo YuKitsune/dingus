@@ -166,7 +166,8 @@ pub struct LiteralVariableConfig {
     /// An optional argument name.
     /// If specified, the corresponding command-line argument for this variable will be re-named to
     /// the provided value.
-    #[serde(rename(deserialize = "arg"))]
+    #[serde(rename(deserialize = "argument"))]
+    #[serde(alias = "arg")]
     pub argument_name: Option<String>,
 
     /// The value of the variable
@@ -192,11 +193,13 @@ pub struct ExecutionVariableConfig {
     /// An optional argument name.
     /// If specified, the corresponding command-line argument for this variable will be re-named to
     /// the provided value.
-    #[serde(rename(deserialize = "arg"))]
+    #[serde(rename(deserialize = "argument"))]
+    #[serde(alias = "arg")]
     pub argument_name: Option<String>,
 
     /// The [`ExecutionConfigVariant`] to use to determine the value of this variable.
-    #[serde(rename = "exec")]
+    #[serde(rename = "execute")]
+    #[serde(alias = "exec")]
     pub execution: ExecutionConfigVariant
 }
 
@@ -220,7 +223,8 @@ pub struct PromptVariableConfig {
     /// An optional argument name.
     /// If specified, the corresponding command-line argument for this variable will be re-named to
     /// the provided value.
-    #[serde(rename(deserialize = "arg"))]
+    #[serde(rename(deserialize = "argument"))]
+    #[serde(alias = "arg")]
     pub argument_name: Option<String>,
 
     /// The [`PromptConfig`] to use for the prompt.
@@ -285,6 +289,7 @@ fn default_sensitive() -> bool { false }
 pub struct SelectPromptOptions {
 
     /// The [`SelectOptionsConfig`] for determining the options the user can choose from.
+    #[serde(alias = "opts")]
     pub options: SelectOptionsConfig,
 }
 
@@ -306,7 +311,8 @@ pub enum SelectOptionsConfig {
 pub struct ExecutionSelectOptionsConfig {
 
     /// The [`ExecutionConfigVariant`] to use to determine the options.
-    #[serde(rename = "exec")]
+    #[serde(rename = "execute")]
+    #[serde(alias = "exec")]
     pub execution: ExecutionConfigVariant
 }
 
@@ -369,11 +375,11 @@ pub struct MultiActionConfig {
 #[serde(untagged)]
 pub enum ExecutionConfigVariant {
 
-    /// Encapsulates a [`RawCommandConfigVariant`].
-    RawCommand(RawCommandConfigVariant),
-
     /// Encapsulates a [`ShellCommandConfigVariant`].
-    ShellCommand(ShellCommandConfigVariant)
+    ShellCommand(ShellCommandConfigVariant),
+
+    /// Encapsulates a [`RawCommandConfigVariant`].
+    RawCommand(RawCommandConfigVariant)
 }
 
 /// The configuration for a raw command.
@@ -400,13 +406,12 @@ pub struct RawCommandConfig {
 
     /// An optional working directory for the command to be executed in.
     /// If not specified, then the command will be executed in the current directory.
+    #[serde(rename = "workdir")]
     #[serde(alias = "wd")]
-    #[serde(alias = "workdir")]
     pub working_directory: Option<String>,
 
     /// The command to execute.
     #[serde(alias = "cmd")]
-    #[serde(alias = "exec")]
     pub command: String
 }
 
@@ -425,8 +430,8 @@ pub struct BashCommandConfig {
 
     /// An optional working directory for the command to be executed in.
     /// If not specified, then the command will be executed in the current directory.
+    #[serde(rename = "workdir")]
     #[serde(alias = "wd")]
-    #[serde(alias = "workdir")]
     pub working_directory: Option<String>,
 
     /// The command to execute.

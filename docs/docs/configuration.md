@@ -27,29 +27,14 @@ commands:
         action: echo "Hello $name, you are $age years old"
 ```
 
-If desired `variables` field name can also be shortened to `vars`.
-
-```yaml
-vars:
-    name: Dingus
-
-commands:
-    greet:
-        vars:
-            age: 42
-        action: echo "Hello $name, you are $age years old"
-```
-
-
-
 ### Command-Line Arguments
 
 All variable values can be overridden using command-line arguments.
 The name of the argument will be the same as the variable name, so a variable called `name` can be overridden using the `--name` argument.
 
-The optional `argument_name` and `description` fields can be used to control how the command-line argument is generated for a specific variable.
-The name of the command-line argument can be overridden using the `argument_name` field (`arg` for short).
-The `description` field (or `desc` for short) can be used to provide help text for the help output.
+The optional `argument` and `description` fields can be used to control how the command-line argument is generated for a specific variable.
+The name of the command-line argument can be overridden using the `argument` field.
+The `description` field can be used to provide help text for the help output.
 Both of these fields are available on all variable types.
 
 ```yaml
@@ -57,7 +42,7 @@ variables:
   name:
     value: Dingus
     description: The name of the user to greet
-    arg: user
+    argument: user
   
   age:
     value: 42
@@ -94,7 +79,7 @@ variables:
     name:
         value: dingus
         description: The name of the user to use
-        argument_name: user
+        argument: user
 ```
 
 #### Shorthand
@@ -115,7 +100,7 @@ In this example, the `secret` variable will execute `cat secret.txt` and use the
 ```yaml
 variables:
     secret:
-        exec: cat secret.txt
+        execute: cat secret.txt
 ```
 
 Execution variables also have access to all of the variable values defined **above** them.
@@ -124,8 +109,12 @@ Execution variables also have access to all of the variable values defined **abo
 variables:
     environment: Development
     environment_config:
-        exec: cat ./$environment/config.yaml"
+        execute: cat ./$environment/config.yaml"
 ```
+
+:::info
+If the command-line argument for the variable has been specified, then the command will not be executed, and the variable will use the value provided via the command line.
+:::
 
 ### Prompt Variables
 
@@ -161,8 +150,12 @@ variables:
         prompt:
             message: Which user do you want to delete?
             options:
-                exec: ls /usr/
+                execute: ls /usr/
 ```
+
+:::info
+If the command-line argument for the variable has been specified, then no prompt will be shown, and the variable will use the value provided via the command line.
+:::
 
 ## Commands
 
@@ -179,20 +172,21 @@ Commands can contain zero or more subcommands.
 ```yaml
 commands:
 
-    # Parent command for grouping build-related commands
     build:
+        desc: Parent command for grouping build-related commands
+
         commands:
 
-            # build backend subcommand
             backend:
+                desc: Builds the backend
                 action: ...
 
-            # build frontend subcommand
             frontend:
+                desc: Builds the frontend
                 action: ...
 ```
 
-This would result in a top-level `build` command with two subcommands.
+The configuration above would result in a top-level `build` command with two subcommands.
 
 ```sh
 $ gecko build --help
@@ -208,23 +202,14 @@ Options:
 ```
 
 Because the `build` command doesn't have it's own action, `gecko build` cannot be executed on it's own.
-This can be useful for grouping related commands together.
 
 :::note
 If a command does not have any actions, then it **must** have at least one subcommand.
 :::
 
-If desired, the `commands` field name can also be shortened to `cmds`.
-
-```yaml
-cmds:
-    greet:
-        action: echo "Hello!"
-```
-
 ### Actions 
 
-The actual commands that get executed are called Actions.
+Actions define the actual commands that will be executed.
 
 Commands can execute a single action using the `action` field, or multiple actions using the `actions` field.
 These fields are mutally exclusive.
@@ -268,11 +253,11 @@ Below are some examples of raw executions vs. bash executions.
 variables:
     raw_name:
         desc: Execution variable using a raw execution
-        exec: cat example.txt
+        execute: cat example.txt
     
     bash_name:
         desc: Execution variable using bash
-        exec:
+        execute:
             sh: cat example.json | jq -r '.name'
 
     raw_option:
@@ -280,14 +265,14 @@ variables:
         prompt: 
             message: Pick one
             options:
-                exec: cat example.txt
+                execute: cat example.txt
     
     bash_option:
         desc: Prompt options sourced using a bash command
         prompt:
             message: Pick one
             options:
-                exec:
+                execute:
                     sh: cat example.json | jq -r '.options[]'
 
 commands:
@@ -320,16 +305,16 @@ Only support for raw and Bash execution is supported. Other shells will be added
 ### Working Directories
 
 By default, commands are executed in the current working directory.
-This can be overridden using the `working_directory` field (`workdir` and `wd` are also accepted.)
+This can be overridden using the `workdir` field.
 
 ```yaml
 # Raw execution
-exec:
+execute:
     workdir: ./config/
     command: ...
 
 # Bash execution
-exec:
+execute:
     workdir: ./config/
     bash: ...
 ```
@@ -340,10 +325,28 @@ This also works on Actions.
 actions:
 
     # Raw execution
-    - wd: ./config/
-      sh: ...
+    - workdir: ./config/
+      execute: ...
 
     # Bash execution
-    - wd: ./config/
-      sh: ...
+    - workdir: ./config/
+      bash: ...
 ```
+
+## Shortenings
+
+Many fields have an alternative, shorter name.
+Here is a list of the available shortenings:
+
+| Field Name | Alias |
+| ---------- | ----- |
+| `variables` | `vars` |
+| `commands` | `cmds` |
+| `description` | `desc` |
+| `argument` | `arg` |
+| `options` | `opts` |
+| `argument` | `arg` |
+| `execute` | `exec` |
+| `command` | `cmd` |
+| `bash` | `sh` |
+| `workdir` | `wd` |
