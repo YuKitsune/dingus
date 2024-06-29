@@ -1,5 +1,11 @@
 commands:
 
+  docs:
+    description: Runs the docs website locally
+    action:
+      workdir: ./docs
+      command: npm start
+
   build:
     description: Builds the binary
     action: cargo build

@@ -10,59 +10,32 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Script Consolidation',
-    Svg: require('@site/static/img/twemoji/package.svg').default,
+    title: 'Cross Platform',
+    Svg: require('@site/static/img/twemoji/laptop.svg').default,
     description: (
       <>
-        Keep all your build, CI, and configuration scripts in one place with Dingus, ensuring every developer has access to the same streamlined workflows.
+        Dingus is written in Rust, providing a single, cross-platform binary that works on Windows, macOS, and Linux, and doesn't rely on any specific shell.
       </>
     ),
   },
   {
-    title: 'Consistent User Experience',
-    Svg: require('@site/static/img/twemoji/globe.svg').default,
+    title: 'Familiar Interface',
+    Svg: require('@site/static/img/twemoji/keyboard.svg').default,
     description: (
       <>
-        Dingus provides a POSIX-style interface for your commands, offering a familiar and consistent user experience.
+        Dingus presents your tasks and variables in a POSIX-style interface, offering a familiar and consistent user experience.
       </>
     ),
   },
   {
-    title: 'Streamlined Onboarding',
-    Svg: require('@site/static/img/twemoji/rocket.svg').default,
+    title: 'Simple Configuration',
+    Svg: require('@site/static/img/twemoji/wrench.svg').default,
     description: (
       <>
-        Bring new contributors up to speed with a single, well-documented YAML file, reducing onboarding time and ensuring consistency in development environments.
+        Define your commands and variables in a simple, human-readable YAML configuration file.
       </>
     ),
   },
-  // {
-  //   title: 'Collaboration and Sharing',
-  //   Svg: require('@site/static/img/twemoji/handshake.svg').default,
-  //   description: (
-  //     <>
-  //       Easily share your configurations with team members or the community, and extend others' configurations to fit your needs.
-  //     </>
-  //   ),
-  // },
-  // {
-  //   title: 'Remote Execution',
-  //   Svg: require('@site/static/img/twemoji/satellite.svg').default,
-  //   description: (
-  //     <>
-  //       Execute tasks on remote machines via SSH with Dingus, simplifying remote infrastructure management and routine maintenance tasks.
-  //     </>
-  //   ),
-  // },
-  // {
-  //   title: 'Dotfiles',
-  //   Svg: require('@site/static/img/twemoji/folder.svg').default,
-  //   description: (
-  //     <>
-  //       Replace bash aliases and functions with Dingus to create a cross-platform, shell-agnostic solution with native support for flags, arguments, and more.
-  //     </>
-  //   ),
-  // }
 ];
 
 function Feature({title, Svg, description}: FeatureItem) {

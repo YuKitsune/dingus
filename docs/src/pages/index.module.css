@@ -21,3 +21,8 @@
   align-items: center;
   justify-content: center;
 }
+
+.code {
+  display: inline-block;
+  padding-top: 1rem;
+}

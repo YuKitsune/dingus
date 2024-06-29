@@ -4,6 +4,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
+import CodeBlock from '@theme/CodeBlock';
 
 import styles from './index.module.css';
 
@@ -22,6 +23,9 @@ function HomepageHeader() {
             to="/docs/introduction">
             Get Started
           </Link>
+        </div>
+        <div className={styles.code}>
+          <CodeBlock language="sh">cargo install --git https://github.com/YuKitsune/dingus</CodeBlock>
         </div>
       </div>
     </header>
