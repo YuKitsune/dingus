@@ -17,46 +17,109 @@ TODO:
 
 # Introduction
 
-Gecko is a versatile command-line application designed to streamline task automation through a simple YAML configuration file.
-With Gecko, users can define top-level variables, create complex command workflows, and execute tasks locally or remotely via SSH.
-Perfect for developers, system administrators, and power users, Gecko consolidates your scripts and commands into an easily manageable format, enhancing productivity and simplifying automation.
+Gecko is a flexible command runner with a simple configuration language.
 
-## Getting Started
+## Features
 
-Get started by **creating a YAML file**.
+- Designed from the ground-up as a command runner without the constraints of a build tool.
+- Supports Windows, macOS, and Linux, and isn't dependant on a specific Shell.
+- Provides a POSIX-style command-line interface allowing for variable substitution using command-line arguments.
+- Uses a simple YAML file for configuration.
+- Additional configuration files can be included from the local file system or from a URL (Coming soon.)
+- Allows for commands to be executed on remote machines (Coming soon.)
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+## Overview
 
-### What you'll need
+:::warning
+Gecko is still in early development and it's configuration syntax and usage are subject to change.
+:::
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+Gecko relies on YAML for its configuration.
 
-## Generate a new site
+In your `Gecko.yaml`, you can define variables at the root level.
+These variables are global, so they're available to all commands and subcommands throughout the file.
 
-Generate a new Docusaurus site using the **classic template**.
+Example:
+```yaml
+variables:
+  name: Godzilla
 
-The classic template will automatically be added to your project after you run the command:
+commands:
+  greet:
+    action: echo Hello, $name!
 
-```bash
-npm init docusaurus@latest my-website classic
+  pet:
+    action: echo You have petted $name!
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+```sh
+$ gecko greet
+Hello, Godzilla!
 
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
+$ gecko pet
+You have petted Godzilla!
 ```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+You can also define variables within commands.
+These variables are available to the command and its subcommands.
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+```yaml
+description: Example Gecko configuration
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+commands:
+  greet:
+    variables:
+      name: Godzilla
+    action: echo Hello, $name!
+
+  pet:
+    variables:
+      name: Maxwell
+    action: echo You have petted $name!
+```
+
+```sh
+$ gecko greet
+Hello, Godzilla!
+
+$ gecko pet
+You have petted Maxwell!
+```
+
+Actions represent the actual commands that get executed.
+When you call a command, its actions are run in sequence.
+
+```yaml
+description: Example Gecko configuration
+
+commands:
+  greet:
+    variables:
+      name: Godzilla
+
+    # Single action
+    action: echo Hello, $name!
+
+  pet:
+    variables:
+      name: Maxwell
+
+    # Multiple actions
+    actions:
+      - echo Petting $name...
+      - sleep 5
+      - echo You have petted $name!
+```
+
+```sh
+$ gecko greet
+Hello, Godzilla!
+
+$ gecko pet
+Petting...
+You have petted Maxwell!
+```
+
+## Use Cases
+
+Gecko can be used in a variety of ways, but it's primary use is for centralising project-specific scripts, and making them more discoverable.
