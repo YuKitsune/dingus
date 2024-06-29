@@ -578,7 +578,7 @@ commands:
     my-root-var:
         exec:
             sh: echo \"My root value\"
-            working_directory: ../
+            workdir: ../
 commands:
     demo:
         variables:
@@ -910,7 +910,7 @@ commands:
         actions:
             - bash: echo \"Hello, World!\"
             - bash: pwd
-              working_directory: /";
+              workdir: /";
         let config = parse_config(yaml).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
