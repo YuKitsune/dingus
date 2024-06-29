@@ -82,11 +82,11 @@ mod tests {
         let greet_command = Command::new("greet")
             .arg(arg);
 
-        let root_command = Command::new("gecko")
+        let root_command = Command::new("dingus")
             .subcommand(greet_command);
 
         let value = "Dingus";
-        let root_matches = root_command.get_matches_from(vec!["gecko", "greet", "--name", value]);
+        let root_matches = root_command.get_matches_from(vec!["dingus", "greet", "--name", value]);
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "greet");
 
@@ -105,13 +105,13 @@ mod tests {
         let print_command = Command::new("print")
             .arg(file_arg);
 
-        let root_command = Command::new("gecko")
+        let root_command = Command::new("dingus")
             .subcommand(print_command);
 
         // Act
         let file_name_1 = "first.txt";
         let file_name_2 = "second.txt";
-        let root_matches = root_command.get_matches_from(vec!["gecko", "print", "--file", file_name_1, file_name_2]);
+        let root_matches = root_command.get_matches_from(vec!["dingus", "print", "--file", file_name_1, file_name_2]);
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "print");
 

@@ -9,7 +9,7 @@ pub fn create_root_command(config: &Config) -> Command {
     let mut meta_commands = create_meta_commands();
     subcommands.append(&mut meta_commands);
 
-    let mut root_command = Command::new("gecko")
+    let mut root_command = Command::new("dingus")
         .subcommands(subcommands)
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -482,7 +482,7 @@ mod tests {
         let root_command = create_root_command(&config);
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["gecko", "cmd"]);
+        let matches = root_command.clone().get_matches_from(vec!["dingus", "cmd"]);
         let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 
         // Assert
@@ -546,7 +546,7 @@ mod tests {
         let root_command = create_root_command(&config);
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["gecko", "parent", "target"]);
+        let matches = root_command.clone().get_matches_from(vec!["dingus", "parent", "target"]);
         let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 
         // Assert
@@ -599,7 +599,7 @@ mod tests {
         let root_command = create_root_command(&config);
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["gecko", "parent", "subcommand"]);
+        let matches = root_command.clone().get_matches_from(vec!["dingus", "parent", "subcommand"]);
         let (found_command, found_variables, _) = find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 
         // Assert

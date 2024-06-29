@@ -54,8 +54,8 @@ commands:
 ```
 
 ```
-$ gecko --help
-Usage: gecko [OPTIONS] <COMMAND>
+$ dingus --help
+Usage: dingus [OPTIONS] <COMMAND>
 
 Commands:
   greet    Greet the user
@@ -188,8 +188,8 @@ commands:
 The configuration above would result in a top-level `build` command with two subcommands.
 
 ```sh
-$ gecko build --help
-Usage: gecko build <COMMAND>
+$ dingus build --help
+Usage: dingus build <COMMAND>
 
 Commands:
   frontend  Builds the frontend
@@ -200,7 +200,7 @@ Options:
   -h, --help  Print help
 ```
 
-Because the `build` command doesn't have it's own action, `gecko build` cannot be executed on it's own.
+Because the `build` command doesn't have it's own action, `dingus build` cannot be executed on it's own.
 
 :::note
 If a command does not have any actions, then it **must** have at least one subcommand.
@@ -229,8 +229,8 @@ commands:
 
 Commands can also serve as an alias for a real command. This is similar to aliases in Bash and ZSH.
 
-In this example, executing `gecko deps` will act as an alias for `docker compose --file ./docker-compose.deps.yaml`.
-Anything after `gecko deps` will be appended to the end of the target command.
+In this example, executing `dingus deps` will act as an alias for `docker compose --file ./docker-compose.deps.yaml`.
+Anything after `dingus deps` will be appended to the end of the target command.
 
 ```yaml
 commands:
