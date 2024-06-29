@@ -52,13 +52,9 @@ const config: Config = {
 
   themeConfig: {
     // TODO: Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    // image: 'img/docusaurus-social-card.jpg',
     navbar: {
       title: 'Dingus',
-      logo: {
-        alt: 'Dingus Icon',
-        src: 'img/twemoji/lizard.svg', // TODO: Replace with your project's logo
-      },
       items: [
         {
           type: 'docSidebar',
