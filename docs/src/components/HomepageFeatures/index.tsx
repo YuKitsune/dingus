@@ -28,7 +28,7 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
-    title: 'Faster Onboarding',
+    title: 'Streamlined Onboarding',
     Svg: require('@site/static/img/twemoji/rocket.svg').default,
     description: (
       <>
@@ -36,33 +36,33 @@ const FeatureList: FeatureItem[] = [
       </>
     ),
   },
-  {
-    title: 'Collaboration and Sharing',
-    Svg: require('@site/static/img/twemoji/handshake.svg').default,
-    description: (
-      <>
-        Easily share your Geckofiles with team members or the community, and extend others' configurations to fit your needs.
-      </>
-    ),
-  },
-  {
-    title: 'Remote Execution',
-    Svg: require('@site/static/img/twemoji/satellite.svg').default,
-    description: (
-      <>
-        Execute tasks on remote machines via SSH with Gecko, simplifying remote infrastructure management and routine maintenance tasks.
-      </>
-    ),
-  },
-  {
-    title: 'Dotfiles',
-    Svg: require('@site/static/img/twemoji/folder.svg').default,
-    description: (
-      <>
-        Replace bash aliases and functions with Gecko to create a cross-platform, shell-agnostic solution with native support for flags, arguments, and more.
-      </>
-    ),
-  }
+  // {
+  //   title: 'Collaboration and Sharing',
+  //   Svg: require('@site/static/img/twemoji/handshake.svg').default,
+  //   description: (
+  //     <>
+  //       Easily share your Geckofiles with team members or the community, and extend others' configurations to fit your needs.
+  //     </>
+  //   ),
+  // },
+  // {
+  //   title: 'Remote Execution',
+  //   Svg: require('@site/static/img/twemoji/satellite.svg').default,
+  //   description: (
+  //     <>
+  //       Execute tasks on remote machines via SSH with Gecko, simplifying remote infrastructure management and routine maintenance tasks.
+  //     </>
+  //   ),
+  // },
+  // {
+  //   title: 'Dotfiles',
+  //   Svg: require('@site/static/img/twemoji/folder.svg').default,
+  //   description: (
+  //     <>
+  //       Replace bash aliases and functions with Gecko to create a cross-platform, shell-agnostic solution with native support for flags, arguments, and more.
+  //     </>
+  //   ),
+  // }
 ];
 
 function Feature({title, Svg, description}: FeatureItem) {
