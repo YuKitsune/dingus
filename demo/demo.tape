@@ -63,12 +63,12 @@ Set Height 600
 # Setup
 Hide
 
-# Install gecko so we don't have to call cargo run
+# Install dingus so we don't have to call cargo run
 Require cargo
 Type "cargo install --path ../" Enter
-Require gecko
+Require dingus
 
-# Not required for gecko, just for the demos
+# Not required for dingus, just for the demos
 Require gum
 
 # All done, clean up before recording
@@ -80,29 +80,29 @@ Show
 Output demo.gif
 
 # Root help command
-Type "gecko" Sleep 500ms Enter
+Type "dingus" Sleep 500ms Enter
 Sleep 2s
 
 # Build
-Type "gecko build --help" Sleep 500ms Enter
+Type "dingus build --help" Sleep 500ms Enter
 Sleep 2s
-Type "gecko build docker" Sleep 500ms Enter
+Type "dingus build docker" Sleep 500ms Enter
 Sleep 3s
 
 # Test
-Type "gecko test" Sleep 500ms Enter
+Type "dingus test" Sleep 500ms Enter
 Sleep 1s
 
-Type "gecko test integration" Sleep 500ms Enter
+Type "dingus test integration" Sleep 500ms Enter
 Sleep 3s
 
 # Deploy (local)
-Type "gecko deploy" Sleep 500ms Enter
+Type "dingus deploy" Sleep 500ms Enter
 Sleep 3s
 
 Type "loc" Sleep 1s Enter
 Sleep 3s
 
 # Deploy (prod)
-Type "gecko deploy --environment production" Sleep 500ms Enter
+Type "dingus deploy --environment production" Sleep 500ms Enter
 Sleep 5s

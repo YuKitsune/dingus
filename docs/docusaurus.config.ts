@@ -3,12 +3,12 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Gecko CLI',
-  tagline: 'Effortless task automation.',
+  title: 'Dingus',
+  tagline: 'A dead-simple task runner.',
   favicon: 'img/favicon.png',
 
   // Set the production url of your site here
-  url: 'https://geckocli.dev',
+  url: 'https://dingus.sh',
 
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
@@ -17,7 +17,7 @@ const config: Config = {
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'throw',
 
-  scripts: [{src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': 'geckocli.dev'}],
+  scripts: [{src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': 'dingus.sh'}],
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -35,13 +35,13 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/yukitsune/gecko/tree/main/docs/',
+            'https://github.com/yukitsune/dingus/tree/main/docs/',
         },
         blog: {
           showReadingTime: true,
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/yukitsune/gecko/tree/main/docs/',
+            'https://github.com/yukitsune/dingus/tree/main/docs/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -54,10 +54,10 @@ const config: Config = {
     // TODO: Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'Gecko CLI',
+      title: 'Dingus',
       logo: {
-        alt: 'Gecko CLI Logo',
-        src: 'img/twemoji/lizard.svg',
+        alt: 'Dingus Icon',
+        src: 'img/twemoji/lizard.svg', // TODO: Replace with your project's logo
       },
       items: [
         {
@@ -68,7 +68,7 @@ const config: Config = {
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {
-          href: 'https://github.com/yukitsune/gecko',
+          href: 'https://github.com/yukitsune/dingus',
           label: 'GitHub',
           position: 'right',
         },
@@ -112,7 +112,7 @@ const config: Config = {
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/yukitsune/gecko',
+              href: 'https://github.com/yukitsune/dingus',
             },
           ],
         },

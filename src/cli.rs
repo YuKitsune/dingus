@@ -23,7 +23,7 @@ pub fn create_root_command(config: &Config) -> Command {
 }
 
 // Todo: Refactor this to use an arg?
-// Nah better idea. Expose it as a built-in variable. Offer to create a root-level Geckofile that
+// Nah better idea. Expose it as a built-in variable. Offer to create a root-level config file that
 // can just print it out.
 fn create_meta_commands() -> Vec<Command> {
     vec![

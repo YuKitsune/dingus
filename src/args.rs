@@ -63,9 +63,9 @@ mod tests {
 
         // Act
         let value = "Dingus";
-        let matches = Command::new("gecko")
+        let matches = Command::new("dingus")
             .arg(arg)
-            .get_matches_from(vec!["gecko", "--name", value]);
+            .get_matches_from(vec!["dingus", "--name", value]);
 
         let arg_resolver = ClapArgumentResolver::from_arg_matches(&matches);
 

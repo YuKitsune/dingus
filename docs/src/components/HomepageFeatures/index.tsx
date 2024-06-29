@@ -14,7 +14,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/twemoji/package.svg').default,
     description: (
       <>
-        Keep all your build, CI, and configuration scripts in one place with Gecko, ensuring every developer has access to the same streamlined workflows.
+        Keep all your build, CI, and configuration scripts in one place with Dingus, ensuring every developer has access to the same streamlined workflows.
       </>
     ),
   },
@@ -23,7 +23,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/twemoji/globe.svg').default,
     description: (
       <>
-        Gecko provides a POSIX-style interface for your commands, offering a familiar and consistent user experience.
+        Dingus provides a POSIX-style interface for your commands, offering a familiar and consistent user experience.
       </>
     ),
   },
@@ -32,7 +32,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/twemoji/rocket.svg').default,
     description: (
       <>
-        Bring new contributors up to speed with a single, well-documented Geckofile, reducing onboarding time and ensuring consistency in development environments.
+        Bring new contributors up to speed with a single, well-documented YAML file, reducing onboarding time and ensuring consistency in development environments.
       </>
     ),
   },
@@ -41,7 +41,7 @@ const FeatureList: FeatureItem[] = [
   //   Svg: require('@site/static/img/twemoji/handshake.svg').default,
   //   description: (
   //     <>
-  //       Easily share your Geckofiles with team members or the community, and extend others' configurations to fit your needs.
+  //       Easily share your configurations with team members or the community, and extend others' configurations to fit your needs.
   //     </>
   //   ),
   // },
@@ -50,7 +50,7 @@ const FeatureList: FeatureItem[] = [
   //   Svg: require('@site/static/img/twemoji/satellite.svg').default,
   //   description: (
   //     <>
-  //       Execute tasks on remote machines via SSH with Gecko, simplifying remote infrastructure management and routine maintenance tasks.
+  //       Execute tasks on remote machines via SSH with Dingus, simplifying remote infrastructure management and routine maintenance tasks.
   //     </>
   //   ),
   // },
@@ -59,7 +59,7 @@ const FeatureList: FeatureItem[] = [
   //   Svg: require('@site/static/img/twemoji/folder.svg').default,
   //   description: (
   //     <>
-  //       Replace bash aliases and functions with Gecko to create a cross-platform, shell-agnostic solution with native support for flags, arguments, and more.
+  //       Replace bash aliases and functions with Dingus to create a cross-platform, shell-agnostic solution with native support for flags, arguments, and more.
   //     </>
   //   ),
   // }

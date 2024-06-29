@@ -9,5 +9,5 @@ commands:
     action: cargo test
 
   install:
-    description: Installs the gecko binary into the local system
+    description: Installs the dingus binary into the local system
     action: cargo install --path .

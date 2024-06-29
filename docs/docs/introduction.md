@@ -5,7 +5,7 @@ sidebar_label: Introduction
 
 <!-- 
 TODO:
-- Introduction: What is Gecko? What does it do? How can I benefit from it?
+- Introduction: What is Dingus? What does it do? How can I benefit from it?
 - Installation
 - Configuration: Examples of each configuration scenario
 - Contributing: Guidelines for making contributions
@@ -13,12 +13,12 @@ TODO:
 - Sponsorship
 - Feature sections (Front page)
 - Artwork
-- Privacy (No tracking by gecko, disclaimer about tracking from package managers, Plausible tracking on docs page)
+- Privacy (No tracking by dingus, disclaimer about tracking from package managers, Plausible tracking on docs page)
 -->
 
 # Introduction
 
-Gecko is a flexible command runner with a simple configuration language.
+Dingus is a dead-simple task runner.
 
 ## Features
 
@@ -32,12 +32,12 @@ Gecko is a flexible command runner with a simple configuration language.
 ## Overview
 
 :::warning
-Gecko is still in early development and it's configuration syntax and usage are subject to change.
+Dingus is still in early development and it's configuration syntax and usage are subject to change.
 :::
 
-Gecko relies on YAML for its configuration.
+Dingus relies on YAML for its configuration.
 
-In your `Gecko.yaml`, you can define variables at the root level.
+In your `Dingus.yaml`, you can define variables at the root level.
 These variables are global, so they're available to all commands and subcommands throughout the file.
 
 Example:
@@ -54,10 +54,10 @@ commands:
 ```
 
 ```sh
-$ gecko greet
+$ dingus greet
 Hello, Godzilla!
 
-$ gecko pet
+$ dingus pet
 You have petted Godzilla!
 ```
 
@@ -65,7 +65,7 @@ You can also define variables within commands.
 These variables are available to the command and its subcommands.
 
 ```yaml
-description: Example Gecko configuration
+description: Example Dingus configuration
 
 commands:
   greet:
@@ -80,10 +80,10 @@ commands:
 ```
 
 ```sh
-$ gecko greet
+$ dingus greet
 Hello, Godzilla!
 
-$ gecko pet
+$ dingus pet
 You have petted Maxwell!
 ```
 
@@ -91,7 +91,7 @@ Actions represent the actual commands that get executed.
 When you call a command, its actions are run in sequence.
 
 ```yaml
-description: Example Gecko configuration
+description: Example Dingus configuration
 
 commands:
   greet:
@@ -113,14 +113,14 @@ commands:
 ```
 
 ```sh
-$ gecko greet
+$ dingus greet
 Hello, Godzilla!
 
-$ gecko pet
+$ dingus pet
 Petting...
 You have petted Maxwell!
 ```
 
 ## Use Cases
 
-Gecko can be used in a variety of ways, but it's primary use is for centralising project-specific scripts, and making them more discoverable.
+Dingus can be used in a variety of ways, but it's primary use is for centralising project-specific scripts, and making them more discoverable.

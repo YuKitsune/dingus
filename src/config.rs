@@ -6,14 +6,14 @@ use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 
 const CONFIG_FILE_NAMES: [&str;4] = [
-    "gecko.yaml",
-    "Gecko.yaml",
-    "gecko.yml",
-    "Gecko.yml"
+    "dingus.yaml",
+    "Dingus.yaml",
+    "dingus.yml",
+    "Dingus.yml"
 ];
 
 const DEFAULT_CONFIG_FILE: &str =
-    "description: My Gecko file
+    "description: My Dingus file
 
 variables:
   name: Godzilla
@@ -24,7 +24,7 @@ commands:
 
 // Todo: Support reading from parent directories
 
-/// Loads the [`Config`] from a Geckofile in the current directory.
+/// Loads the [`Config`] from a file in the current directory.
 pub fn load() -> Result<Config, ConfigError> {
     for config_file_name in CONFIG_FILE_NAMES {
         if !Path::new(config_file_name).exists() {
@@ -40,7 +40,7 @@ pub fn load() -> Result<Config, ConfigError> {
     return Err(ConfigError::FileNotFound)
 }
 
-/// Creates a new Geckofile in the current directory.
+/// Creates a new config file in the current directory.
 pub fn init() -> Result<String, ConfigError> {
     let file_name = CONFIG_FILE_NAMES[0];
 
