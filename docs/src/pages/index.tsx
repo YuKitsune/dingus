@@ -19,8 +19,7 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            /*to="/docs"*/
-            >
+            to="/docs">
             Get Started
           </Link>
         </div>
@@ -34,7 +33,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={`${siteConfig.title}`}
-      description="Simplify Task Automation with Ease.">
+      description="A dead-simple task runner.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

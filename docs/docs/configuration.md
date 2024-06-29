@@ -13,7 +13,6 @@ Variables defined at the root-level are available to all commands defined in the
 Variables defined on a specific command are available to that command and any of it's subcommands.
 
 ```yaml
-
 # Root-level variables
 variables:
     name: Dingus
