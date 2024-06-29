@@ -14,4 +14,4 @@ Commands and variables are defined in a `yaml` file that's easy to read and writ
 
 Dingus is cross-platform, and doesn't rely on a specific shell for execution.
 
-Want to learn more? Check out the [docs](/docs), and star the project on [GitHub](https://github.com/YuKitsune/Dingus)!
+Want to learn more? Check out the [docs](/docs/introduction), and star the project on [GitHub](https://github.com/YuKitsune/Dingus)!
