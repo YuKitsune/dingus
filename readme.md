@@ -112,4 +112,4 @@ You have petted Maxwell!
 
 ## Learn more
 
-Interested in learning more? Check out the [docs](https://dingus.sh/docs)!
+Interested in learning more? Check out the [docs](https://dingus.sh/docs/introduction)!
