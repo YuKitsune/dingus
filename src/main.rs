@@ -18,7 +18,6 @@ mod variables;
 
 // Todo:
 // - [ ] Yaml schema
-// - [ ] Documentation (in-code and public-facing)
 // - [ ] Publish v0.1.0
 
 // Ideas:

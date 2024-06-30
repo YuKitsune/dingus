@@ -6,7 +6,7 @@ sidebar_position: 3
 
 ## Variables
 
-Variables are made available to [commands](#commands) as environment variables.
+Variables are exposed to [commands](#commands) as environment variables.
 
 Variables can be defined at the root-level, or on a specific command.
 Variables defined at the root-level are available to all commands defined in the file.
@@ -206,7 +206,7 @@ Because the `build` command doesn't have it's own action, `dingus build` cannot 
 If a command does not have any actions, then it **must** have at least one subcommand.
 :::
 
-### Actions 
+### Actions
 
 Actions define the actual commands that will be executed.
 
@@ -229,21 +229,30 @@ commands:
 
 Commands can also serve as an alias for a real command. This is similar to aliases in Bash and ZSH.
 
-In this example, executing `dingus deps` will act as an alias for `docker compose --file ./docker-compose.deps.yaml`.
-Anything after `dingus deps` will be appended to the end of the target command.
+In this example, executing `dingus deps` is an alias for `docker compose --file ./docker-compose.deps.yaml`.
+Anything after `dingus deps` will be appended to the end of the target command, just like a traditional shell alias.
 
-```yaml
+```sh
+$ cat dingus.yaml
 commands:
     deps:
         alias: docker compose --file ./docker-compose.deps.yaml
+
+$ dingus deps up -d
+[+] Running 2/2
+ ✔ Container rabbitmq  Started
+ ✔ Container postgres  Started
 ```
 
 ## Execution
 
-[Execution variables](#execution-variables), [prompt variable](#prompt-variables) options, and [actions](#actions) all provide a field for command text to be specified. This command is the real command that will be executed.
+[Execution variables](#execution-variables), [prompt variable](#prompt-variables) options, and [actions](#actions) all provide a field for command text to be specified.
+This command is the real command that will be executed.
 
 By default, Dingus will execute these commands directly **without a shell**. This is referred to internally as a "raw execution".
-Dingus will perform Bash-like variable substitution against the command text, as well as injecting all of the variables as environment variables so that the process can read them at runtime. Because raw executions do not rely on a shell, **they do not have access to shell-specific features**.
+For raw executions, Dingus will perform Bash-like variable substitution against the command text, as well as injecting all of the variables as environment variables so that the process can read them at runtime. This variable substitution is handled by the individual shells for shell executions.
+
+Because raw executions do not rely on a shell, **they do not have access to shell-specific features**.
 
 If you need to use a specific shell, use the `bash` or `sh` field within the execution definition.
 Below are some examples of raw executions vs. bash executions.
@@ -298,7 +307,7 @@ commands:
 ```
 
 :::note
-Only support for raw and Bash execution is supported. Other shells will be added at a later date.
+Only support for raw and Bash executions are supported. Other shells will be added at a later date.
 :::
 
 ### Working Directories
