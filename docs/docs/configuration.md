@@ -208,7 +208,7 @@ If a command does not have any actions, then it **must** have at least one subco
 
 ### Actions
 
-Actions define the actual commands that will be executed.
+Actions are the actual commands that will be executed.
 
 Commands can execute a single action using the `action` field, or multiple actions using the `actions` field.
 These fields are mutally exclusive.
@@ -227,7 +227,7 @@ commands:
 
 ### Aliases
 
-Commands can also serve as an alias for a real command. This is similar to aliases in Bash and ZSH.
+Aliases are similar to commands, but behave more like a traditional shell alias.
 
 In this example, executing `dingus deps` is an alias for `docker compose --file ./docker-compose.deps.yaml`.
 Anything after `dingus deps` will be appended to the end of the target command, just like a traditional shell alias.
