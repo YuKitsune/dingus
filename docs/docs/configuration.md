@@ -71,7 +71,7 @@ Options:
 ### Literal Variables
 
 Literal variables are ones where the value is hard-coded to a specific value.
-This value can still be overridden using it's relevent command-line argument.
+This value can still be overridden using its relevent command-line argument.
 
 ```yaml
 variables:
@@ -92,7 +92,7 @@ variables:
 
 ### Execution Variables
 
-Execution variabes will be assigned a value at runtime based on the output of a command.
+Execution variables will be assigned a value at runtime based on the output of a command.
 
 In this example, the `secret` variable will execute `cat secret.txt` and use the output of that command (the contents of `secret.txt` in this case) as it's value.
 

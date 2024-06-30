@@ -21,8 +21,6 @@ It's lightweight, easy to use, and perfect for consolidating project-specific ta
 - Supports Windows, macOS, and Linux, and isn't dependant on a specific Shell.
 - Provides a POSIX-style command-line interface allowing for nested subcommands, and variable substitution using command-line arguments.
 - Uses a simple YAML file for configuration.
-- Additional configuration files can be included from the local file system or from a URL (Coming soon.)
-- Allows for commands to be executed on remote machines (Coming soon.)
 
 ## Overview
 
