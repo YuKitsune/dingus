@@ -9,6 +9,7 @@ edition = "2021"
 clap = { version = "4.5.4", features = ["string"] }
 inquire = "0.7.5"
 linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
+mockall = "0.12.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 tempfile = "3.10.1"

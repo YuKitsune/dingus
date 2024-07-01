@@ -1,8 +1,10 @@
 use clap::ArgMatches;
+use mockall::automock;
 
 pub const ALIAS_ARGS_NAME: &str = "ARGS";
 
 /// Capable of resolving command-line argument values.
+#[automock]
 pub trait ArgumentResolver {
 
     /// For a given `key`, this will return `Some(String)` with the argument value matching the

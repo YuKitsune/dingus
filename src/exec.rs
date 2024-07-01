@@ -2,6 +2,8 @@ use std::error::Error;
 use std::{fmt, io};
 use std::fmt::{Formatter};
 use std::process::{Command};
+use mockall::automock;
+
 use crate::config::{ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant};
 use crate::exec::ExitStatus::Unknown;
 use crate::variables;
@@ -59,6 +61,7 @@ impl Output {
 // Todo: Consider refactoring these to take stdio as args so we can test with stdin.
 
 /// Capable of executing an [`ExecutionConfigVariant`].
+#[automock]
 pub trait CommandExecutor {
 
     /// Executes the provided [`ExecutionConfigVariant`] with the provided [`VariableMap`]
@@ -458,30 +461,31 @@ mod tests {
     }
 
     // TODO: Re-implement. This is flaky.
-    // #[test]
-    // fn raw_command_get_output_has_variables() {
+    #[test]
+    #[ignore]
+    fn raw_command_get_output_has_variables() {
 
-    //     // Arrange
-    //     let variable_name = "CARGO_ALIAS_V";
-    //     let variable_value = "version";
-    //     let mut variables = HashMap::new();
-    //     variables.insert(variable_name.to_string(), variable_value.to_string());
+        // Arrange
+        let variable_name = "CARGO_ALIAS_V";
+        let variable_value = "version";
+        let mut variables = HashMap::new();
+        variables.insert(variable_name.to_string(), variable_value.to_string());
 
-    //     let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cargo v".to_string()));
-    //     let command_executor = create_command_executor();
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cargo v".to_string()));
+        let command_executor = create_command_executor();
 
-    //     // Act
-    //     let result = command_executor.get_output(&exec_config, &variables);
-    //     assert!(!result.is_err());
+        // Act
+        let result = command_executor.get_output(&exec_config, &variables);
+        assert!(!result.is_err());
 
-    //     // Assert
-    //     let output = result.unwrap();
-    //     assert_eq!(output.status, ExitStatus::Success);
-    //     assert!(output.stderr.is_empty());
+        // Assert
+        let output = result.unwrap();
+        assert_eq!(output.status, ExitStatus::Success);
+        assert!(output.stderr.is_empty());
 
-    //     let output_value = String::from_utf8(output.stdout).unwrap();
-    //     assert!(output_value.contains("cargo 1.78.0"));
-    // }
+        let output_value = String::from_utf8(output.stdout).unwrap();
+        assert!(output_value.contains("cargo 1.78.0"));
+    }
 
     #[test]
     fn raw_command_get_output_returns_stdout() {

@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
-use std::fmt::{Formatter};
+use std::fmt::Formatter;
 use std::string::FromUtf8Error;
 use inquire::{InquireError, Password, PasswordDisplayMode, Select, Text};
+use mockall::automock;
 use crate::config::{PromptConfig, PromptOptionsVariant, SelectOptionsConfig, SelectPromptOptions, TextPromptOptions};
 use crate::exec::{CommandExecutor, ExecutionError};
 
@@ -33,6 +34,7 @@ impl fmt::Display for PromptError {
     }
 }
 
+#[automock]
 pub trait PromptExecutor {
 
     /// Prompts the user using the provided [`PromptConfig`], returning the user's response.

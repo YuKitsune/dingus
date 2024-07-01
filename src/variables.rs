@@ -164,29 +164,26 @@ impl fmt::Display for VariableResolutionError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use crate::args::ArgumentResolver;
+    use crate::args::MockArgumentResolver;
     use crate::config::{BashCommandConfig, ExecutionConfigVariant, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, ShellCommandConfigVariant, VariableConfig};
     use crate::config::VariableConfig::Prompt;
-    use crate::prompt::PromptExecutor;
-    use crate::exec::{ExitStatus, Output, CommandExecutor};
+    use crate::prompt::MockPromptExecutor;
+    use crate::exec::{ExitStatus, MockCommandExecutor, Output};
 
     #[test]
     fn variable_resolver_resolves_shorthand_literal() {
 
         // Arrange
-        let command_executor = Box::new(MockCommandExecutor { output: Output {
-            status: ExitStatus::Success,
-            stdout: vec![],
-            stderr: vec![],
-        }});
-        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
-        let prompt_executor = Box::new(MockPromptExecutor{ response: None });
+        let command_executor = MockCommandExecutor::new();
+        let mut argument_resolver = MockArgumentResolver::new();
+        argument_resolver.expect_get().times(0..).returning(|_| None);
+
+        let prompt_executor = MockPromptExecutor::new();
 
         let variable_resolver = RealVariableResolver{
-            command_executor,
-            prompt_executor,
-            argument_resolver,
+            command_executor: Box::new(command_executor),
+            prompt_executor: Box::new(prompt_executor),
+            argument_resolver: Box::new(argument_resolver),
         };
 
         let name = "name";
@@ -209,18 +206,15 @@ mod tests {
     fn variable_resolver_resolves_literal() {
 
         // Arrange
-        let command_executor = Box::new(MockCommandExecutor{ output: Output {
-            status: ExitStatus::Success,
-            stdout: vec![],
-            stderr: vec![],
-        } });
-        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
-        let prompt_executor = Box::new(MockPromptExecutor{ response: None });
+        let command_executor = MockCommandExecutor::new();
+        let mut argument_resolver = MockArgumentResolver::new();
+        argument_resolver.expect_get().times(0..).returning(|_| None);
+        let prompt_executor = MockPromptExecutor::new();
 
         let variable_resolver = RealVariableResolver{
-            command_executor,
-            prompt_executor,
-            argument_resolver,
+            command_executor: Box::new(command_executor),
+            prompt_executor: Box::new(prompt_executor),
+            argument_resolver: Box::new(argument_resolver),
         };
 
         let name = "name";
@@ -248,20 +242,24 @@ mod tests {
 
         // Arrange
         let value = "Dingus";
-        let command_executor = Box::new(MockCommandExecutor{
-            output: Output {
-                status: ExitStatus::Success,
-                stdout: format!("{value}\n").as_bytes().to_vec(),
-                stderr: vec![],
-            }
-        });
-        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
-        let prompt_executor = Box::new(MockPromptExecutor{ response: None });
+        let mut command_executor = MockCommandExecutor::new();
+        command_executor.expect_get_output()
+            .returning(move |_, _| {
+                Ok(Output{
+                    status: ExitStatus::Success,
+                    stdout: value.as_bytes().to_vec(),
+                    stderr: vec!()
+                })
+            });
+
+        let mut argument_resolver = MockArgumentResolver::new();
+        argument_resolver.expect_get().times(0..).returning(|_| None);
+        let prompt_executor = MockPromptExecutor::new();
 
         let variable_resolver = RealVariableResolver{
-            command_executor,
-            prompt_executor,
-            argument_resolver,
+            command_executor: Box::new(command_executor),
+            prompt_executor: Box::new(prompt_executor),
+            argument_resolver: Box::new(argument_resolver),
         };
 
         let name = "name";
@@ -295,20 +293,21 @@ mod tests {
     fn variable_resolver_resolves_text_prompt_variable() {
 
         // Arrange
-        let command_executor = Box::new(MockCommandExecutor{ output: Output {
-            status: ExitStatus::Success,
-            stdout: vec![],
-            stderr: vec![],
-        } });
-        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+        let command_executor = MockCommandExecutor::new();
 
+        let mut argument_resolver = MockArgumentResolver::new();
+        argument_resolver.expect_get().times(0..).returning(|_| None);
+        
         let value = "Dingus";
-        let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
+        let mut prompt_executor = MockPromptExecutor::new();
+        prompt_executor.expect_execute().once().returning(|_| {
+            Ok(value.to_string())
+        });
 
         let variable_resolver = RealVariableResolver{
-            command_executor,
-            prompt_executor,
-            argument_resolver,
+            command_executor: Box::new(command_executor),
+            prompt_executor: Box::new(prompt_executor),
+            argument_resolver: Box::new(argument_resolver),
         };
 
         let name = "name";
@@ -334,20 +333,21 @@ mod tests {
     fn variable_resolver_resolves_select_prompt_variable() {
 
         // Arrange
-        let command_executor = Box::new(MockCommandExecutor{ output: Output {
-            status: ExitStatus::Success,
-            stdout: vec![],
-            stderr: vec![],
-        } });
-        let argument_resolver = Box::new(MockArgumentResolver{ args: HashMap::new()});
+        let command_executor = MockCommandExecutor::new();
 
+        let mut argument_resolver = MockArgumentResolver::new();
+        argument_resolver.expect_get().times(0..).returning(|_| None);
+        
         let value = "Dingus";
-        let prompt_executor = Box::new(MockPromptExecutor{ response: Some(value.to_string()) });
+        let mut prompt_executor = MockPromptExecutor::new();
+        prompt_executor.expect_execute().once().returning(|_| {
+            Ok(value.to_string())
+        });
 
         let variable_resolver = RealVariableResolver{
-            command_executor,
-            prompt_executor,
-            argument_resolver,
+            command_executor: Box::new(command_executor),
+            prompt_executor: Box::new(prompt_executor),
+            argument_resolver: Box::new(argument_resolver),
         };
 
         let name = "name";
@@ -452,50 +452,5 @@ mod tests {
 
         // Assert
         assert_eq!(result, "Hello, Dingus-the-Bingus!")
-    }
-
-    struct MockCommandExecutor {
-        output: Output
-    }
-
-    impl CommandExecutor for MockCommandExecutor {
-        fn execute(&self, _: &ExecutionConfigVariant, _: &VariableMap) -> crate::exec::ExecutionResult {
-            Ok(self.output.status.clone())
-        }
-
-        fn get_output(&self, _: &ExecutionConfigVariant, _: &VariableMap) -> crate::exec::ExecutionOutputResult {
-            Ok(self.output.clone())
-        }
-    }
-
-    struct MockArgumentResolver {
-        args: HashMap<String, String>
-    }
-
-    impl ArgumentResolver for MockArgumentResolver {
-        fn get(&self, key: &String) -> Option<String> {
-            if let Some(value) = self.args.get(key) {
-                return Some(value.clone())
-            }
-
-            return None;
-        }
-        fn get_many(&self, key: &String) -> Option<Vec<String>> {
-            if let Some(value) = self.args.get(key) {
-                return Some(vec![value.clone()])
-            }
-
-            return None;
-        }
-    }
-
-    struct MockPromptExecutor {
-        response: Option<String>
-    }
-
-    impl PromptExecutor for MockPromptExecutor {
-        fn execute(&self, _: &PromptConfig) -> Result<String, PromptError> {
-            Ok(self.response.clone().unwrap())
-        }
     }
 }
