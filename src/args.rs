@@ -61,7 +61,7 @@ mod tests {
     fn argresolver_resolves_arg() {
 
         // Arrange
-        let arg = arg_long(&"name".to_string());
+        let arg = single_arg(&"name".to_string());
 
         // Act
         let value = "Dingus";
@@ -80,7 +80,7 @@ mod tests {
     fn argresolver_resolves_arg_from_subcommand() {
 
         // Arrange
-        let arg = arg_long(&"name".to_string());
+        let arg = single_arg(&"name".to_string());
         let greet_command = Command::new("greet")
             .arg(arg);
 
@@ -103,7 +103,7 @@ mod tests {
     fn argresolver_resolves_multiple_args() {
 
         // Arrange
-        let file_arg = many_arg(&"file".to_string());
+        let file_arg = multi_arg(&"file".to_string());
         let print_command = Command::new("print")
             .arg(file_arg);
 
@@ -124,13 +124,13 @@ mod tests {
         assert_eq!(found_file_names, Some(vec!["first.txt".to_string(), "second.txt".to_string()]));
     }
 
-    fn arg_long(name: &String) -> Arg {
+    fn single_arg(name: &String) -> Arg {
         return Arg::new(name.clone())
             .long(name.clone())
             .action(ArgAction::Append);
     }
 
-    fn many_arg(name: &String) -> Arg {
+    fn multi_arg(name: &String) -> Arg {
         return Arg::new(name.clone())
             .long(name.clone())
             .allow_hyphen_values(true)
