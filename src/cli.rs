@@ -60,6 +60,7 @@ fn create_commands(
                 .subcommand_required(!has_action)
                 .args(args);
 
+            // If the action is an alias, then we use a special argument for the arguments to pass through to the alias
             if let Some(ActionConfig::Alias(_)) = command_config.action.clone() {
                 let raw_args = Arg::new(ALIAS_ARGS_NAME)
                     .num_args(1..)

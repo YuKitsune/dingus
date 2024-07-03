@@ -44,8 +44,7 @@ impl VariableResolver for RealVariableResolver {
 
                 VariableConfig::Execution(execution_conf) => {
 
-                    // TODO: Document this
-                    // Exec variables will have access to the variables defined above it.
+                    // Exec variables need access to the variables defined above them.
                     let output = self.command_executor.get_output(&execution_conf.execution, &resolved_variables)
                         .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Execution(err)))?;
 
@@ -58,10 +57,10 @@ impl VariableResolver for RealVariableResolver {
 
                     let value = String::from_utf8(output.stdout)
                         .map_err(|err| VariableResolutionError::new(key.clone(), VariableResolutionErrorKind::Parse(err)))?;
+                        .trim_end()
+                        .to_string();
 
-                    // Command output has whitespace on the end.
-                    let trimmed_value = value.trim_end().to_string();
-                    resolved_variables.insert(key.clone(), trimmed_value.clone())
+                    resolved_variables.insert(key.clone(), value.clone())
                 }
 
                 VariableConfig::Prompt(prompt_config) => {
