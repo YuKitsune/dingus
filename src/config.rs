@@ -1,4 +1,4 @@
-use std::{fmt, fs, io};
+use std::{fs, io};
 use std::collections::HashMap;
 use std::path::Path;
 use linked_hash_map::LinkedHashMap;

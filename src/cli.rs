@@ -5,11 +5,10 @@ use crate::config::{ActionConfig, CommandConfig, CommandConfigMap, Config, Execu
 /// Creates a root-level [`Command`] for the provided [`Config`].
 pub fn create_root_command(config: &Config) -> Command {
     let root_args = create_args(&config.variables);
-    let mut subcommands = create_commands(&config.commands, &config.variables);
-    let mut meta_commands = create_meta_commands();
-    subcommands.append(&mut meta_commands);
+    let subcommands = create_commands(&config.commands, &config.variables);
 
     let mut root_command = Command::new("dingus")
+        .version(env!("CARGO_PKG_VERSION"))
         .subcommands(subcommands)
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -20,16 +19,6 @@ pub fn create_root_command(config: &Config) -> Command {
     }
 
     return root_command;
-}
-
-// Todo: Refactor this to use an arg?
-// Nah better idea. Expose it as a built-in variable. Offer to create a root-level config file that
-// can just print it out.
-fn create_meta_commands() -> Vec<Command> {
-    vec![
-        Command::new("version")
-            .about("Shows version information")
-    ]
 }
 
 fn create_commands(
@@ -131,27 +120,6 @@ fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
             return arg
         })
         .collect()
-}
-
-pub fn find_meta_command(arg_matches: &ArgMatches) -> MetaCommandResult {
-    match arg_matches.subcommand_name() {
-        Some(command_name) => {
-            match command_name {
-                "version" => {
-                    let version: &str = env!("CARGO_PKG_VERSION");
-                    println!("{}", version);
-                    MetaCommandResult::Executed
-                }
-                _ => MetaCommandResult::NotFound
-            }
-        }
-        None => MetaCommandResult::NotFound
-    }
-}
-
-pub enum MetaCommandResult {
-    Executed,
-    NotFound
 }
 
 /// Finds the [`CommandConfig`], [`VariableConfigMap`], and [`ArgMatches`], matching the provided `arg_matches`.
