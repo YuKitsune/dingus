@@ -97,17 +97,14 @@ fn default_commands() -> CommandConfigMap { CommandConfigMap::new() }
 /// Note that this uses a [`LinkedHashMap`] so that the order of insertion is retained.
 pub type VariableConfigMap = LinkedHashMap<String, VariableConfig>;
 
+// TODO: Consider adding a field to set the environment variable name for a variable
+
 /// The kind of variable.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum VariableConfig {
 
     /// Denotes a shorthand literal variable.
-    ///
-    /// Example:
-    /// ```yaml
-    /// name: Dingus
-    /// ```
     ShorthandLiteral(String),
 
     /// Encapsulates a [`LiteralVariableConfig`].

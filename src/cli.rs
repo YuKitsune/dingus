@@ -85,6 +85,9 @@ fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
     variable_config_map.iter()
         .map(|(key, var_config)| -> Arg {
 
+            // TODO: Try to convert the variable name to an arg name
+            // E.g: `--my-variable` instead of `--my_variable`
+            // Should also consider whether or not it's a good idea to have all variables available as args by default
             let arg_name = var_config.arg_name(key);
 
             let mut arg = Arg::new(arg_name.clone())
