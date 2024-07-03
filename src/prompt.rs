@@ -1,37 +1,22 @@
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
-use std::fmt::Formatter;
 use std::string::FromUtf8Error;
 use inquire::{InquireError, Password, PasswordDisplayMode, Select, Text};
 use mockall::automock;
 use crate::config::{PromptConfig, PromptOptionsVariant, SelectOptionsConfig, SelectPromptOptions, TextPromptOptions};
 use crate::exec::{CommandExecutor, ExecutionError};
+use thiserror::Error;
 
-/// The error type for prompt related errors.
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum PromptError {
 
-    /// Wraps an error from the [`Inquire`] crate.
-    InquireError(InquireError),
+    #[error("prompt failed")]
+    InquireError(#[source] InquireError),
 
-    /// Encapsulates an [`ExecutionError`].
-    ExecutionError(ExecutionError),
+    #[error("failed to determine prompt options")]
+    ExecutionError(#[source] ExecutionError),
 
-    /// Encapsulates a [`FromUtf8Error`].
-    ParseError(FromUtf8Error)
-}
-
-impl Error for PromptError {}
-
-impl fmt::Display for PromptError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            PromptError::InquireError(err) => write!(f, "prompt failed: {}", err),
-            PromptError::ExecutionError(err) => write!(f, "failed to determine prompt options: {}", err),
-            PromptError::ParseError(err) => write!(f, "failed to parse prompt options: {}", err),
-        }
-    }
+    #[error("failed to parse prompt options")]
+    ParseError(#[source] FromUtf8Error)
 }
 
 #[automock]

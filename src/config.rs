@@ -1,9 +1,9 @@
 use std::{fmt, fs, io};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::Path;
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 const CONFIG_FILE_NAMES: [&str;4] = [
     "dingus.yaml",
@@ -56,27 +56,20 @@ fn parse_config(text: &str) -> Result<Config, ConfigError> {
     }
 }
 
-/// The error type for configuration related errors.
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ConfigError {
+    #[error("config file not found")]
     FileNotFound,
-    ReadFailed(io::Error),
-    WriteFailed(io::Error),
-    ParseFailed(serde_yaml::Error)
-}
 
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ConfigError::FileNotFound => write!(f, "config file not found"),
-            ConfigError::ReadFailed(io_err) => write!(f, "failed to read config file: {}", io_err),
-            ConfigError::WriteFailed(io_err) => write!(f, "failed to write config file: {}", io_err),
-            ConfigError::ParseFailed(parse_err) => write!(f, "failed to parse config file: {}", parse_err),
-        }
-    }
-}
+    #[error("failed to read config file")]
+    ReadFailed(#[source] io::Error),
 
-impl Error for ConfigError {}
+    #[error("failed to write config file")]
+    WriteFailed(#[source] io::Error),
+
+    #[error("failed to parse config file")]
+    ParseFailed(#[source] serde_yaml::Error)
+}
 
 /// The root-level of the Configuration.
 #[derive(Serialize, Deserialize, Debug)]

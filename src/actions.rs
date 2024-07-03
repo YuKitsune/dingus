@@ -1,10 +1,9 @@
-use std::error::Error;
-use std::fmt;
 use crate::args::{ALIAS_ARGS_NAME, ArgumentResolver};
 use crate::config::{ActionConfig, AliasActionConfig, ExecutionConfigVariant};
 use crate::config::RawCommandConfigVariant::Shorthand;
 use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
 use crate::variables::{substitute_variables, VariableMap};
+use thiserror::Error;
 
 pub struct ActionExecutor {
     pub command_executor: Box<dyn CommandExecutor>,
@@ -43,12 +42,12 @@ impl ActionExecutor {
 
                         // Re-map non-zero exit codes to errors
                         _ => {
-                            return Err(ActionError::new(idx, ActionErrorKind::StatusCode(status)))
+                            return Err(ActionError::StatusCode { index: idx, status })
                         },
                     }
                 }
                 Err(err) => {
-                    return Err(ActionError::new(idx, ActionErrorKind::ExecutionError(err)))
+                    return Err(ActionError::Execution { index: idx, source: err })
                 }
             }
         }
@@ -69,41 +68,25 @@ impl ActionExecutor {
         // Execute it!
         let exec = ExecutionConfigVariant::RawCommand(Shorthand(full_command_text));
         self.command_executor.execute(&exec, variables)
-            .map_err(|err| ActionError::new(0, ActionErrorKind::ExecutionError(err)))?;
+            .map_err(|err| ActionError::Execution { index: 0, source: err })?;
 
         return Ok(())
     }
 }
 
-#[derive(Debug)]
-pub enum ActionErrorKind {
-    ExecutionError(ExecutionError),
-    StatusCode(ExitStatus)
-}
+#[derive(Error, Debug)]
+pub enum ActionError {
+    #[error("failed to execute action {index}")]
+    Execution {
+        index: usize,
+        source: ExecutionError
+    },
 
-#[derive(Debug)]
-pub struct ActionError {
-    index: usize,
-    kind: ActionErrorKind
-}
-
-impl ActionError {
-    pub fn new(index: usize, kind: ActionErrorKind) -> ActionError {
-        ActionError {
-            index,
-            kind
-        }
-    }
-}
-
-impl Error for ActionError {}
-
-impl fmt::Display for ActionError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.kind {
-            ActionErrorKind::ExecutionError(err) => write!(f, "failed to execute action {}: {}", self.index, err),
-            ActionErrorKind::StatusCode(err) => write!(f, "failed to execute action {}: {}", self.index, err),
-        }
+    // TODO: Reconsider whether a non-zero exit codes should be treated as errors
+    #[error("failed to execute action {index}: {status}")]
+    StatusCode {
+        index: usize,
+        status: ExitStatus
     }
 }
 

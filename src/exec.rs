@@ -1,8 +1,8 @@
-use std::error::Error;
 use std::{fmt, io};
-use std::fmt::{Formatter};
-use std::process::{Command};
+use std::fmt::Formatter;
+use std::process::Command;
 use mockall::automock;
+use thiserror::Error;
 
 use crate::config::{ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant};
 use crate::exec::ExitStatus::Unknown;
@@ -20,7 +20,7 @@ pub enum ExitStatus {
 }
 
 impl ExitStatus {
-    pub fn from_std_exitstatus(exit_status: &std::process::ExitStatus) -> ExitStatus {
+    fn from_std_exitstatus(exit_status: &std::process::ExitStatus) -> ExitStatus {
         return if exit_status.success() {
             ExitStatus::Success
         } else if let Some(code) = exit_status.code() {
@@ -49,7 +49,7 @@ pub struct Output {
 }
 
 impl Output {
-    pub fn from_std_output(output: &std::process::Output) -> Output {
+    fn from_std_output(output: &std::process::Output) -> Output {
         Output {
             status: ExitStatus::from_std_exitstatus(&output.status),
             stdout: output.stdout.clone(),
@@ -151,19 +151,10 @@ fn get_command_for(execution_config: &ExecutionConfigVariant, variables: &Variab
 
 /// The error type for any errors that have occurred during the execution of a command.
 /// Note that non-zero exit codes are not considered to be errors.
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum ExecutionError {
+    #[error(transparent)]
     IO(io::Error)
-}
-
-impl Error for ExecutionError {}
-
-impl fmt::Display for ExecutionError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            ExecutionError::IO(io_error) => io_error.fmt(f),
-        }
-    }
 }
 
 #[cfg(test)]

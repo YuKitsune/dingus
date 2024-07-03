@@ -1,12 +1,13 @@
-use std::{fmt, process};
-use std::error::Error;
+use std::process;
 use crate::args::ClapArgumentResolver;
 use crate::cli::MetaCommandResult;
-use crate::actions::{ActionExecutor};
-use crate::config::{ConfigError};
+use crate::actions::ActionExecutor;
+use crate::config::ConfigError;
 use crate::exec::create_command_executor;
-use crate::prompt::{TerminalPromptExecutor};
+use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
+use thiserror::Error;
+use anyhow::Result;
 
 mod exec;
 mod prompt;
@@ -37,15 +38,7 @@ mod variables;
 // - Deferred actions: Always executes at the end, even if one of the actions fails.
 // - Named actions: Actions can be named so that they can be skipped selectively (--skip arg vs custom conditional stuff per action)
 
-fn main() {
-    let result = run();
-    if let Err(err) = result {
-        eprintln!("{}", err);
-        process::exit(1);
-    }
-}
-
-fn run() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let config_result = config::load();
 
     // Offer to create the config file if one doesn't exist
@@ -57,14 +50,14 @@ fn run() -> Result<(), Box<dyn Error>> {
                     .prompt()?;
 
                 if !should_init {
-                    return Err(Box::new(config_err))
+                    return Err(config_err.into())
                 }
 
                 let file_name = config::init()?;
                 println!("created {file_name}");
                 return Ok(())
             },
-            _ => Err(Box::new(config_err))
+            _ => Err(config_err.into())
         }
     }
 
@@ -111,16 +104,11 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    return Err(Box::new(CommandNotFound{}));
+    return Err(CommandError::CommandNotFound.into());
 }
 
-#[derive(Debug, Clone)]
-struct CommandNotFound;
-
-impl Error for CommandNotFound { }
-
-impl fmt::Display for CommandNotFound {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "could not find a suitable command")
-    }
+#[derive(Error, Debug, Clone)]
+enum CommandError {
+    #[error("could not find a suitable command")]
+    CommandNotFound,
 }
