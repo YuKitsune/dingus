@@ -7,7 +7,7 @@
   <br>
   <br>
 
-  [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/yukitsune/dingus/rust.yml?branch=main)](https://github.com/YuKitsune/dingus/actions/workflows/rust.yml)
+  [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/yukitsune/dingus/ci.yml?branch=main)](https://github.com/YuKitsune/dingus/actions/workflows/ci.yml)
   [![License](https://img.shields.io/github/license/YuKitsune/dingus)](https://github.com/YuKitsune/dingus/blob/main/LICENSE)
   [![Latest Release](https://img.shields.io/github/v/release/YuKitsune/dingus?include_prereleases)](https://github.com/YuKitsune/dingus/releases)
 </h3>
