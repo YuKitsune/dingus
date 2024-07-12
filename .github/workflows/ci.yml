@@ -40,7 +40,7 @@ jobs:
       # Bump this as appropriate. We pin to a version to make sure CI
       # continues to work as cross releases in the past have broken things
       # in subtle ways.
-      CROSS_VERSION: v1.78.0
+      CROSS_VERSION: v0.2.5
       # Emit backtraces on panics.
       RUST_BACKTRACE: 1
     runs-on: ${{ matrix.os }}
