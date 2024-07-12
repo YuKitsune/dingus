@@ -148,7 +148,6 @@ jobs:
         set -x
 
     - name: Run tests
-      if: matrix.target != ''
       run: ${{ env.CARGO }} test --verbose --workspace ${{ env.TARGET_FLAGS }}
 
   rustfmt:
