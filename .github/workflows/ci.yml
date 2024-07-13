@@ -145,3 +145,21 @@ jobs:
         components: rustfmt
     - name: Check formatting
       run: cargo fmt --all --check
+
+  docs:
+    name: Build docs
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./docs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Install dependencies
+        run: npm install
+      - name: Build docs website
+        run: npm run build
