@@ -60,34 +60,48 @@ jobs:
 
     strategy:
       fail-fast: false
-      matrix:
 
-        # TODO: Use Tier 1 targets + some Tier 2 here https://doc.rust-lang.org/rustc/platform-support.html#tier-1-with-host-tools
+      # Building and testing for most Tier 1 platforms, as well as some Tier 2.
+      # https://doc.rust-lang.org/rustc/platform-support.html
+      matrix:
         include:
-          - build: linux-x86
-            os: ubuntu-latest
-            rust: stable
-            target: x86_64-unknown-linux-gnu
-            strip: x86_64-linux-gnu-strip
-          - build: linux-arm
+
+          # Linux
+          - name: "ARM64 Linux (kernel 4.1, glibc 2.17+)"
+            build: stable-aarch64-unknown-linux-gnu
             os: ubuntu-latest
             rust: stable
             target: aarch64-unknown-linux-gnu
             strip: aarch64-linux-gnu-strip
-          - build: macos-x86
+          - name: "ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)"
+            build: stable-armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            rust: stable
+            target: armv7-unknown-linux-gnueabihf
+            strip: arm-linux-gnueabihf-strip
+          - name: "64-bit Linux (kernel 3.2+, glibc 2.17+)"
+            build: stable-x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+            strip: x86_64-linux-gnu-strip
+
+          # macOS
+          - name: "64-bit macOS (10.12+, Sierra+)"
+            build: stable-x86_64-apple-darwin
             os: macos-latest
             rust: stable
             target: x86_64-apple-darwin
-          - build: macos-arm
+          - name: "ARM64 macOS (11.0+, Big Sur+)"
+            build: stable-aarch64-apple-darwin
             os: macos-latest
             rust: stable
             target: aarch64-apple-darwin
-          - build: win-msvc
-            os: windows-latest
-            rust: stable
-            target: x86_64-pc-windows-msvc
-          - build: win-gnu
-            os: windows-latest
+
+          # Windows
+          - name: "64-bit MinGW (Windows 10+)"
+            build: stable-x86_64-pc-windows-gnu
+            os: windows-2022
             rust: stable
             target: x86_64-pc-windows-gnu
 
@@ -138,7 +152,7 @@ jobs:
     - name: Build release binary
       shell: bash
       run: |
-        ${{ env.CARGO }} build --verbose --release --features pcre2 ${{ env.TARGET_FLAGS }}
+        ${{ env.CARGO }} build --verbose --release ${{ env.TARGET_FLAGS }}
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
           bin="target/${{ matrix.target }}/release/dingus.exe"
         else
@@ -170,11 +184,11 @@ jobs:
     - name: Creating directory for archive
       shell: bash
       run: |
-        mkdir -p "$ARCHIVE"/{complete,doc}
+        mkdir -p "$ARCHIVE"
         cp "$BIN" "$ARCHIVE"/
         cp {README.md,LICENSE} "$ARCHIVE"/
 
-    # Todo: Generate man page and completions
+    # TODO: Generate man page and completions
     
     - name: Build archive (Windows)
       shell: bash
