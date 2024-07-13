@@ -68,15 +68,16 @@ impl ActionExecutor {
         let alias_text = substitute_variables(alias_action_config.alias.as_str(), variables);
 
         // Get the args and append them to the alias
-        let args = self
-            .arg_resolver
-            .get_many(&ALIAS_ARGS_NAME.to_string())
-            .expect("couldn't find alias args");
-        let joined_args: String = args.join(" ");
-        let full_command_text = format!("{} {}", alias_text, joined_args);
+        let command_text =
+            if let Some(args) = self.arg_resolver.get_many(&ALIAS_ARGS_NAME.to_string()) {
+                let joined_args: String = args.join(" ");
+                format!("{} {}", alias_text, joined_args)
+            } else {
+                alias_text
+            };
 
         // Execute it!
-        let exec = ExecutionConfigVariant::RawCommand(Shorthand(full_command_text));
+        let exec = ExecutionConfigVariant::RawCommand(Shorthand(command_text));
         self.command_executor
             .execute(&exec, variables)
             .map_err(|err| ActionError::Execution {

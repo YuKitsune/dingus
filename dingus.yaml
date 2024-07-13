@@ -14,6 +14,10 @@ commands:
     description: Runs all the tests
     action: cargo test
 
+  format:
+    description: Alias for cargo fmt --all
+    alias: cargo fmt --all
+
   install:
     description: Installs the dingus binary into the local system
     action: cargo install --path .
