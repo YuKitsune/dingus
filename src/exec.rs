@@ -170,6 +170,7 @@ mod tests {
     // Todo: Testing with stdin?
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_execute_executes_command() {
 
         // Arrange
@@ -192,6 +193,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_execute_evaluates_variables() {
 
         // Arrange
@@ -219,6 +221,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_execute_returns_exit_code() {
 
         // Arrange
@@ -238,6 +241,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_get_output_evaluates_variables() {
 
         // Arrange
@@ -266,6 +270,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_get_output_returns_stdout() {
 
         // Arrange
@@ -289,6 +294,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_get_output_returns_stderr() {
 
         // Arrange
@@ -312,6 +318,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_get_output_returns_exit_code() {
 
         // Arrange
@@ -333,6 +340,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn bash_command_honours_workdir() {
 
         // Arrange
