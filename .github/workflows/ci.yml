@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   test:
-    name: test
+    name: Test on ${{ matrix.name }}
     env:
       # For some builds, we use cross to test on 32-bit and big-endian
       # systems.
@@ -128,6 +128,7 @@ jobs:
       run: ${{ env.CARGO }} test --verbose --workspace ${{ env.TARGET_FLAGS }}
 
   rustfmt:
+    name: Check formatting
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
