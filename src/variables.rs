@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::string::FromUtf8Error;
 use crate::args::ArgumentResolver;
 use crate::config::{VariableConfig, VariableConfigMap};
 use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
 use crate::prompt::{PromptError, PromptExecutor};
+use std::collections::HashMap;
+use std::string::FromUtf8Error;
 use thiserror::Error;
 
 /// A [`HashMap`] where the key is the variable name, and the value is that variables value.
@@ -11,23 +11,25 @@ pub type VariableMap = HashMap<String, String>;
 
 pub trait VariableResolver {
     /// Resolves variables from the provided [`VariableConfigMap`] into a [`VariableMap`].
-    fn resolve_variables(&self, variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError>;
+    fn resolve_variables(
+        &self,
+        variable_configs: &VariableConfigMap,
+    ) -> Result<VariableMap, VariableResolutionError>;
 }
 
 pub struct RealVariableResolver {
     pub command_executor: Box<dyn CommandExecutor>,
     pub prompt_executor: Box<dyn PromptExecutor>,
-    pub argument_resolver: Box<dyn ArgumentResolver>
+    pub argument_resolver: Box<dyn ArgumentResolver>,
 }
 
 impl VariableResolver for RealVariableResolver {
     fn resolve_variables(
         &self,
-        variable_configs: &VariableConfigMap) -> Result<VariableMap, VariableResolutionError> {
-
+        variable_configs: &VariableConfigMap,
+    ) -> Result<VariableMap, VariableResolutionError> {
         let mut resolved_variables = VariableMap::new();
         for (key, config) in variable_configs.iter() {
-
             // Args from the command-line have the highest priority, check there first.
             let arg_name = config.arg_name(key);
             if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
@@ -35,27 +37,39 @@ impl VariableResolver for RealVariableResolver {
             }
 
             _ = match config {
-                VariableConfig::ShorthandLiteral(value) =>
-                    resolved_variables.insert(key.clone(), value.clone()),
+                VariableConfig::ShorthandLiteral(value) => {
+                    resolved_variables.insert(key.clone(), value.clone())
+                }
 
-                VariableConfig::Literal(literal_conf) =>
-                    resolved_variables.insert(key.clone(), literal_conf.value.clone()),
+                VariableConfig::Literal(literal_conf) => {
+                    resolved_variables.insert(key.clone(), literal_conf.value.clone())
+                }
 
                 VariableConfig::Execution(execution_conf) => {
-
                     // Exec variables need access to the variables defined above them.
-                    let output = self.command_executor.get_output(&execution_conf.execution, &resolved_variables)
-                        .map_err(|err| VariableResolutionError::Execution {name: key.clone(), source: err })?;
+                    let output = self
+                        .command_executor
+                        .get_output(&execution_conf.execution, &resolved_variables)
+                        .map_err(|err| VariableResolutionError::Execution {
+                            name: key.clone(),
+                            source: err,
+                        })?;
 
                     // TODO: Make this configurable.
                     // If the command has a non-zero exit code, we probably shouldn't trust it's output.
                     // Return an error instead.
                     if let ExitStatus::Fail(_) = output.status {
-                        return Err(VariableResolutionError::ExitStatus { name: key.clone(), status: output.status.clone() });
+                        return Err(VariableResolutionError::ExitStatus {
+                            name: key.clone(),
+                            status: output.status.clone(),
+                        });
                     }
 
                     let value = String::from_utf8(output.stdout)
-                        .map_err(|err| VariableResolutionError::Parse {name: key.clone(), source: err})?
+                        .map_err(|err| VariableResolutionError::Parse {
+                            name: key.clone(),
+                            source: err,
+                        })?
                         .trim_end()
                         .to_string();
 
@@ -63,14 +77,19 @@ impl VariableResolver for RealVariableResolver {
                 }
 
                 VariableConfig::Prompt(prompt_config) => {
-                    let value = self.prompt_executor.execute(&prompt_config.prompt)
-                        .map_err(|err| VariableResolutionError::Prompt {name: key.clone(), source: err})?;
+                    let value = self
+                        .prompt_executor
+                        .execute(&prompt_config.prompt)
+                        .map_err(|err| VariableResolutionError::Prompt {
+                            name: key.clone(),
+                            source: err,
+                        })?;
                     resolved_variables.insert(key.clone(), value.clone())
                 }
             }
         }
 
-        return Ok(resolved_variables)
+        return Ok(resolved_variables);
     }
 }
 
@@ -128,46 +147,52 @@ pub fn substitute_variables(template: &str, variables: &VariableMap) -> String {
 pub enum VariableResolutionError {
     Execution {
         name: String,
-        source: ExecutionError
+        source: ExecutionError,
     },
 
     #[error("failed to resolve variable \"{name}\": {status}")]
     ExitStatus {
         name: String,
-        status: ExitStatus
+        status: ExitStatus,
     },
 
     Parse {
         name: String,
-        source: FromUtf8Error
+        source: FromUtf8Error,
     },
 
     Prompt {
         name: String,
-        source: PromptError
-    }
+        source: PromptError,
+    },
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::args::MockArgumentResolver;
-    use crate::config::{BashCommandConfig, ExecutionConfigVariant, ExecutionVariableConfig, LiteralVariableConfig, PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig, SelectPromptOptions, ShellCommandConfigVariant, VariableConfig};
     use crate::config::VariableConfig::Prompt;
-    use crate::prompt::MockPromptExecutor;
+    use crate::config::{
+        BashCommandConfig, ExecutionConfigVariant, ExecutionVariableConfig, LiteralVariableConfig,
+        PromptConfig, PromptOptionsVariant, PromptVariableConfig, SelectOptionsConfig,
+        SelectPromptOptions, ShellCommandConfigVariant, VariableConfig,
+    };
     use crate::exec::{ExitStatus, MockCommandExecutor, Output};
+    use crate::prompt::MockPromptExecutor;
 
     #[test]
     fn variable_resolver_resolves_shorthand_literal() {
-
         // Arrange
         let command_executor = MockCommandExecutor::new();
         let mut argument_resolver = MockArgumentResolver::new();
-        argument_resolver.expect_get().times(0..).returning(|_| None);
+        argument_resolver
+            .expect_get()
+            .times(0..)
+            .returning(|_| None);
 
         let prompt_executor = MockPromptExecutor::new();
 
-        let variable_resolver = RealVariableResolver{
+        let variable_resolver = RealVariableResolver {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
@@ -176,7 +201,10 @@ mod tests {
         let name = "name";
         let value = "Dingus";
         let mut variable_configs = VariableConfigMap::new();
-        variable_configs.insert(name.to_string(), VariableConfig::ShorthandLiteral(value.to_string()));
+        variable_configs.insert(
+            name.to_string(),
+            VariableConfig::ShorthandLiteral(value.to_string()),
+        );
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -191,14 +219,16 @@ mod tests {
 
     #[test]
     fn variable_resolver_resolves_literal() {
-
         // Arrange
         let command_executor = MockCommandExecutor::new();
         let mut argument_resolver = MockArgumentResolver::new();
-        argument_resolver.expect_get().times(0..).returning(|_| None);
+        argument_resolver
+            .expect_get()
+            .times(0..)
+            .returning(|_| None);
         let prompt_executor = MockPromptExecutor::new();
 
-        let variable_resolver = RealVariableResolver{
+        let variable_resolver = RealVariableResolver {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
@@ -207,11 +237,14 @@ mod tests {
         let name = "name";
         let value = "Dingus";
         let mut variable_configs = VariableConfigMap::new();
-        variable_configs.insert(name.to_string(), VariableConfig::Literal(LiteralVariableConfig{
-            value: value.to_string(),
-            description: None,
-            argument_name: None,
-        }));
+        variable_configs.insert(
+            name.to_string(),
+            VariableConfig::Literal(LiteralVariableConfig {
+                value: value.to_string(),
+                description: None,
+                argument_name: None,
+            }),
+        );
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -226,24 +259,25 @@ mod tests {
 
     #[test]
     fn variable_resolver_resolves_execution_variable() {
-
         // Arrange
         let value = "Dingus";
         let mut command_executor = MockCommandExecutor::new();
-        command_executor.expect_get_output()
-            .returning(move |_, _| {
-                Ok(Output{
-                    status: ExitStatus::Success,
-                    stdout: value.as_bytes().to_vec(),
-                    stderr: vec!()
-                })
-            });
+        command_executor.expect_get_output().returning(move |_, _| {
+            Ok(Output {
+                status: ExitStatus::Success,
+                stdout: value.as_bytes().to_vec(),
+                stderr: vec![],
+            })
+        });
 
         let mut argument_resolver = MockArgumentResolver::new();
-        argument_resolver.expect_get().times(0..).returning(|_| None);
+        argument_resolver
+            .expect_get()
+            .times(0..)
+            .returning(|_| None);
         let prompt_executor = MockPromptExecutor::new();
 
-        let variable_resolver = RealVariableResolver{
+        let variable_resolver = RealVariableResolver {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
@@ -256,13 +290,13 @@ mod tests {
             VariableConfig::Execution(ExecutionVariableConfig {
                 description: None,
                 argument_name: None,
-                execution: ExecutionConfigVariant::ShellCommand(
-                    ShellCommandConfigVariant::Bash(BashCommandConfig {
+                execution: ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
+                    BashCommandConfig {
                         working_directory: None,
-                        command: format!("echo \"{value}\"")
-                    })
-                ),
-            })
+                        command: format!("echo \"{value}\""),
+                    },
+                )),
+            }),
         );
 
         // Act
@@ -278,20 +312,23 @@ mod tests {
 
     #[test]
     fn variable_resolver_resolves_text_prompt_variable() {
-
         // Arrange
         let command_executor = MockCommandExecutor::new();
 
         let mut argument_resolver = MockArgumentResolver::new();
-        argument_resolver.expect_get().times(0..).returning(|_| None);
-        
+        argument_resolver
+            .expect_get()
+            .times(0..)
+            .returning(|_| None);
+
         let value = "Dingus";
         let mut prompt_executor = MockPromptExecutor::new();
-        prompt_executor.expect_execute().once().returning(|_| {
-            Ok(value.to_string())
-        });
+        prompt_executor
+            .expect_execute()
+            .once()
+            .returning(|_| Ok(value.to_string()));
 
-        let variable_resolver = RealVariableResolver{
+        let variable_resolver = RealVariableResolver {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
@@ -299,11 +336,17 @@ mod tests {
 
         let name = "name";
         let mut variable_configs = VariableConfigMap::new();
-        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{
-            description: None,
-            argument_name: None,
-            prompt: PromptConfig { message: "Enter your name".to_string(), options: Default::default() },
-        }));
+        variable_configs.insert(
+            name.to_string(),
+            Prompt(PromptVariableConfig {
+                description: None,
+                argument_name: None,
+                prompt: PromptConfig {
+                    message: "Enter your name".to_string(),
+                    options: Default::default(),
+                },
+            }),
+        );
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -318,20 +361,23 @@ mod tests {
 
     #[test]
     fn variable_resolver_resolves_select_prompt_variable() {
-
         // Arrange
         let command_executor = MockCommandExecutor::new();
 
         let mut argument_resolver = MockArgumentResolver::new();
-        argument_resolver.expect_get().times(0..).returning(|_| None);
-        
+        argument_resolver
+            .expect_get()
+            .times(0..)
+            .returning(|_| None);
+
         let value = "Dingus";
         let mut prompt_executor = MockPromptExecutor::new();
-        prompt_executor.expect_execute().once().returning(|_| {
-            Ok(value.to_string())
-        });
+        prompt_executor
+            .expect_execute()
+            .once()
+            .returning(|_| Ok(value.to_string()));
 
-        let variable_resolver = RealVariableResolver{
+        let variable_resolver = RealVariableResolver {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
@@ -339,16 +385,24 @@ mod tests {
 
         let name = "name";
         let mut variable_configs = VariableConfigMap::new();
-        variable_configs.insert(name.to_string(), Prompt(PromptVariableConfig{
-            description: None,
-            argument_name: None,
-            prompt: PromptConfig {
-                message: "Select your name".to_string(),
-                options: PromptOptionsVariant::Select(SelectPromptOptions{
-                    options: SelectOptionsConfig::Literal(vec!["Alice".to_string(), "Bob".to_string(), "Charlie".to_string(), "Dingus".to_string()])
-                }),
-            },
-        }));
+        variable_configs.insert(
+            name.to_string(),
+            Prompt(PromptVariableConfig {
+                description: None,
+                argument_name: None,
+                prompt: PromptConfig {
+                    message: "Select your name".to_string(),
+                    options: PromptOptionsVariant::Select(SelectPromptOptions {
+                        options: SelectOptionsConfig::Literal(vec![
+                            "Alice".to_string(),
+                            "Bob".to_string(),
+                            "Charlie".to_string(),
+                            "Dingus".to_string(),
+                        ]),
+                    }),
+                },
+            }),
+        );
 
         // Act
         let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
@@ -362,8 +416,7 @@ mod tests {
     }
 
     #[test]
-    fn substitute_variables_substitutes_variables(){
-
+    fn substitute_variables_substitutes_variables() {
         // Arrange
         let template = "Hello, $name! You are $age years old.";
         let mut variables = VariableMap::new();
@@ -378,8 +431,7 @@ mod tests {
     }
 
     #[test]
-    fn substitute_variables_ignores_escaped(){
-
+    fn substitute_variables_ignores_escaped() {
         // Arrange
         let template = "Hello, $name! You are \\$age years old.";
         let mut variables = VariableMap::new();
@@ -394,8 +446,7 @@ mod tests {
     }
 
     #[test]
-    fn substitute_variables_allows_underscores(){
-
+    fn substitute_variables_allows_underscores() {
         // Arrange
         let template = "Hello, $first_name $last_name!";
         let mut variables = VariableMap::new();
@@ -410,8 +461,7 @@ mod tests {
     }
 
     #[test]
-    fn substitute_variables_allows_adjacent(){
-
+    fn substitute_variables_allows_adjacent() {
         // Arrange
         let template = "Hello, $first_name$last_name!";
         let mut variables = VariableMap::new();
@@ -426,8 +476,7 @@ mod tests {
     }
 
     #[test]
-    fn substitute_variables_does_not_parse_hyphen(){
-
+    fn substitute_variables_does_not_parse_hyphen() {
         // Arrange
         let template = "Hello, $first_name-the-$last_name!";
         let mut variables = VariableMap::new();

@@ -6,7 +6,6 @@ pub const ALIAS_ARGS_NAME: &str = "ARGS";
 /// Capable of resolving command-line argument values.
 #[automock]
 pub trait ArgumentResolver {
-
     /// For a given `key`, this will return `Some(String)` with the argument value matching the
     /// key, otherwise `None` is returned.
     fn get(&self, key: &String) -> Option<String>;
@@ -17,21 +16,21 @@ pub trait ArgumentResolver {
 }
 
 pub struct ClapArgumentResolver {
-    arg_matches: ArgMatches
+    arg_matches: ArgMatches,
 }
 
 impl ClapArgumentResolver {
     pub fn from_arg_matches(arg_matches: &ArgMatches) -> ClapArgumentResolver {
         return ClapArgumentResolver {
-            arg_matches: arg_matches.clone()
-        }
+            arg_matches: arg_matches.clone(),
+        };
     }
 }
 
 impl ArgumentResolver for ClapArgumentResolver {
     fn get(&self, key: &String) -> Option<String> {
         if let Some(found_value) = self.arg_matches.get_one::<String>(key) {
-            return Some(found_value.clone())
+            return Some(found_value.clone());
         }
 
         return None;
@@ -45,7 +44,7 @@ impl ArgumentResolver for ClapArgumentResolver {
                 values.push(found_value.clone());
             }
 
-            return Some(values)
+            return Some(values);
         }
 
         return None;
@@ -59,7 +58,6 @@ mod tests {
 
     #[test]
     fn argresolver_resolves_arg() {
-
         // Arrange
         let arg = single_arg(&"name".to_string());
 
@@ -78,14 +76,11 @@ mod tests {
 
     #[test]
     fn argresolver_resolves_arg_from_subcommand() {
-
         // Arrange
         let arg = single_arg(&"name".to_string());
-        let greet_command = Command::new("greet")
-            .arg(arg);
+        let greet_command = Command::new("greet").arg(arg);
 
-        let root_command = Command::new("dingus")
-            .subcommand(greet_command);
+        let root_command = Command::new("dingus").subcommand(greet_command);
 
         let value = "Dingus";
         let root_matches = root_command.get_matches_from(vec!["dingus", "greet", "--name", value]);
@@ -101,19 +96,22 @@ mod tests {
 
     #[test]
     fn argresolver_resolves_multiple_args() {
-
         // Arrange
         let file_arg = multi_arg(&"file".to_string());
-        let print_command = Command::new("print")
-            .arg(file_arg);
+        let print_command = Command::new("print").arg(file_arg);
 
-        let root_command = Command::new("dingus")
-            .subcommand(print_command);
+        let root_command = Command::new("dingus").subcommand(print_command);
 
         // Act
         let file_name_1 = "first.txt";
         let file_name_2 = "second.txt";
-        let root_matches = root_command.get_matches_from(vec!["dingus", "print", "--file", file_name_1, file_name_2]);
+        let root_matches = root_command.get_matches_from(vec![
+            "dingus",
+            "print",
+            "--file",
+            file_name_1,
+            file_name_2,
+        ]);
         let (subcommand_name, subcommand_matches) = root_matches.subcommand().unwrap();
         assert_eq!(subcommand_name, "print");
 
@@ -121,7 +119,10 @@ mod tests {
 
         // Assert
         let found_file_names = arg_resolver.get_many(&"file".to_string());
-        assert_eq!(found_file_names, Some(vec!["first.txt".to_string(), "second.txt".to_string()]));
+        assert_eq!(
+            found_file_names,
+            Some(vec!["first.txt".to_string(), "second.txt".to_string()])
+        );
     }
 
     fn single_arg(name: &String) -> Arg {
@@ -135,6 +136,6 @@ mod tests {
             .long(name.clone())
             .allow_hyphen_values(true)
             .action(ArgAction::Append)
-            .num_args(0..)
+            .num_args(0..);
     }
 }

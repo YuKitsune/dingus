@@ -1,7 +1,7 @@
-use std::{fmt, io};
+use mockall::automock;
 use std::fmt::Formatter;
 use std::process::Command;
-use mockall::automock;
+use std::{fmt, io};
 use thiserror::Error;
 
 use crate::config::{ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant};
@@ -16,7 +16,7 @@ pub type ExecutionOutputResult = Result<Output, ExecutionError>;
 pub enum ExitStatus {
     Success,
     Fail(i32),
-    Unknown
+    Unknown,
 }
 
 impl ExitStatus {
@@ -36,7 +36,7 @@ impl fmt::Display for ExitStatus {
         match self {
             ExitStatus::Success => write!(f, "process exited with code 0"),
             ExitStatus::Fail(code) => write!(f, "process exited with code {}", code),
-            Unknown => write!(f, "process exited with unknown exit code")
+            Unknown => write!(f, "process exited with unknown exit code"),
         }
     }
 }
@@ -63,27 +63,38 @@ impl Output {
 /// Capable of executing an [`ExecutionConfigVariant`].
 #[automock]
 pub trait CommandExecutor {
-
     /// Executes the provided [`ExecutionConfigVariant`] with the provided [`VariableMap`]
     /// inheriting stdin, stdout, and stderr from the current process.
-    fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult;
+    fn execute(
+        &self,
+        execution_config: &ExecutionConfigVariant,
+        variables: &VariableMap,
+    ) -> ExecutionResult;
 
     /// Executes the provided [`ExecutionConfigVariant`] with the provided [`VariableMap`]
     /// and returns the output from stdout and stderr.
-    fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult;
+    fn get_output(
+        &self,
+        execution_config: &ExecutionConfigVariant,
+        variables: &VariableMap,
+    ) -> ExecutionOutputResult;
 }
 
 pub fn create_command_executor() -> Box<dyn CommandExecutor> {
-    return Box::new(CommandExecutorImpl { })
+    return Box::new(CommandExecutorImpl {});
 }
 
-struct CommandExecutorImpl { }
+struct CommandExecutorImpl {}
 
 impl CommandExecutor for CommandExecutorImpl {
-
-    fn execute(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionResult {
+    fn execute(
+        &self,
+        execution_config: &ExecutionConfigVariant,
+        variables: &VariableMap,
+    ) -> ExecutionResult {
         let mut command = get_command_for(execution_config, variables);
-        let exit_status = command.spawn()
+        let exit_status = command
+            .spawn()
             .map_err(|io_err| ExecutionError::IO(io_err))?
             .wait()
             .map_err(|io_err| ExecutionError::IO(io_err))?;
@@ -91,9 +102,14 @@ impl CommandExecutor for CommandExecutorImpl {
         return Ok(ExitStatus::from_std_exitstatus(&exit_status));
     }
 
-    fn get_output(&self, execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> ExecutionOutputResult {
+    fn get_output(
+        &self,
+        execution_config: &ExecutionConfigVariant,
+        variables: &VariableMap,
+    ) -> ExecutionOutputResult {
         let mut command = get_command_for(execution_config, variables);
-        let output = command.output()
+        let output = command
+            .output()
             .map_err(|io_err| ExecutionError::IO(io_err))?;
 
         return Ok(Output::from_std_output(&output));
@@ -102,27 +118,29 @@ impl CommandExecutor for CommandExecutorImpl {
 
 fn get_command_for(execution_config: &ExecutionConfigVariant, variables: &VariableMap) -> Command {
     match execution_config {
-        ExecutionConfigVariant::ShellCommand(shell_command_config) => {
-            match shell_command_config {
-                ShellCommandConfigVariant::Bash(bash_command_config) => {
-                    let mut binding = Command::new("bash");
-                    binding.arg("-c")
-                        .envs(variables)
-                        .arg(bash_command_config.clone().command);
+        ExecutionConfigVariant::ShellCommand(shell_command_config) => match shell_command_config {
+            ShellCommandConfigVariant::Bash(bash_command_config) => {
+                let mut binding = Command::new("bash");
+                binding
+                    .arg("-c")
+                    .envs(variables)
+                    .arg(bash_command_config.clone().command);
 
-                    if let Some(wd) = bash_command_config.clone().working_directory {
-                        binding.current_dir(wd);
-                    }
-
-                    binding
+                if let Some(wd) = bash_command_config.clone().working_directory {
+                    binding.current_dir(wd);
                 }
+
+                binding
             }
-        }
+        },
 
         ExecutionConfigVariant::RawCommand(raw_command_config) => {
             let (command_template, working_directory) = match raw_command_config {
                 RawCommandConfigVariant::Shorthand(command) => (command.clone(), None),
-                RawCommandConfigVariant::RawCommandConfig(raw_command_config) => (raw_command_config.clone().command, raw_command_config.clone().working_directory),
+                RawCommandConfigVariant::RawCommandConfig(raw_command_config) => (
+                    raw_command_config.clone().command,
+                    raw_command_config.clone().working_directory,
+                ),
             };
 
             // Substitute any variables in the command invocation
@@ -133,10 +151,9 @@ fn get_command_for(execution_config: &ExecutionConfigVariant, variables: &Variab
                 Some((program, args)) => {
                     let argv = args.split(DELIMITER);
                     let mut binding = Command::new(program);
-                    binding.args(argv)
-                        .envs(variables);
+                    binding.args(argv).envs(variables);
                     binding
-                },
+                }
                 None => Command::new(command),
             };
 
@@ -144,7 +161,7 @@ fn get_command_for(execution_config: &ExecutionConfigVariant, variables: &Variab
                 cmd.current_dir(wd);
             }
 
-            return cmd
+            return cmd;
         }
     }
 }
@@ -154,33 +171,34 @@ fn get_command_for(execution_config: &ExecutionConfigVariant, variables: &Variab
 #[derive(Error, Debug)]
 pub enum ExecutionError {
     #[error(transparent)]
-    IO(io::Error)
+    IO(io::Error),
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::config::{BashCommandConfig, RawCommandConfig};
     use std::collections::HashMap;
     use std::fs;
     use std::io::Write;
     use std::path::Path;
     use tempfile::{NamedTempFile, TempDir};
-    use crate::config::{BashCommandConfig, RawCommandConfig};
-    use super::*;
 
     // Todo: Testing with stdin?
 
     #[test]
     #[cfg(not(windows))]
     fn bash_command_execute_executes_command() {
-
         // Arrange
         let temp_file = create_empty_temp_file();
         let temp_file_path = get_path(&temp_file.path());
 
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: format!("echo \"Hello, World!\" > {temp_file_path}")
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: format!("echo \"Hello, World!\" > {temp_file_path}"),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -195,7 +213,6 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_execute_evaluates_variables() {
-
         // Arrange
         let variable_name = "name";
         let variable_value = "Dingus";
@@ -205,10 +222,12 @@ mod tests {
         let temp_file = create_empty_temp_file();
         let temp_file_path = get_path(&temp_file.path());
 
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: format!("echo \"Hello, ${variable_name}!\" > {temp_file_path}")
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: format!("echo \"Hello, ${variable_name}!\" > {temp_file_path}"),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -223,12 +242,13 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_execute_returns_exit_code() {
-
         // Arrange
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: "exit 42".to_string()
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: "exit 42".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -243,17 +263,18 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_get_output_evaluates_variables() {
-
         // Arrange
         let variable_name = "name";
         let variable_value = "Dingus";
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: format!("echo \"Hello, ${variable_name}!\"")
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: format!("echo \"Hello, ${variable_name}!\""),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -272,12 +293,13 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_get_output_returns_stdout() {
-
         // Arrange
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: "echo \"Hello, World!\"".to_string()
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: "echo \"Hello, World!\"".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -296,12 +318,13 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_get_output_returns_stderr() {
-
         // Arrange
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: ">&2 echo \"Error message\"".to_string()
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: ">&2 echo \"Error message\"".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -320,12 +343,13 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_get_output_returns_exit_code() {
-
         // Arrange
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: None,
-            command: "exit 42".to_string()
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: None,
+                command: "exit 42".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -342,12 +366,13 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn bash_command_honours_workdir() {
-
         // Arrange
-        let bash_exec_config = ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(BashCommandConfig {
-            working_directory: Some("./src".to_string()),
-            command: "pwd".to_string()
-        }));
+        let bash_exec_config = ExecutionConfigVariant::ShellCommand(
+            ShellCommandConfigVariant::Bash(BashCommandConfig {
+                working_directory: Some("./src".to_string()),
+                command: "pwd".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -365,7 +390,6 @@ mod tests {
 
     #[test]
     fn raw_command_execute_executes_command() {
-
         // Arrange
         let temp_dir = create_temp_dir();
         let file_name = "dingus.txt";
@@ -374,7 +398,9 @@ mod tests {
         // Sanity check
         assert_eq!(test_file_path.exists(), false);
 
-        let bash_exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(format!("touch {}", get_path(&test_file_path))));
+        let bash_exec_config = ExecutionConfigVariant::RawCommand(
+            RawCommandConfigVariant::Shorthand(format!("touch {}", get_path(&test_file_path))),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -389,7 +415,6 @@ mod tests {
 
     #[test]
     fn raw_command_execute_substitutes_variables_in_invocation() {
-
         // Arrange
         let temp_dir = create_temp_dir();
         let file_name = "dingus.txt";
@@ -402,7 +427,9 @@ mod tests {
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), get_path(&test_file_path));
 
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("touch $file_name".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+            "touch $file_name".to_string(),
+        ));
         let command_executor = create_command_executor();
 
         // Act
@@ -417,9 +444,10 @@ mod tests {
 
     #[test]
     fn raw_command_execute_returns_exit_code() {
-
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cargo silly".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+            "cargo silly".to_string(),
+        ));
         let command_executor = create_command_executor();
 
         // Act
@@ -433,15 +461,19 @@ mod tests {
 
     #[test]
     fn raw_command_get_output_substitutes_variables_in_invocation() {
-
         // Arrange
         let content = "Hello, World!";
         let variable_name = "file_name";
         let temp_file = create_temp_file(content);
         let mut variables = HashMap::new();
-        variables.insert(variable_name.to_string(), temp_file.path().to_str().unwrap().to_string());
+        variables.insert(
+            variable_name.to_string(),
+            temp_file.path().to_str().unwrap().to_string(),
+        );
 
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat $file_name".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+            "cat $file_name".to_string(),
+        ));
         let command_executor = create_command_executor();
 
         // Act
@@ -463,14 +495,15 @@ mod tests {
     #[test]
     #[ignore]
     fn raw_command_get_output_has_variables() {
-
         // Arrange
         let variable_name = "CARGO_ALIAS_V";
         let variable_value = "version";
         let mut variables = HashMap::new();
         variables.insert(variable_name.to_string(), variable_value.to_string());
 
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cargo v".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+            "cargo v".to_string(),
+        ));
         let command_executor = create_command_executor();
 
         // Act
@@ -488,13 +521,14 @@ mod tests {
 
     #[test]
     fn raw_command_get_output_returns_stdout() {
-
         // Arrange
         let content = "Hello, World!";
         let temp_file = create_temp_file(content);
         let temp_file_path = temp_file.path().to_str().unwrap().to_string();
 
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(format!("cat {temp_file_path}").to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+            format!("cat {temp_file_path}").to_string(),
+        ));
         let command_executor = create_command_executor();
 
         // Act
@@ -512,9 +546,10 @@ mod tests {
 
     #[test]
     fn raw_command_get_output_returns_stderr() {
-
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand("cat does_not_exist.txt".to_string()));
+        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+            "cat does_not_exist.txt".to_string(),
+        ));
         let command_executor = create_command_executor();
 
         // Act
@@ -532,12 +567,13 @@ mod tests {
 
     #[test]
     fn raw_command_honours_workdir() {
-
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::RawCommandConfig(RawCommandConfig {
-            working_directory: Some("./src".to_string()),
-            command: "pwd".to_string(),
-        }));
+        let exec_config = ExecutionConfigVariant::RawCommand(
+            RawCommandConfigVariant::RawCommandConfig(RawCommandConfig {
+                working_directory: Some("./src".to_string()),
+                command: "pwd".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -555,12 +591,13 @@ mod tests {
 
     #[test]
     fn raw_command_does_not_use_shell() {
-
         // Arrange
-        let exec_config = ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::RawCommandConfig(RawCommandConfig {
-            working_directory: None,
-            command: "shopt -s expand_aliases".to_string(),
-        }));
+        let exec_config = ExecutionConfigVariant::RawCommand(
+            RawCommandConfigVariant::RawCommandConfig(RawCommandConfig {
+                working_directory: None,
+                command: "shopt -s expand_aliases".to_string(),
+            }),
+        );
         let command_executor = create_command_executor();
 
         // Act
@@ -587,6 +624,6 @@ mod tests {
     }
 
     fn get_path(path: &Path) -> String {
-        return  path.to_str().unwrap().to_string();
+        return path.to_str().unwrap().to_string();
     }
 }
