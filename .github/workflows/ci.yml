@@ -61,26 +61,27 @@ jobs:
             os: ubuntu-latest
             rust: stable
             target: armv7-unknown-linux-gnueabihf
-          - name: "x86 Linux (kernel 3.2+, glibc 2.17+)"
+          - name: "64-bit Linux (kernel 3.2+, glibc 2.17+)"
             build: stable-x86_64-unknown-linux-gnu
             os: ubuntu-latest
             rust: stable
             target: x86_64-unknown-linux-gnu
 
           # macOS
-          - name: "x86 macOS"
+          - name: "64-bit macOS (10.12+, Sierra+)"
             build: stable-x86_64-apple-darwin
             os: macos-latest
             rust: stable
             target: x86_64-apple-darwin
-          - name: "ARM64 macOS"
+          - name: "ARM64 macOS (11.0+, Big Sur+)"
             build: stable-aarch64-apple-darwin
             os: macos-latest
             rust: stable
             target: aarch64-apple-darwin
 
           # Windows
-          - build: stable-x86_64-pc-windows-gnu
+          - name: "64-bit MinGW (Windows 10+)"
+            build: stable-x86_64-pc-windows-gnu
             os: windows-2022
             rust: stable
             target: x86_64-pc-windows-gnu
