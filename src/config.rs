@@ -1,6 +1,8 @@
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::IsTerminal;
+use std::io::Read;
 use std::path::Path;
 use std::{fs, io};
 use thiserror::Error;
@@ -18,21 +20,35 @@ commands:
 
 // TODO: Support reading from parent directories
 
-/// Loads the [`Config`] from a file in the current directory.
+/// Loads the [`Config`] from stdin, or a file in the current directory.
 pub fn load() -> Result<Config, ConfigError> {
-    for config_file_name in CONFIG_FILE_NAMES {
-        if !Path::new(config_file_name).exists() {
-            continue;
+    let input = io::stdin();
+    let mut config_text = String::new();
+
+    if input.is_terminal() {
+        let mut found = false;
+        for config_file_name in CONFIG_FILE_NAMES {
+            if !Path::new(config_file_name).exists() {
+                continue;
+            }
+
+            config_text =
+                fs::read_to_string(config_file_name).map_err(|err| ConfigError::ReadFailed(err))?;
+            found = true;
         }
 
-        let config_text: String =
-            fs::read_to_string(config_file_name).map_err(|err| ConfigError::ReadFailed(err))?;
-        let config = parse_config(&config_text)?;
+        if !found {
+            return Err(ConfigError::FileNotFound);
+        }
+    } else {
+        input
+            .lock()
+            .read_to_string(&mut config_text)
+            .map_err(|err| ConfigError::ReadFailed(err))?;
+    };
 
-        return Ok(config);
-    }
-
-    return Err(ConfigError::FileNotFound);
+    let config = parse_config(&config_text)?;
+    return Ok(config);
 }
 
 /// Creates a new config file in the current directory.
@@ -56,7 +72,7 @@ pub enum ConfigError {
     #[error("config file not found")]
     FileNotFound,
 
-    #[error("failed to read config file")]
+    #[error("failed to read config")]
     ReadFailed(#[source] io::Error),
 
     #[error("failed to write config file")]
