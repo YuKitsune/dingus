@@ -15,26 +15,18 @@ mod exec;
 mod prompt;
 mod variables;
 
-// TODO:
-// - [ ] Yaml schema
-// - [ ] Publish v0.1.0
-
 // Ideas:
+// - Pipe config file.
 // - Platform-specific commands.
-// - Pipe config file: example.yaml | dingus do something
 // - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Command invocation action: Actions can invoke other commands (Or named action ^). Variables can be passed to the command.
 // - Include other config files (on disk or with a GitHub link)
-// - Pipe config file: example.yaml | dingus do something
-// - Platform-specific commands.
 // - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
-// - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
 // - Container actions: Run an action inside a docker container
-// - GitHub Actions integration: Run dingus commands as part of a GitHub Actions workflow
-
-// - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
 // - Deferred actions: Always executes at the end, even if one of the actions fails.
+// - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
 // - Named actions: Actions can be named so that they can be skipped selectively (--skip arg vs custom conditional stuff per action)
+// - YAML schema.
 
 fn main() -> Result<()> {
     let config_result = config::load();
