@@ -1,18 +1,18 @@
-use crate::args::ClapArgumentResolver;
 use crate::actions::ActionExecutor;
+use crate::args::ClapArgumentResolver;
 use crate::config::ConfigError;
 use crate::exec::create_command_executor;
 use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
-use thiserror::Error;
 use anyhow::Result;
+use thiserror::Error;
 
-mod exec;
-mod prompt;
 mod actions;
+mod args;
 mod cli;
 mod config;
-mod args;
+mod exec;
+mod prompt;
 mod variables;
 
 // Todo:
@@ -43,20 +43,22 @@ fn main() -> Result<()> {
     if let Err(config_err) = config_result {
         return match config_err {
             ConfigError::FileNotFound => {
-                let should_init = inquire::Confirm::new("Couldn't find a config file in this directory. Do you want to create one?")
-                    .with_default(true)
-                    .prompt()?;
+                let should_init = inquire::Confirm::new(
+                    "Couldn't find a config file in this directory. Do you want to create one?",
+                )
+                .with_default(true)
+                .prompt()?;
 
                 if !should_init {
-                    return Err(config_err.into())
+                    return Err(config_err.into());
                 }
 
                 let file_name = config::init()?;
                 println!("created {file_name}");
-                return Ok(())
-            },
-            _ => Err(config_err.into())
-        }
+                return Ok(());
+            }
+            _ => Err(config_err.into()),
+        };
     }
 
     let config = config_result.unwrap();
@@ -70,12 +72,12 @@ fn main() -> Result<()> {
         &arg_matches,
         &root_command,
         &config.commands,
-        &config.variables);
+        &config.variables,
+    );
 
-    if let Some((target_command, available_variable_configs, sucbommand_arg_matches)) = find_result {
-
+    if let Some((target_command, available_variable_configs, sucbommand_arg_matches)) = find_result
+    {
         if let Some(command_action) = target_command.action {
-
             // Set up the dependencies
             let arg_resolver = ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
             let variable_resolver = RealVariableResolver {
@@ -88,11 +90,13 @@ fn main() -> Result<()> {
 
             let action_executor = ActionExecutor {
                 command_executor: create_command_executor(),
-                arg_resolver: Box::new(ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches))
+                arg_resolver: Box::new(ClapArgumentResolver::from_arg_matches(
+                    &sucbommand_arg_matches,
+                )),
             };
 
             action_executor.execute(&command_action, &variables)?;
-            return Ok(())
+            return Ok(());
         }
     }
 
