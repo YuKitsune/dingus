@@ -15,7 +15,7 @@ mod exec;
 mod prompt;
 mod variables;
 
-// Todo:
+// TODO:
 // - [ ] Yaml schema
 // - [ ] Publish v0.1.0
 

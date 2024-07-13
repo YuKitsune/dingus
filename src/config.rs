@@ -16,7 +16,7 @@ commands:
   greet:
     action: echo \"Hello, $name!\"";
 
-// Todo: Support reading from parent directories
+// TODO: Support reading from parent directories
 
 /// Loads the [`Config`] from a file in the current directory.
 pub fn load() -> Result<Config, ConfigError> {
@@ -314,7 +314,7 @@ pub struct CommandConfig {
     #[serde(alias = "vars")]
     pub variables: VariableConfigMap,
 
-    // Todo: Need to enforce an invariant here:
+    // TODO: Need to enforce an invariant here:
     // - If no action exists, then one or more subcommands _must_ exist.
     /// Any sub-[`CommandConfig`]s.
     #[serde(default = "default_commands")]
@@ -765,7 +765,7 @@ commands:
         assert_eq!(command_variable_names[2], "command-var-3".to_string());
     }
 
-    // Todo: Command order is preserved
+    // TODO: Command order is preserved
 
     #[test]
     fn single_action_command_parses() {
@@ -920,7 +920,7 @@ commands:
         );
     }
 
-    // Todo: Command with no subcommands or action - Fail
+    // TODO: Command with no subcommands or action - Fail
 
     #[test]
     fn command_with_multiple_actions_parses() {

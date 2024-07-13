@@ -58,7 +58,7 @@ impl Output {
     }
 }
 
-// Todo: Consider refactoring these to take stdio as args so we can test with stdin.
+// TODO: Consider refactoring these to take stdio as args so we can test with stdin.
 
 /// Capable of executing an [`ExecutionConfigVariant`].
 #[automock]
@@ -184,7 +184,7 @@ mod tests {
     use std::path::Path;
     use tempfile::{NamedTempFile, TempDir};
 
-    // Todo: Testing with stdin?
+    // TODO: Testing with stdin?
 
     #[test]
     #[cfg(not(windows))]
