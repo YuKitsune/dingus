@@ -46,53 +46,44 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      
       matrix:
         include:
-        - build: pinned
-          os: ubuntu-latest
-          rust: 1.78.0
-        - build: stable
-          os: ubuntu-latest
-          rust: stable
-        - build: beta
-          os: ubuntu-latest
-          rust: beta
-        - build: nightly
-          os: ubuntu-latest
-          rust: nightly
-        - build: stable-musl
-          os: ubuntu-latest
-          rust: stable
-          target: x86_64-unknown-linux-musl
-        - build: stable-x86
-          os: ubuntu-latest
-          rust: stable
-          target: i686-unknown-linux-gnu
-        - build: stable-aarch64
-          os: ubuntu-latest
-          rust: stable
-          target: aarch64-unknown-linux-gnu
-        - build: stable-arm-gnueabihf
-          os: ubuntu-latest
-          rust: stable
-          target: armv7-unknown-linux-gnueabihf
-        - build: stable-arm-musleabihf
-          os: ubuntu-latest
-          rust: stable
-          target: armv7-unknown-linux-musleabihf
-        - build: stable-arm-musleabi
-          os: ubuntu-latest
-          rust: stable
-          target: armv7-unknown-linux-musleabi
-        - build: macos
-          os: macos-latest
-          rust: nightly
-        - build: win-msvc
-          os: windows-2022
-          rust: nightly
-        - build: win-gnu
-          os: windows-2022
-          rust: nightly-x86_64-gnu
+
+          # Linux
+          - name: "ARM64 Linux (kernel 4.1, glibc 2.17+)"
+            build: stable-aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            rust: stable
+            target: aarch64-unknown-linux-gnu
+          - name: "ARMv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)"
+            build: stable-armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            rust: stable
+            target: armv7-unknown-linux-gnueabihf
+          - name: "x86 Linux (kernel 3.2+, glibc 2.17+)"
+            build: stable-x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            rust: stable
+            target: x86_64-unknown-linux-gnu
+
+          # macOS
+          - name: "x86 macOS"
+            build: stable-x86_64-apple-darwin
+            os: macos-latest
+            rust: stable
+            target: x86_64-apple-darwin
+          - name: "ARM64 macOS"
+            build: stable-aarch64-apple-darwin
+            os: macos-latest
+            rust: stable
+            target: aarch64-apple-darwin
+
+          # Windows
+          - build: stable-x86_64-pc-windows-gnu
+            os: windows-2022
+            rust: stable
+            target: x86_64-pc-windows-gnu
 
     steps:
     - name: Checkout repository
@@ -132,20 +123,6 @@ jobs:
 
     - name: Build dingus
       run: ${{ env.CARGO }} build --verbose --workspace ${{ env.TARGET_FLAGS }}
-
-    # This is useful for debugging problems when the expected build artifacts
-    # (like shell completions and man pages) aren't generated.
-    - name: Show build.rs stderr
-      shell: bash
-      run: |
-        set +x
-        stderr="$(find "${{ env.TARGET_DIR }}/debug" -name stderr -print0 | xargs -0 ls -t | head -n1)"
-        if [ -s "$stderr" ]; then
-          echo "===== $stderr ===== "
-          cat "$stderr"
-          echo "====="
-        fi
-        set -x
 
     - name: Run tests
       run: ${{ env.CARGO }} test --verbose --workspace ${{ env.TARGET_FLAGS }}

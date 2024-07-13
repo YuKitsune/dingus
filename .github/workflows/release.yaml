@@ -61,6 +61,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+
+        # TODO: Use Tier 1 targets + some Tier 2 here https://doc.rust-lang.org/rustc/platform-support.html#tier-1-with-host-tools
         include:
           - build: linux-x86
             os: ubuntu-latest
