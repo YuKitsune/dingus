@@ -5,6 +5,8 @@ on:
     branches:
       - main
 
+# TODO: Consider a scheduled build with the nightly Rust toolchain.
+
 # By specifying any permission explicitly all others are set to none.
 # By using the principle of least privilege the damage a compromised
 # workflow can do (because of an injection or compromised third party tool or
@@ -46,7 +48,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      
+
+      # Building and testing for most Tier 1 platforms, as well as some Tier 2.
+      # https://doc.rust-lang.org/rustc/platform-support.html
       matrix:
         include:
 
