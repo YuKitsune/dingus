@@ -86,7 +86,7 @@ jobs:
           # Windows
           - name: "64-bit MinGW (Windows 10+)"
             build: stable-x86_64-pc-windows-gnu
-            os: windows-2022
+            os: windows-latest
             rust: stable
             target: x86_64-pc-windows-gnu
 
