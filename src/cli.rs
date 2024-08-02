@@ -561,6 +561,34 @@ mod tests {
     }
 
     #[test]
+    fn create_commands_creates_correct_command_with_custom_name() {
+        // Arrange
+        let mut commands = CommandConfigMap::new();
+        commands.insert(
+            "demo".to_string(),
+            CommandConfig {
+                name: Some("demonstration".to_string()),
+                platform: None,
+                description: None,
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(Shorthand(
+                        "echo \"Hello, World!\"".to_string(),
+                    )),
+                })),
+            },
+        );
+
+        // Act
+        let created_subcommands = create_commands(&commands, &VariableConfigMap::new());
+
+        // Assert
+        let target_command = created_subcommands.get(0).unwrap();
+        assert_eq!(target_command.get_name(), "demonstration");
+    }
+
+    #[test]
     fn create_args_creates_correct_args() {
         // Arrange
         let mut variables = VariableConfigMap::new();
@@ -861,5 +889,45 @@ mod tests {
         assert!(found_variables.contains_key("root-var-1"));
         assert!(found_variables.contains_key("parent-var-1"));
         assert!(found_variables.contains_key("sub-var-1"));
+    }
+
+    #[test]
+    fn find_subcommand_finds_command_with_custom_name() {
+
+        let mut commands = CommandConfigMap::new();
+        commands.insert(
+            "cmd".to_string(),
+            CommandConfig {
+                name: Some("command".to_string()),
+                platform: None,
+                description: Some("Command with custom name".to_string()),
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(Shorthand(
+                        "echo \"Hello, World!\"".to_string(),
+                    )),
+                })),
+            },
+        );
+
+        let config = Config {
+            description: None,
+            variables: Default::default(),
+            commands: commands,
+        };
+
+        let root_command = create_root_command(&config);
+
+        // Act
+        let matches = root_command.clone().get_matches_from(vec!["dingus", "command"]);
+        let (found_command, found_variables, _) =
+            find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
+
+        // Assert
+        assert_eq!(
+            found_command.description,
+            Some("Command with custom name".to_string())
+        );
     }
 }

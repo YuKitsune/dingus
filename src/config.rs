@@ -468,6 +468,7 @@ pub struct BashCommandConfig {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::OneOrManyPlatforms::{Many, One};
     use super::*;
 
     fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfigVariant {
@@ -1012,6 +1013,84 @@ commands:
                             "ls".to_string()
                         )),
                     ],
+                })),
+            }
+        );
+    }
+
+    #[test]
+    fn commands_with_specific_platforms_parse() {
+        let yaml = "commands:
+    demo_nix:
+        platforms:
+            - Linux
+            - MacOS
+        action: cat example.txt
+    demo_win:
+        platform: Windows
+        action: Get-Content example.txt";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command_nix = config.commands.get("demo_nix").unwrap();
+        let demo_command_win = config.commands.get("demo_win").unwrap();
+        assert_eq!(
+            demo_command_nix,
+            &CommandConfig {
+                name: None,
+                description: None,
+                platform: Some(Many(ManyPlatforms {
+                    platforms: vec![Platform::Linux, Platform::MacOS]
+                })),
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "cat example.txt".to_string()
+                    ))
+                })),
+            }
+        );
+
+        assert_eq!(
+            demo_command_win,
+            &CommandConfig {
+                name: None,
+                description: None,
+                platform: Some(One(OnePlatform {
+                    platform: Platform::Windows
+                })),
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "Get-Content example.txt".to_string()
+                    ))
+                })),
+            }
+        );
+    }
+
+    #[test]
+    fn commands_with_name_parse() {
+        let yaml = "commands:
+    demo:
+        name: demonstration
+        action: cat example.txt";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(
+            demo_command,
+            &CommandConfig {
+                name: Some("demonstration".to_string()),
+                description: None,
+                platform: None,
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "cat example.txt".to_string()
+                    ))
                 })),
             }
         );
