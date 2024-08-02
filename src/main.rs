@@ -17,7 +17,6 @@ mod prompt;
 mod variables;
 
 // Ideas:
-// - Platform-specific commands.
 // - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Command invocation action: Actions can invoke other commands (Or named action ^). Variables can be passed to the command.
 // - Include other config files (on disk or with a GitHub link)
