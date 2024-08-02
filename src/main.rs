@@ -12,6 +12,7 @@ mod args;
 mod cli;
 mod config;
 mod exec;
+mod platform;
 mod prompt;
 mod variables;
 

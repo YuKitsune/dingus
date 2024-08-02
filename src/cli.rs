@@ -3,6 +3,7 @@ use crate::config::{
     ActionConfig, CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant,
     RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap,
 };
+use crate::platform::is_current_platform;
 use clap::{Arg, ArgMatches, Command, ValueHint};
 
 /// Creates a root-level [`Command`] for the provided [`Config`].
@@ -30,7 +31,22 @@ fn create_commands(
 ) -> Vec<Command> {
     commands
         .iter()
+        .filter(|(_, command_config) | -> bool {
+            if let Some(one_or_many_platforms) = &command_config.platform {
+                if !is_current_platform(one_or_many_platforms) {
+                    return false;
+                }
+            }
+
+            return true
+        })
         .map(|(key, command_config)| -> Command {
+
+            let mut name = key;
+            if let Some(alternate_name) = &command_config.name {
+                name = alternate_name;
+            }
+
             // Combine the variable configs provided by the caller (parent) with the variable
             // configs from the current command.
             // This lets us inherit variables from the root config/parent commands.
@@ -46,7 +62,7 @@ fn create_commands(
             // execute either.
             let has_action = command_config.action.is_some();
 
-            let mut command = Command::new(key)
+            let mut command = Command::new(name)
                 .subcommands(subcommands)
                 .subcommand_required(!has_action)
                 .args(args);
@@ -134,7 +150,7 @@ pub fn find_subcommand(
     if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
         // Safe to unwrap: we wouldn't have matched on anything if the command didn't exist
         let subcommand = parent_command.find_subcommand(subcommand_name).unwrap();
-        let command_config = available_commands.get(subcommand_name).unwrap().to_owned();
+        let command_config = find_command_by_name(&subcommand_name.to_string(), available_commands).unwrap().to_owned();
 
         // Add the subcommands variables to the variables provided by the parent
         let mut available_variables = parent_variables.clone();
@@ -163,6 +179,28 @@ pub fn find_subcommand(
     return None;
 }
 
+fn find_command_by_name(command_name: &String, available_commands: &CommandConfigMap) -> Option<CommandConfig> {
+    let found_command = available_commands.iter().find(|(key, command_config)|{
+        if let Some(overridden_name) = &command_config.name {
+            if command_name == overridden_name {
+                return true;
+            }
+        }
+
+        if command_name == *key {
+            return true;
+        }
+
+        return false;
+    });
+
+    if let Some((_, found_command)) = found_command {
+        return Some(found_command.clone());
+    }
+
+    return None;
+}
+
 type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 
 #[cfg(test)]
@@ -182,6 +220,8 @@ mod tests {
         subcommands.insert(
             "sub-1".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Sub 1 description".to_string()),
                 variables: Default::default(),
                 commands: Default::default(),
@@ -202,6 +242,8 @@ mod tests {
         subcommands.insert(
             "sub-2".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Sub 2 description".to_string()),
                 variables: subcommand_variables,
                 commands: Default::default(),
@@ -272,6 +314,8 @@ mod tests {
         subcommands.insert(
             "sub".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: None,
                 variables: subcommand_variables,
                 commands: Default::default(),
@@ -360,6 +404,8 @@ mod tests {
         subsubcommands.insert(
             "sub-again".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: None,
                 variables: subsubcommand_variables,
                 commands: Default::default(),
@@ -387,6 +433,8 @@ mod tests {
         subcommands.insert(
             "sub".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: None,
                 variables: subcommand_variables,
                 commands: subsubcommands,
@@ -436,6 +484,8 @@ mod tests {
         subsubcommands.insert(
             "sub-again".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -451,6 +501,8 @@ mod tests {
         subcommands.insert(
             "sub".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: None,
                 variables: Default::default(),
                 commands: subsubcommands,
@@ -477,6 +529,8 @@ mod tests {
         subcommands.insert(
             "alias".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -590,6 +644,8 @@ mod tests {
         commands.insert(
             "cmd".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Top-level command".to_string()),
                 variables: subcommand_variables,
                 commands: Default::default(),
@@ -654,6 +710,8 @@ mod tests {
         subcommands.insert(
             "sub".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Subcommand".to_string()),
                 variables: subcommand_variables,
                 commands: CommandConfigMap::default(),
@@ -669,6 +727,8 @@ mod tests {
         target_commands.insert(
             "target".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Mid-level command".to_string()),
                 variables: command_variables,
                 commands: subcommands,
@@ -684,6 +744,8 @@ mod tests {
         parent_commands.insert(
             "parent".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Top-level command".to_string()),
                 variables: parent_command_variables,
                 commands: target_commands,
@@ -746,6 +808,8 @@ mod tests {
         target_commands.insert(
             "subcommand".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Bottom-level command".to_string()),
                 variables: command_variables,
                 commands: CommandConfigMap::new(),
@@ -761,6 +825,8 @@ mod tests {
         parent_commands.insert(
             "parent".to_string(),
             CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Top-level command".to_string()),
                 variables: parent_command_variables,
                 commands: target_commands,
