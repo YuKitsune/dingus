@@ -244,6 +244,34 @@ $ dingus deps up -d
  ✔ Container postgres  Started
 ```
 
+### Platform-specific Commands
+
+The `platform` field can be used to restrict a command to specific platforms.
+Multiple platforms can be specified using the `platforms` field. These fields are mutually exclusive.
+This is useful when the same command needs to execute something different depending on the platform.
+
+```yaml
+commands:
+    build-win:
+        name: build
+        platform: Windows
+
+    build-nix:
+        name: build
+        platforms:
+            - MacOS
+            - Linux
+```
+
+When the `platform` (or `platforms`) field is specified, then the command will only be available on the specified platforms.
+If the current platform is not one of the specified platforms, then Dingus will ignore the command.
+
+:::note
+By default, Dingus will use the key to determine the command name.
+Each key in the `commands` map must be unique.
+If you want your command to have the same name across different platforms, use the `name` field to provide an alternative name.
+:::
+
 ## Execution
 
 [Execution variables](#execution-variables), [prompt variable](#prompt-variables) options, and [actions](#actions) all provide a field for command text to be specified.

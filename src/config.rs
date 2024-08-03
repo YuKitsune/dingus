@@ -321,9 +321,17 @@ pub type CommandConfigMap = HashMap<String, CommandConfig>;
 /// The configuration for a command.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct CommandConfig {
+    /// An optional name for the command. Setting this will override the name provided by the key.
+    pub name: Option<String>,
+
     /// An optional description for the command.
     #[serde(alias = "desc")]
     pub description: Option<String>,
+
+    /// An optional platform to restrict this command to.
+    /// When specified, the command will only be available on the specified platforms.
+    #[serde(flatten)]
+    pub platform: Option<OneOrManyPlatforms>,
 
     /// The [`VariableConfig`]s associated with this [`CommandConfig`] and it's subcommands.
     #[serde(default = "default_variables")]
@@ -340,6 +348,30 @@ pub struct CommandConfig {
     /// The [`ActionConfig`] that this command will perform when executed.
     #[serde(flatten)]
     pub action: Option<ActionConfig>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum OneOrManyPlatforms {
+    One(OnePlatform),
+    Many(ManyPlatforms),
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct OnePlatform {
+    pub platform: Platform,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ManyPlatforms {
+    pub platforms: Vec<Platform>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub enum Platform {
+    MacOS,
+    Windows,
+    Linux,
 }
 
 /// Encapsulates either a single [`ExecutionConfigVariant`] ([`ActionConfig::SingleStep`] with a [`SingleActionConfig`])
@@ -436,6 +468,7 @@ pub struct BashCommandConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::OneOrManyPlatforms::{Many, One};
 
     fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfigVariant {
         return ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
@@ -794,7 +827,9 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -817,7 +852,9 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::Alias(AliasActionConfig {
@@ -839,6 +876,8 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
+                platform: None,
                 description: Some("Says hello.".to_string()),
                 variables: Default::default(),
                 commands: Default::default(),
@@ -867,7 +906,9 @@ commands:
         assert_eq!(
             gday_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -884,7 +925,9 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: map,
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -911,7 +954,9 @@ commands:
         assert_eq!(
             gday_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -928,7 +973,9 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: map,
                 action: None,
@@ -951,7 +998,9 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::MultiStep(MultiActionConfig {
@@ -963,6 +1012,84 @@ commands:
                             "ls".to_string()
                         )),
                     ],
+                })),
+            }
+        );
+    }
+
+    #[test]
+    fn commands_with_specific_platforms_parse() {
+        let yaml = "commands:
+    demo_nix:
+        platforms:
+            - Linux
+            - MacOS
+        action: cat example.txt
+    demo_win:
+        platform: Windows
+        action: Get-Content example.txt";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command_nix = config.commands.get("demo_nix").unwrap();
+        let demo_command_win = config.commands.get("demo_win").unwrap();
+        assert_eq!(
+            demo_command_nix,
+            &CommandConfig {
+                name: None,
+                description: None,
+                platform: Some(Many(ManyPlatforms {
+                    platforms: vec![Platform::Linux, Platform::MacOS]
+                })),
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "cat example.txt".to_string()
+                    ))
+                })),
+            }
+        );
+
+        assert_eq!(
+            demo_command_win,
+            &CommandConfig {
+                name: None,
+                description: None,
+                platform: Some(One(OnePlatform {
+                    platform: Platform::Windows
+                })),
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "Get-Content example.txt".to_string()
+                    ))
+                })),
+            }
+        );
+    }
+
+    #[test]
+    fn commands_with_name_parse() {
+        let yaml = "commands:
+    demo:
+        name: demonstration
+        action: cat example.txt";
+        let config = parse_config(yaml).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(
+            demo_command,
+            &CommandConfig {
+                name: Some("demonstration".to_string()),
+                description: None,
+                platform: None,
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "cat example.txt".to_string()
+                    ))
                 })),
             }
         );
@@ -982,7 +1109,9 @@ commands:
         assert_eq!(
             demo_command,
             &CommandConfig {
+                name: None,
                 description: None,
+                platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::MultiStep(MultiActionConfig {

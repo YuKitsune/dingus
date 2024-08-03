@@ -2,6 +2,7 @@ use crate::actions::ActionExecutor;
 use crate::args::ClapArgumentResolver;
 use crate::config::ConfigError;
 use crate::exec::create_command_executor;
+use crate::platform::current_platform_provider;
 use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
 use anyhow::Result;
@@ -12,11 +13,11 @@ mod args;
 mod cli;
 mod config;
 mod exec;
+mod platform;
 mod prompt;
 mod variables;
 
 // Ideas:
-// - Platform-specific commands.
 // - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Command invocation action: Actions can invoke other commands (Or named action ^). Variables can be passed to the command.
 // - Include other config files (on disk or with a GitHub link)
@@ -52,8 +53,10 @@ fn main() -> Result<()> {
         };
     }
 
+    let platform_provider = current_platform_provider();
+
     let config = config_result.unwrap();
-    let root_command = cli::create_root_command(&config);
+    let root_command = cli::create_root_command(&config, &platform_provider);
 
     // This will exit on any match failures
     let arg_matches = root_command.clone().get_matches();
