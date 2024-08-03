@@ -731,14 +731,20 @@ mod tests {
         assert_eq!(created_subcommands.len(), 2);
 
         // Assert
-        let linux_command = created_subcommands.get(0).unwrap();
+        let linux_command = created_subcommands
+            .iter()
+            .find(|command| command.get_name() == "demo")
+            .unwrap();
         assert_eq!(linux_command.get_name(), "demo");
         assert_eq!(
             linux_command.get_about().unwrap().to_string(),
             "Demo command on Linux.".to_string()
         );
 
-        let nix_command = created_subcommands.get(1).unwrap();
+        let nix_command = created_subcommands
+            .iter()
+            .find(|command| command.get_name() == "demo-nix")
+            .unwrap();
         assert_eq!(nix_command.get_name(), "demo-nix");
         assert_eq!(
             nix_command.get_about().unwrap().to_string(),
