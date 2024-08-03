@@ -9,7 +9,8 @@ use clap::{Arg, ArgMatches, Command, ValueHint};
 /// Creates a root-level [`Command`] for the provided [`Config`].
 pub fn create_root_command(
     config: &Config,
-    platform_provider: &Box<dyn PlatformProvider>) -> Command {
+    platform_provider: &Box<dyn PlatformProvider>,
+) -> Command {
     let root_args = create_args(&config.variables);
     let subcommands = create_commands(&config.commands, &config.variables, &platform_provider);
 
@@ -30,21 +31,20 @@ pub fn create_root_command(
 fn create_commands(
     commands: &CommandConfigMap,
     parent_variables: &VariableConfigMap,
-    platform_provider: &Box<dyn PlatformProvider>
+    platform_provider: &Box<dyn PlatformProvider>,
 ) -> Vec<Command> {
     commands
         .iter()
-        .filter(|(_, command_config) | -> bool {
+        .filter(|(_, command_config)| -> bool {
             if let Some(one_or_many_platforms) = &command_config.platform {
                 if !is_current_platform(&platform_provider, one_or_many_platforms) {
                     return false;
                 }
             }
 
-            return true
+            return true;
         })
         .map(|(key, command_config)| -> Command {
-
             let mut name = key;
             if let Some(alternate_name) = &command_config.name {
                 name = alternate_name;
@@ -58,7 +58,8 @@ fn create_commands(
 
             let args = create_args(&variables);
 
-            let subcommands = create_commands(&command_config.commands, &variables, &platform_provider);
+            let subcommands =
+                create_commands(&command_config.commands, &variables, &platform_provider);
 
             // If this command doesn't have any action, then it needs a subcommand
             // Doesn't make sense to have a command that does nothing and has no subcommands to
@@ -153,7 +154,9 @@ pub fn find_subcommand(
     if let Some((subcommand_name, subcommand_matches)) = arg_matches.subcommand() {
         // Safe to unwrap: we wouldn't have matched on anything if the command didn't exist
         let subcommand = parent_command.find_subcommand(subcommand_name).unwrap();
-        let command_config = find_command_by_name(&subcommand_name.to_string(), available_commands).unwrap().to_owned();
+        let command_config = find_command_by_name(&subcommand_name.to_string(), available_commands)
+            .unwrap()
+            .to_owned();
 
         // Add the subcommands variables to the variables provided by the parent
         let mut available_variables = parent_variables.clone();
@@ -182,8 +185,11 @@ pub fn find_subcommand(
     return None;
 }
 
-fn find_command_by_name(command_name: &String, available_commands: &CommandConfigMap) -> Option<CommandConfig> {
-    let found_command = available_commands.iter().find(|(key, command_config)|{
+fn find_command_by_name(
+    command_name: &String,
+    available_commands: &CommandConfigMap,
+) -> Option<CommandConfig> {
+    let found_command = available_commands.iter().find(|(key, command_config)| {
         if let Some(overridden_name) = &command_config.name {
             if command_name == overridden_name {
                 return true;
@@ -209,14 +215,20 @@ type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::RawCommandConfigVariant::Shorthand;
-    use crate::config::{ActionConfig, AliasActionConfig, CommandConfig, ExecutionVariableConfig, LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
     use crate::config::OneOrManyPlatforms::{Many, One};
+    use crate::config::RawCommandConfigVariant::Shorthand;
+    use crate::config::{
+        ActionConfig, AliasActionConfig, CommandConfig, ExecutionVariableConfig,
+        LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PromptConfig,
+        PromptVariableConfig, SingleActionConfig, VariableConfig,
+    };
     use crate::platform::MockPlatformProvider;
 
     fn mock_platform_provider() -> Box<dyn PlatformProvider> {
         let mut platform_provider = MockPlatformProvider::new();
-        platform_provider.expect_get_platform().return_const(Platform::Linux);
+        platform_provider
+            .expect_get_platform()
+            .return_const(Platform::Linux);
 
         return Box::new(platform_provider);
     }
@@ -272,7 +284,11 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &parent_variables, &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &subcommands,
+            &parent_variables,
+            &Box::new(platform_provider),
+        );
         assert_eq!(created_subcommands.len(), 2);
 
         let subcommand_1 = created_subcommands
@@ -354,7 +370,11 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &parent_variables, &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &subcommands,
+            &parent_variables,
+            &Box::new(platform_provider),
+        );
 
         // Assert
         let command = created_subcommands.get(0).unwrap();
@@ -461,7 +481,11 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &VariableConfigMap::new(), &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &subcommands,
+            &VariableConfigMap::new(),
+            &Box::new(platform_provider),
+        );
 
         // Assert
         let command = created_subcommands.get(0).unwrap();
@@ -527,7 +551,11 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &VariableConfigMap::new(), &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &subcommands,
+            &VariableConfigMap::new(),
+            &Box::new(platform_provider),
+        );
 
         // Assert
         let parent_command = created_subcommands.get(0).unwrap();
@@ -559,7 +587,11 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&subcommands, &VariableConfigMap::new(), &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &subcommands,
+            &VariableConfigMap::new(),
+            &Box::new(platform_provider),
+        );
 
         // Assert
         let command = created_subcommands.get(0).unwrap();
@@ -601,7 +633,11 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&commands, &VariableConfigMap::new(), &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &commands,
+            &VariableConfigMap::new(),
+            &Box::new(platform_provider),
+        );
 
         // Assert
         let target_command = created_subcommands.get(0).unwrap();
@@ -616,7 +652,9 @@ mod tests {
             "demo_linux".to_string(),
             CommandConfig {
                 name: Some("demo".to_string()),
-                platform: Some(One(OnePlatform{ platform: Platform::Linux })),
+                platform: Some(One(OnePlatform {
+                    platform: Platform::Linux,
+                })),
                 description: Some("Demo command on Linux.".to_string()),
                 variables: Default::default(),
                 commands: Default::default(),
@@ -625,13 +663,16 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
-            });
+            },
+        );
 
         commands.insert(
             "demo_mac".to_string(),
             CommandConfig {
                 name: Some("demo".to_string()),
-                platform: Some(One(OnePlatform{ platform: Platform::MacOS })),
+                platform: Some(One(OnePlatform {
+                    platform: Platform::MacOS,
+                })),
                 description: Some("Demo command on macOS.".to_string()),
                 variables: Default::default(),
                 commands: Default::default(),
@@ -640,13 +681,16 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
-            });
+            },
+        );
 
         commands.insert(
             "demo_nix".to_string(),
             CommandConfig {
                 name: Some("demo-nix".to_string()),
-                platform: Some(Many(ManyPlatforms{ platforms: vec![Platform::Linux, Platform::MacOS] })),
+                platform: Some(Many(ManyPlatforms {
+                    platforms: vec![Platform::Linux, Platform::MacOS],
+                })),
                 description: Some("Demo command on Unix.".to_string()),
                 variables: Default::default(),
                 commands: Default::default(),
@@ -655,13 +699,16 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
-            });
+            },
+        );
 
         commands.insert(
             "demo_win".to_string(),
             CommandConfig {
                 name: Some("demo".to_string()),
-                platform: Some(One(OnePlatform{ platform: Platform::Windows })),
+                platform: Some(One(OnePlatform {
+                    platform: Platform::Windows,
+                })),
                 description: Some("Demo command on Windows.".to_string()),
                 variables: Default::default(),
                 commands: Default::default(),
@@ -676,17 +723,27 @@ mod tests {
         let platform_provider = mock_platform_provider();
 
         // Act
-        let created_subcommands = create_commands(&commands, &VariableConfigMap::new(), &Box::new(platform_provider));
+        let created_subcommands = create_commands(
+            &commands,
+            &VariableConfigMap::new(),
+            &Box::new(platform_provider),
+        );
         assert_eq!(created_subcommands.len(), 2);
 
         // Assert
         let linux_command = created_subcommands.get(0).unwrap();
         assert_eq!(linux_command.get_name(), "demo");
-        assert_eq!(linux_command.get_about().unwrap().to_string(), "Demo command on Linux.".to_string());
+        assert_eq!(
+            linux_command.get_about().unwrap().to_string(),
+            "Demo command on Linux.".to_string()
+        );
 
         let nix_command = created_subcommands.get(1).unwrap();
         assert_eq!(nix_command.get_name(), "demo-nix");
-        assert_eq!(nix_command.get_about().unwrap().to_string(), "Demo command on Unix.".to_string());
+        assert_eq!(
+            nix_command.get_about().unwrap().to_string(),
+            "Demo command on Unix.".to_string()
+        );
     }
 
     #[test]
@@ -1000,7 +1057,6 @@ mod tests {
 
     #[test]
     fn find_subcommand_finds_command_with_custom_name() {
-
         let mut commands = CommandConfigMap::new();
         commands.insert(
             "cmd".to_string(),
@@ -1029,7 +1085,9 @@ mod tests {
         let root_command = create_root_command(&config, &Box::new(platform_provider));
 
         // Act
-        let matches = root_command.clone().get_matches_from(vec!["dingus", "command"]);
+        let matches = root_command
+            .clone()
+            .get_matches_from(vec!["dingus", "command"]);
         let (found_command, _, _) =
             find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
 

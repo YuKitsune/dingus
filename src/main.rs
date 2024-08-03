@@ -2,11 +2,11 @@ use crate::actions::ActionExecutor;
 use crate::args::ClapArgumentResolver;
 use crate::config::ConfigError;
 use crate::exec::create_command_executor;
+use crate::platform::current_platform_provider;
 use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
 use anyhow::Result;
 use thiserror::Error;
-use crate::platform::current_platform_provider;
 
 mod actions;
 mod args;

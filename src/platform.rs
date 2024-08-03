@@ -1,13 +1,15 @@
-use std::env;
-use mockall::automock;
 use crate::config::{OneOrManyPlatforms, Platform};
+use mockall::automock;
+use std::env;
 
 pub fn current_platform_provider() -> Box<dyn PlatformProvider> {
-    return Box::new(RealPlatformProvider{});
+    return Box::new(RealPlatformProvider {});
 }
 
-pub fn is_current_platform(platform_provider: &Box<dyn PlatformProvider>, platform_or_platforms: &OneOrManyPlatforms) -> bool {
-
+pub fn is_current_platform(
+    platform_provider: &Box<dyn PlatformProvider>,
+    platform_or_platforms: &OneOrManyPlatforms,
+) -> bool {
     let current_platform = platform_provider.get_platform();
 
     match platform_or_platforms {
@@ -28,7 +30,7 @@ impl PlatformProvider for RealPlatformProvider {
             "linux" => Platform::Linux,
             "macos" => Platform::MacOS,
             "windows" => Platform::Windows,
-            platform => panic!("unknown platform: {}", platform)
+            platform => panic!("unknown platform: {}", platform),
         }
     }
 }

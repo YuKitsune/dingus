@@ -321,7 +321,6 @@ pub type CommandConfigMap = HashMap<String, CommandConfig>;
 /// The configuration for a command.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct CommandConfig {
-
     /// An optional name for the command. Setting this will override the name provided by the key.
     pub name: Option<String>,
 
@@ -355,24 +354,24 @@ pub struct CommandConfig {
 #[serde(untagged)]
 pub enum OneOrManyPlatforms {
     One(OnePlatform),
-    Many(ManyPlatforms)
+    Many(ManyPlatforms),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct OnePlatform {
-    pub platform: Platform
+    pub platform: Platform,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ManyPlatforms {
-    pub platforms: Vec<Platform>
+    pub platforms: Vec<Platform>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum Platform {
     MacOS,
     Windows,
-    Linux
+    Linux,
 }
 
 /// Encapsulates either a single [`ExecutionConfigVariant`] ([`ActionConfig::SingleStep`] with a [`SingleActionConfig`])
@@ -468,8 +467,8 @@ pub struct BashCommandConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::OneOrManyPlatforms::{Many, One};
     use super::*;
+    use crate::config::OneOrManyPlatforms::{Many, One};
 
     fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfigVariant {
         return ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
