@@ -6,6 +6,7 @@ use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
 use anyhow::Result;
 use thiserror::Error;
+use crate::platform::current_platform_provider;
 
 mod actions;
 mod args;
@@ -52,8 +53,10 @@ fn main() -> Result<()> {
         };
     }
 
+    let platform_provider = current_platform_provider();
+
     let config = config_result.unwrap();
-    let root_command = cli::create_root_command(&config);
+    let root_command = cli::create_root_command(&config, &platform_provider);
 
     // This will exit on any match failures
     let arg_matches = root_command.clone().get_matches();
