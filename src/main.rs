@@ -19,7 +19,6 @@ mod variables;
 
 // Ideas:
 // - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
-// - Command invocation action: Actions can invoke other commands (Or named action ^). Variables can be passed to the command.
 // - Include other config files (on disk or with a GitHub link)
 // - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
 // - Container actions: Run an action inside a docker container

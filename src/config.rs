@@ -328,6 +328,10 @@ pub struct CommandConfig {
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
+    /// Whether the command should be hidden from the --help output.
+    #[serde(default = "default_hidden")]
+    pub hidden: bool,
+
     /// An optional platform to restrict this command to.
     /// When specified, the command will only be available on the specified platforms.
     #[serde(flatten)]
@@ -348,6 +352,10 @@ pub struct CommandConfig {
     /// The [`ActionConfig`] that this command will perform when executed.
     #[serde(flatten)]
     pub action: Option<ActionConfig>,
+}
+
+fn default_hidden() -> bool {
+    false
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -829,6 +837,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -854,6 +863,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -879,6 +889,7 @@ commands:
                 name: None,
                 platform: None,
                 description: Some("Says hello.".to_string()),
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -908,6 +919,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -927,6 +939,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: map,
@@ -956,6 +969,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -975,6 +989,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: map,
@@ -1000,6 +1015,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -1037,6 +1053,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: Some(Many(ManyPlatforms {
                     platforms: vec![Platform::Linux, Platform::MacOS]
                 })),
@@ -1055,6 +1072,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: Some(One(OnePlatform {
                     platform: Platform::Windows
                 })),
@@ -1083,6 +1101,7 @@ commands:
             &CommandConfig {
                 name: Some("demonstration".to_string()),
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
@@ -1111,6 +1130,7 @@ commands:
             &CommandConfig {
                 name: None,
                 description: None,
+                hidden: false,
                 platform: None,
                 variables: Default::default(),
                 commands: Default::default(),
