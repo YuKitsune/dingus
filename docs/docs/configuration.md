@@ -272,6 +272,48 @@ Each key in the `commands` map must be unique.
 If you want your command to have the same name across different platforms, use the `name` field to provide an alternative name.
 :::
 
+### Running other commands
+
+Commands can run other commands defined in the file.
+There is no special syntax for this, just call `dingus` with the desired command the same way you would invoke a command normally.
+
+```yaml
+commands:
+    clean:
+        action: rm -rf /build
+
+    build:
+        action: ./build.sh
+    
+    rebuild:
+        actions:
+            - dingus clean
+            - dingus build
+```
+
+If the command you need to call is not intented to be used directly, use the `hidden` field to hide it from the help output.
+
+```yaml
+commands:
+    pre:
+        hidden: true
+        action: ./pre-flight-checks.sh
+
+    start:
+        actions:
+            - dingus pre
+            - ./start.sh
+
+    debug:
+        actions:
+            - dingus pre
+            - ./debug.sh
+```
+
+:::note
+When a command is hidden, it is only removed from the help output, and any completeions. It can still be executed normally.
+:::
+
 ## Execution
 
 [Execution variables](#execution-variables), [prompt variable](#prompt-variables) options, and [actions](#actions) all provide a field for command text to be specified.
