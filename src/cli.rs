@@ -69,7 +69,8 @@ fn create_commands(
             let mut command = Command::new(name)
                 .subcommands(subcommands)
                 .subcommand_required(!has_action)
-                .args(args);
+                .args(args)
+                .hide(command_config.hidden);
 
             // If the action is an alias, then we use a special argument for the arguments to pass through to the alias
             if let Some(ActionConfig::Alias(_)) = command_config.action.clone() {
@@ -243,6 +244,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Sub 1 description".to_string()),
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -265,6 +267,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Sub 2 description".to_string()),
+                hidden: false,
                 variables: subcommand_variables,
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -343,6 +346,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: subcommand_variables,
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -439,6 +443,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: subsubcommand_variables,
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -468,6 +473,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: subcommand_variables,
                 commands: subsubcommands,
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -525,6 +531,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -542,6 +549,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: Default::default(),
                 commands: subsubcommands,
                 action: None,
@@ -576,6 +584,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::Alias(AliasActionConfig {
@@ -620,6 +629,7 @@ mod tests {
                 name: Some("demonstration".to_string()),
                 platform: None,
                 description: None,
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -656,6 +666,7 @@ mod tests {
                     platform: Platform::Linux,
                 })),
                 description: Some("Demo command on Linux.".to_string()),
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -674,6 +685,7 @@ mod tests {
                     platform: Platform::MacOS,
                 })),
                 description: Some("Demo command on macOS.".to_string()),
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -692,6 +704,7 @@ mod tests {
                     platforms: vec![Platform::Linux, Platform::MacOS],
                 })),
                 description: Some("Demo command on Unix.".to_string()),
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -710,6 +723,7 @@ mod tests {
                     platform: Platform::Windows,
                 })),
                 description: Some("Demo command on Windows.".to_string()),
+                hidden: false,
                 variables: Default::default(),
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -839,6 +853,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Top-level command".to_string()),
+                hidden: false,
                 variables: subcommand_variables,
                 commands: Default::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -907,6 +922,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Subcommand".to_string()),
+                hidden: false,
                 variables: subcommand_variables,
                 commands: CommandConfigMap::default(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -924,6 +940,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Mid-level command".to_string()),
+                hidden: false,
                 variables: command_variables,
                 commands: subcommands,
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -941,6 +958,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Top-level command".to_string()),
+                hidden: false,
                 variables: parent_command_variables,
                 commands: target_commands,
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -1007,6 +1025,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Bottom-level command".to_string()),
+                hidden: false,
                 variables: command_variables,
                 commands: CommandConfigMap::new(),
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -1024,6 +1043,7 @@ mod tests {
                 name: None,
                 platform: None,
                 description: Some("Top-level command".to_string()),
+                hidden: false,
                 variables: parent_command_variables,
                 commands: target_commands,
                 action: Some(ActionConfig::SingleStep(SingleActionConfig {
@@ -1068,6 +1088,51 @@ mod tests {
             "cmd".to_string(),
             CommandConfig {
                 name: Some("command".to_string()),
+                platform: None,
+                description: Some("Command with custom name".to_string()),
+                hidden: false,
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(Shorthand(
+                        "echo \"Hello, World!\"".to_string(),
+                    )),
+                })),
+            },
+        );
+
+        let config = Config {
+            description: None,
+            variables: Default::default(),
+            commands: commands,
+        };
+
+        let platform_provider = mock_platform_provider();
+
+        let root_command = create_root_command(&config, &Box::new(platform_provider));
+
+        // Act
+        let matches = root_command
+            .clone()
+            .get_matches_from(vec!["dingus", "command"]);
+        let (found_command, _, _) =
+            find_subcommand(&matches, &root_command, &config.commands, &config.variables).unwrap();
+
+        // Assert
+        assert_eq!(
+            found_command.description,
+            Some("Command with custom name".to_string())
+        );
+    }
+
+    #[test]
+    fn find_subcommand_finds_hidden_command() {
+        let mut commands = CommandConfigMap::new();
+        commands.insert(
+            "cmd".to_string(),
+            CommandConfig {
+                name: Some("command".to_string()),
+                hidden: true,
                 platform: None,
                 description: Some("Command with custom name".to_string()),
                 variables: Default::default(),
