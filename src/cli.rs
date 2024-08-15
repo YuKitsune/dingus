@@ -325,6 +325,7 @@ mod tests {
                 )),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             }),
         );
         subcommand_variables.insert(
@@ -332,6 +333,7 @@ mod tests {
             VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
                     options: Default::default(),
@@ -368,6 +370,7 @@ mod tests {
                 value: "bar".to_string(),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             }),
         );
 
@@ -429,6 +432,7 @@ mod tests {
             VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
                     options: Default::default(),
@@ -463,6 +467,7 @@ mod tests {
                 )),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             }),
         );
 
@@ -780,6 +785,7 @@ mod tests {
                 value: "bar".to_string(),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             }),
         );
         variables.insert(
@@ -790,6 +796,7 @@ mod tests {
                 )),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             }),
         );
         variables.insert(
@@ -797,6 +804,7 @@ mod tests {
             VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
                     options: Default::default(),

@@ -26,12 +26,29 @@ commands:
         action: echo "Hello $name, you are $age years old"
 ```
 
+### Environment Variables
+
+By default, variables are exposed to commands as environment variables with the same name as the variable, so a variable called `name` can be read using the `$name` environment variable.
+The optional `environment_variable` field can be used to change the name of the environment variable exposed to the command.
+
+```yaml
+commands:
+    deploy:
+
+        # Command variables
+        variables:
+            host:
+                exec: cat infra.yaml | yq '.prod.host'
+                environment_variable: DOCKER_HOST
+        action: docker compose up -d
+```
+
 ### Command-Line Arguments
 
 All variable values can be overridden using command-line arguments.
-The name of the argument will be the same as the variable name, so a variable called `name` can be overridden using the `--name` argument.
+By default, the name of the argument will be the same as the variable name, so a variable called `name` can be overridden using the `--name` argument.
 
-The optional `argument` and `description` fields can be used to control how the command-line argument is generated for a specific variable.
+The optional `argument` and `description` fields can be used to control how the command-line argument is generated for a variable.
 The name of the command-line argument can be overridden using the `argument` field.
 The `description` field can be used to provide help text for the help output.
 Both of these fields are available on all variable types.
@@ -71,7 +88,7 @@ Options:
 ### Literal Variables
 
 Literal variables are ones where the value is hard-coded to a specific value.
-This value can still be overridden using its relevent command-line argument.
+This value can still be overridden using its relevant command-line argument.
 
 ```yaml
 variables:
@@ -416,15 +433,15 @@ actions:
 Many fields have an alternative, shorter name.
 Here is a list of the available shortenings:
 
-| Field Name | Alias |
-| ---------- | ----- |
-| `variables` | `vars` |
-| `commands` | `cmds` |
-| `description` | `desc` |
-| `argument` | `arg` |
-| `options` | `opts` |
-| `argument` | `arg` |
-| `execute` | `exec` |
-| `command` | `cmd` |
-| `bash` | `sh` |
-| `workdir` | `wd` |
+| Field Name             | Alias  |
+|------------------------|--------|
+| `variables`            | `vars` |
+| `commands`             | `cmds` |
+| `description`          | `desc` |
+| `argument`             | `arg`  |
+| `environment_variable` | `env`  |
+| `options`              | `opts` |
+| `execute`              | `exec` |
+| `command`              | `cmd`  |
+| `bash`                 | `sh`   |
+| `workdir`              | `wd`   |
