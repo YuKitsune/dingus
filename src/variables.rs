@@ -32,17 +32,20 @@ impl VariableResolver for RealVariableResolver {
         for (key, config) in variable_configs.iter() {
             // Args from the command-line have the highest priority, check there first.
             let arg_name = config.arg_name(key);
+
+            let name = config.environment_variable_name(key);
+
             if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
-                resolved_variables.insert(key.clone(), arg_value.clone());
+                resolved_variables.insert(name.clone(), arg_value.clone());
             }
 
             _ = match config {
                 VariableConfig::ShorthandLiteral(value) => {
-                    resolved_variables.insert(key.clone(), value.clone())
+                    resolved_variables.insert(name.clone(), value.clone())
                 }
 
                 VariableConfig::Literal(literal_conf) => {
-                    resolved_variables.insert(key.clone(), literal_conf.value.clone())
+                    resolved_variables.insert(name.clone(), literal_conf.value.clone())
                 }
 
                 VariableConfig::Execution(execution_conf) => {
@@ -51,7 +54,7 @@ impl VariableResolver for RealVariableResolver {
                         .command_executor
                         .get_output(&execution_conf.execution, &resolved_variables)
                         .map_err(|err| VariableResolutionError::Execution {
-                            name: key.clone(),
+                            key: key.clone(),
                             source: err,
                         })?;
 
@@ -60,20 +63,20 @@ impl VariableResolver for RealVariableResolver {
                     // Return an error instead.
                     if let ExitStatus::Fail(_) = output.status {
                         return Err(VariableResolutionError::ExitStatus {
-                            name: key.clone(),
+                            key: key.clone(),
                             status: output.status.clone(),
                         });
                     }
 
                     let value = String::from_utf8(output.stdout)
                         .map_err(|err| VariableResolutionError::Parse {
-                            name: key.clone(),
+                            key: key.clone(),
                             source: err,
                         })?
                         .trim_end()
                         .to_string();
 
-                    resolved_variables.insert(key.clone(), value.clone())
+                    resolved_variables.insert(name.clone(), value.clone())
                 }
 
                 VariableConfig::Prompt(prompt_config) => {
@@ -81,10 +84,10 @@ impl VariableResolver for RealVariableResolver {
                         .prompt_executor
                         .execute(&prompt_config.prompt)
                         .map_err(|err| VariableResolutionError::Prompt {
-                            name: key.clone(),
+                            key: key.clone(),
                             source: err,
                         })?;
-                    resolved_variables.insert(key.clone(), value.clone())
+                    resolved_variables.insert(name.clone(), value.clone())
                 }
             }
         }
@@ -143,26 +146,26 @@ pub fn substitute_variables(template: &str, variables: &VariableMap) -> String {
 }
 
 #[derive(Error, Debug)]
-#[error("failed to resolve variable \"{name}\"")]
+#[error("failed to resolve variable \"{key}\"")]
 pub enum VariableResolutionError {
     Execution {
-        name: String,
+        key: String,
         source: ExecutionError,
     },
 
-    #[error("failed to resolve variable \"{name}\": {status}")]
+    #[error("failed to resolve variable \"{key}\": {status}")]
     ExitStatus {
-        name: String,
+        key: String,
         status: ExitStatus,
     },
 
     Parse {
-        name: String,
+        key: String,
         source: FromUtf8Error,
     },
 
     Prompt {
-        name: String,
+        key: String,
         source: PromptError,
     },
 }
@@ -243,6 +246,7 @@ mod tests {
                 value: value.to_string(),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None
             }),
         );
 
@@ -290,6 +294,7 @@ mod tests {
             VariableConfig::Execution(ExecutionVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 execution: ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
                     BashCommandConfig {
                         working_directory: None,
@@ -341,6 +346,7 @@ mod tests {
             Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "Enter your name".to_string(),
                     options: Default::default(),
@@ -390,6 +396,7 @@ mod tests {
             Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "Select your name".to_string(),
                     options: PromptOptionsVariant::Select(SelectPromptOptions {
@@ -412,6 +419,48 @@ mod tests {
 
         let binding = resolved_variables.unwrap().clone();
         let resolved_value = binding.get(name).unwrap().as_str();
+        assert_eq!(resolved_value, value);
+    }
+
+    #[test]
+    fn variable_resolver_uses_custom_env_var() {
+        // Arrange
+        let command_executor = MockCommandExecutor::new();
+        let mut argument_resolver = MockArgumentResolver::new();
+        argument_resolver
+            .expect_get()
+            .times(0..)
+            .returning(|_| None);
+        let prompt_executor = MockPromptExecutor::new();
+
+        let variable_resolver = RealVariableResolver {
+            command_executor: Box::new(command_executor),
+            prompt_executor: Box::new(prompt_executor),
+            argument_resolver: Box::new(argument_resolver),
+        };
+
+        let name = "name";
+        let value = "Dingus";
+        let env_var_name = "USER_NAME";
+        let mut variable_configs = VariableConfigMap::new();
+        variable_configs.insert(
+            name.to_string(),
+            VariableConfig::Literal(LiteralVariableConfig {
+                value: value.to_string(),
+                description: None,
+                argument_name: None,
+                environment_variable_name: Some(env_var_name.to_string())
+            }),
+        );
+
+        // Act
+        let resolved_variables = variable_resolver.resolve_variables(&variable_configs);
+
+        // Assert
+        assert!(!resolved_variables.is_err());
+
+        let binding = resolved_variables.unwrap().clone();
+        let resolved_value = binding.get(env_var_name).unwrap().as_str();
         assert_eq!(resolved_value, value);
     }
 

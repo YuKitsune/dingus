@@ -141,6 +141,16 @@ impl VariableConfig {
         .unwrap_or(key.to_string())
     }
 
+    pub fn environment_variable_name(&self, key: &str) -> String {
+        match self {
+            VariableConfig::ShorthandLiteral(_) => None,
+            VariableConfig::Literal(literal_conf) => literal_conf.clone().environment_variable_name,
+            VariableConfig::Execution(execution_conf) => execution_conf.clone().environment_variable_name,
+            VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().environment_variable_name,
+        }
+            .unwrap_or(key.to_string())
+    }
+
     pub fn description(&self) -> Option<String> {
         return match self {
             VariableConfig::ShorthandLiteral(_) => None,
@@ -173,6 +183,16 @@ pub struct LiteralVariableConfig {
     #[serde(alias = "arg")]
     pub argument_name: Option<String>,
 
+    /// An optional environment variable name.
+    /// If specified, the environment variable for this variable will have the specified name.
+    ///
+    /// This is **not** the name of the environment variable to source the value from.
+    /// If you want to source a variables value from an environment variable,
+    /// use an [`ExecutionVariableConfig`].
+    #[serde(rename(deserialize = "environment_variable"))]
+    #[serde(alias = "env")]
+    pub environment_variable_name: Option<String>,
+
     /// The value of the variable
     pub value: String,
 }
@@ -198,6 +218,16 @@ pub struct ExecutionVariableConfig {
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
     pub argument_name: Option<String>,
+
+    /// An optional environment variable name.
+    /// If specified, the environment variable for this variable will have the specified name.
+    ///
+    /// This is **not** the name of the environment variable to source the value from.
+    /// If you want to source a variables value from an environment variable,
+    /// use an [`ExecutionVariableConfig`].
+    #[serde(rename(deserialize = "environment_variable"))]
+    #[serde(alias = "env")]
+    pub environment_variable_name: Option<String>,
 
     /// The [`ExecutionConfigVariant`] to use to determine the value of this variable.
     #[serde(rename = "execute")]
@@ -227,6 +257,16 @@ pub struct PromptVariableConfig {
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
     pub argument_name: Option<String>,
+
+    /// An optional environment variable name.
+    /// If specified, the environment variable for this variable will have the specified name.
+    ///
+    /// This is **not** the name of the environment variable to source the value from.
+    /// If you want to source a variables value from an environment variable,
+    /// use an [`ExecutionVariableConfig`].
+    #[serde(rename(deserialize = "environment_variable"))]
+    #[serde(alias = "env")]
+    pub environment_variable_name: Option<String>,
 
     /// The [`PromptConfig`] to use for the prompt.
     pub prompt: PromptConfig,
@@ -502,6 +542,7 @@ mod tests {
             value: "Dingus".to_string(),
             description: None,
             argument_name: None,
+            environment_variable_name: None,
         });
         assert_eq!("key", literal_no_arg.arg_name("key"));
 
@@ -509,6 +550,7 @@ mod tests {
             value: "Dingus".to_string(),
             description: None,
             argument_name: Some("name".to_string()),
+            environment_variable_name: None,
         });
         assert_eq!("name", literal_with_arg.arg_name("key"));
 
@@ -516,6 +558,7 @@ mod tests {
             execution: bash_exec("echo \"Dingus\"", None),
             description: None,
             argument_name: None,
+            environment_variable_name: None,
         });
         assert_eq!("key", exec_no_arg.arg_name("key"));
 
@@ -523,12 +566,14 @@ mod tests {
             execution: bash_exec("echo \"Dingus\"", None),
             description: None,
             argument_name: Some("name".to_string()),
+            environment_variable_name: None,
         });
         assert_eq!("name", exec_with_arg.arg_name("key"));
 
         let prompt_no_arg = VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: None,
+            environment_variable_name: None,
             prompt: PromptConfig {
                 message: "".to_string(),
                 options: Default::default(),
@@ -539,6 +584,7 @@ mod tests {
         let prompt_with_arg = VariableConfig::Prompt(PromptVariableConfig {
             description: None,
             argument_name: Some("name".to_string()),
+            environment_variable_name: None,
             prompt: PromptConfig {
                 message: "".to_string(),
                 options: Default::default(),
@@ -596,6 +642,7 @@ commands:
                 value: My command value
                 description: Command level variable
                 arg: command-arg
+                env: MY_VAR
         action: echo \"Hello, World!\"";
         let config = parse_config(yaml).unwrap();
 
@@ -608,6 +655,7 @@ commands:
                 value: "My root value".to_string(),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             })
         );
 
@@ -619,6 +667,7 @@ commands:
                 value: "My command value".to_string(),
                 description: Some("Command level variable".to_string()),
                 argument_name: Some("command-arg".to_string()),
+                environment_variable_name: Some("MY_VAR".to_string()),
             })
         )
     }
@@ -638,6 +687,7 @@ commands:
                     bash: echo \"My command value\"
                 description: Command level variable
                 arg: command-arg
+                env: MY_VAR
         action: echo \"Hello, World!\"";
         let config = parse_config(yaml).unwrap();
 
@@ -650,6 +700,7 @@ commands:
                 execution: bash_exec("echo \"My root value\"", Some("../".to_string())),
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
             })
         );
 
@@ -661,6 +712,7 @@ commands:
                 execution: bash_exec("echo \"My command value\"", None),
                 description: Some("Command level variable".to_string()),
                 argument_name: Some("command-arg".to_string()),
+                environment_variable_name: Some("MY_VAR".to_string()),
             })
         )
     }
@@ -674,6 +726,7 @@ commands:
     food:
         description: Favourite food
         arg: food
+        env: FAV_FOOD
         prompt:
             message: What's your favourite food?
             options:
@@ -708,6 +761,7 @@ commands:
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
                     options: PromptOptionsVariant::Text(TextPromptOptions {
@@ -724,6 +778,7 @@ commands:
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: Some("Favourite food".to_string()),
                 argument_name: Some("food".to_string()),
+                environment_variable_name: Some("FAV_FOOD".to_string()),
                 prompt: PromptConfig {
                     message: "What's your favourite food?".to_string(),
                     options: PromptOptionsVariant::Select(SelectPromptOptions {
@@ -744,6 +799,7 @@ commands:
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your password?".to_string(),
                     options: PromptOptionsVariant::Text(TextPromptOptions {
@@ -760,6 +816,7 @@ commands:
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your life story?".to_string(),
                     options: PromptOptionsVariant::Text(TextPromptOptions {
@@ -776,6 +833,7 @@ commands:
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
                 argument_name: None,
+                environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your favourite line?".to_string(),
                     options: PromptOptionsVariant::Select(SelectPromptOptions {
