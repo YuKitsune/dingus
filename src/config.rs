@@ -111,8 +111,6 @@ fn default_commands() -> CommandConfigMap {
 /// Note that this uses a [`LinkedHashMap`] so that the order of insertion is retained.
 pub type VariableConfigMap = LinkedHashMap<String, VariableConfig>;
 
-// TODO: Consider adding a field to set the environment variable name for a variable
-
 /// The kind of variable.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
