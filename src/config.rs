@@ -143,10 +143,12 @@ impl VariableConfig {
         match self {
             VariableConfig::ShorthandLiteral(_) => None,
             VariableConfig::Literal(literal_conf) => literal_conf.clone().environment_variable_name,
-            VariableConfig::Execution(execution_conf) => execution_conf.clone().environment_variable_name,
+            VariableConfig::Execution(execution_conf) => {
+                execution_conf.clone().environment_variable_name
+            }
             VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().environment_variable_name,
         }
-            .unwrap_or(key.to_string())
+        .unwrap_or(key.to_string())
     }
 
     pub fn description(&self) -> Option<String> {

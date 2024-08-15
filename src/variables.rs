@@ -246,7 +246,7 @@ mod tests {
                 value: value.to_string(),
                 description: None,
                 argument_name: None,
-                environment_variable_name: None
+                environment_variable_name: None,
             }),
         );
 
@@ -449,7 +449,7 @@ mod tests {
                 value: value.to_string(),
                 description: None,
                 argument_name: None,
-                environment_variable_name: Some(env_var_name.to_string())
+                environment_variable_name: Some(env_var_name.to_string()),
             }),
         );
 
