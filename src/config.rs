@@ -1,7 +1,6 @@
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::env::VarError;
 use std::io::IsTerminal;
 use std::io::Read;
 use std::path::Path;

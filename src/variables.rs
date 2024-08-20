@@ -227,7 +227,6 @@ mod tests {
     };
     use crate::exec::{ExitStatus, MockCommandExecutor, Output};
     use crate::prompt::MockPromptExecutor;
-    use inquire::validator::ErrorMessage::Default;
 
     #[test]
     fn variable_resolver_resolves_shorthand_literal() {
