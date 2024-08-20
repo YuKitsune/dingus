@@ -1,6 +1,6 @@
 use crate::actions::ActionExecutor;
 use crate::args::ClapArgumentResolver;
-use crate::config::ConfigError;
+use crate::config::{ConfigError, DingusOptions};
 use crate::exec::create_command_executor;
 use crate::platform::current_platform_provider;
 use crate::prompt::TerminalPromptExecutor;
@@ -74,15 +74,18 @@ fn main() -> Result<()> {
             // Set up the dependencies
             let arg_resolver = ClapArgumentResolver::from_arg_matches(&sucbommand_arg_matches);
             let variable_resolver = RealVariableResolver {
-                command_executor: create_command_executor(),
-                prompt_executor: Box::new(TerminalPromptExecutor::new(create_command_executor())),
+                command_executor: create_command_executor(&config.options),
+                prompt_executor: Box::new(TerminalPromptExecutor::new(create_command_executor(
+                    &config.options,
+                ))),
                 argument_resolver: Box::new(arg_resolver),
+                dingus_options: config.options.clone(),
             };
 
             let variables = variable_resolver.resolve_variables(&available_variable_configs)?;
 
             let action_executor = ActionExecutor {
-                command_executor: create_command_executor(),
+                command_executor: create_command_executor(&config.options),
                 arg_resolver: Box::new(ClapArgumentResolver::from_arg_matches(
                     &sucbommand_arg_matches,
                 )),

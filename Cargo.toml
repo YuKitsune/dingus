@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.4", features = ["string"] }
+colored = "2.1.0"
 inquire = "0.7.5"
 linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
 mockall = "0.13.0"

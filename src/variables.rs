@@ -1,7 +1,8 @@
 use crate::args::ArgumentResolver;
-use crate::config::{VariableConfig, VariableConfigMap};
+use crate::config::{DingusOptions, PromptOptionsVariant, VariableConfig, VariableConfigMap};
 use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
 use crate::prompt::{PromptError, PromptExecutor};
+use colored::Colorize;
 use std::collections::HashMap;
 use std::string::FromUtf8Error;
 use thiserror::Error;
@@ -21,6 +22,7 @@ pub struct RealVariableResolver {
     pub command_executor: Box<dyn CommandExecutor>,
     pub prompt_executor: Box<dyn PromptExecutor>,
     pub argument_resolver: Box<dyn ArgumentResolver>,
+    pub dingus_options: DingusOptions,
 }
 
 impl VariableResolver for RealVariableResolver {
@@ -28,7 +30,11 @@ impl VariableResolver for RealVariableResolver {
         &self,
         variable_configs: &VariableConfigMap,
     ) -> Result<VariableMap, VariableResolutionError> {
+        // The names of sensitive variables are added to a separate vec so that the logging stuff
+        // below knows to obfuscate them.
         let mut resolved_variables = VariableMap::new();
+        let mut sensitive_variable_names: Vec<String> = vec![];
+
         for (key, config) in variable_configs.iter() {
             // Args from the command-line have the highest priority, check there first.
             let arg_name = config.arg_name(key);
@@ -37,62 +43,101 @@ impl VariableResolver for RealVariableResolver {
 
             if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
                 resolved_variables.insert(name.clone(), arg_value.clone());
-            }
-
-            _ = match config {
-                VariableConfig::ShorthandLiteral(value) => {
-                    resolved_variables.insert(name.clone(), value.clone())
-                }
-
-                VariableConfig::Literal(literal_conf) => {
-                    resolved_variables.insert(name.clone(), literal_conf.value.clone())
-                }
-
-                VariableConfig::Execution(execution_conf) => {
-                    // Exec variables need access to the variables defined above them.
-                    let output = self
-                        .command_executor
-                        .get_output(&execution_conf.execution, &resolved_variables)
-                        .map_err(|err| VariableResolutionError::Execution {
-                            key: key.clone(),
-                            source: err,
-                        })?;
-
-                    // TODO: Make this configurable.
-                    // If the command has a non-zero exit code, we probably shouldn't trust it's output.
-                    // Return an error instead.
-                    if let ExitStatus::Fail(_) = output.status {
-                        return Err(VariableResolutionError::ExitStatus {
-                            key: key.clone(),
-                            status: output.status.clone(),
-                        });
+            } else {
+                _ = match config {
+                    VariableConfig::ShorthandLiteral(value) => {
+                        resolved_variables.insert(name.clone(), value.clone());
                     }
 
-                    let value = String::from_utf8(output.stdout)
-                        .map_err(|err| VariableResolutionError::Parse {
-                            key: key.clone(),
-                            source: err,
-                        })?
-                        .trim_end()
-                        .to_string();
+                    VariableConfig::Literal(literal_conf) => {
+                        resolved_variables.insert(name.clone(), literal_conf.value.clone());
+                    }
 
-                    resolved_variables.insert(name.clone(), value.clone())
-                }
+                    VariableConfig::Execution(execution_conf) => {
+                        // Exec variables need access to the variables defined above them.
+                        let output = self
+                            .command_executor
+                            .get_output(&execution_conf.execution, &resolved_variables)
+                            .map_err(|err| VariableResolutionError::Execution {
+                                key: key.clone(),
+                                source: err,
+                            })?;
 
-                VariableConfig::Prompt(prompt_config) => {
-                    let value = self
-                        .prompt_executor
-                        .execute(&prompt_config.prompt)
-                        .map_err(|err| VariableResolutionError::Prompt {
-                            key: key.clone(),
-                            source: err,
-                        })?;
-                    resolved_variables.insert(name.clone(), value.clone())
+                        // TODO: Make this configurable.
+                        // If the command has a non-zero exit code, we probably shouldn't trust it's output.
+                        // Return an error instead.
+                        if let ExitStatus::Fail(_) = output.status {
+                            return Err(VariableResolutionError::ExitStatus {
+                                key: key.clone(),
+                                status: output.status.clone(),
+                            });
+                        }
+
+                        let value = String::from_utf8(output.stdout)
+                            .map_err(|err| VariableResolutionError::Parse {
+                                key: key.clone(),
+                                source: err,
+                            })?
+                            .trim_end()
+                            .to_string();
+
+                        resolved_variables.insert(name.clone(), value.clone());
+                    }
+
+                    VariableConfig::Prompt(prompt_config) => {
+                        let value = self
+                            .prompt_executor
+                            .execute(&prompt_config.prompt)
+                            .map_err(|err| VariableResolutionError::Prompt {
+                                key: key.clone(),
+                                source: err,
+                            })?;
+
+                        resolved_variables.insert(name.clone(), value.clone());
+
+                        if is_variable_sensitive(config) {
+                            sensitive_variable_names.push(name.clone());
+                        }
+                    }
                 }
             }
         }
 
-        return Ok(resolved_variables);
+        self.log_variables(&resolved_variables, &sensitive_variable_names);
+
+        Ok(resolved_variables)
+    }
+}
+
+impl RealVariableResolver {
+    fn log_variables(&self, variables: &VariableMap, sensitive_variable_names: &Vec<String>) {
+        if !self.dingus_options.print_variables {
+            return;
+        }
+
+        for (name, value) in variables {
+            let is_sensitive = sensitive_variable_names.contains(name);
+
+            let variable_to_print = if is_sensitive {
+                "********".to_string() // Hard coded value to obscure the length
+            } else {
+                value.clone()
+            };
+
+            println!("{}={}", name, variable_to_print.green());
+        }
+    }
+}
+
+fn is_variable_sensitive(variable_config: &VariableConfig) -> bool {
+    match variable_config {
+        VariableConfig::ShorthandLiteral(_) => false,
+        VariableConfig::Literal(_) => false,
+        VariableConfig::Execution(_) => false,
+        VariableConfig::Prompt(prompt_variable) => match prompt_variable.clone().prompt.options {
+            PromptOptionsVariant::Select(_) => false,
+            PromptOptionsVariant::Text(text_prompt_options) => text_prompt_options.sensitive,
+        },
     }
 }
 
@@ -182,6 +227,7 @@ mod tests {
     };
     use crate::exec::{ExitStatus, MockCommandExecutor, Output};
     use crate::prompt::MockPromptExecutor;
+    use inquire::validator::ErrorMessage::Default;
 
     #[test]
     fn variable_resolver_resolves_shorthand_literal() {
@@ -199,6 +245,7 @@ mod tests {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
+            dingus_options: Default::default(),
         };
 
         let name = "name";
@@ -235,6 +282,7 @@ mod tests {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
+            dingus_options: Default::default(),
         };
 
         let name = "name";
@@ -285,6 +333,7 @@ mod tests {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
+            dingus_options: Default::default(),
         };
 
         let name = "name";
@@ -337,6 +386,7 @@ mod tests {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
+            dingus_options: Default::default(),
         };
 
         let name = "name";
@@ -387,6 +437,7 @@ mod tests {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
+            dingus_options: Default::default(),
         };
 
         let name = "name";
@@ -437,6 +488,7 @@ mod tests {
             command_executor: Box::new(command_executor),
             prompt_executor: Box::new(prompt_executor),
             argument_resolver: Box::new(argument_resolver),
+            dingus_options: Default::default(),
         };
 
         let name = "name";
