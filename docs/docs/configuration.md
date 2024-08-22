@@ -428,6 +428,26 @@ actions:
       bash: ...
 ```
 
+## Logging
+
+By default, Dingus will only output errors or the output from the commands being executed.
+
+Variables can be printed before execution by setting the `options.print_variables` field to `true`, or by setting the
+`DINGUS_PRINT_VARIABLES` environment variable to `true`.
+
+```yaml
+options:
+  print_variables: true
+```
+
+The command text can also be printed before being executed by setting the `options.print_commands` field to `true`, or
+by setting the `DINGUS_PRINT_COMMANDS` environment variable to `true`.
+
+```yaml
+options:
+  print_commands: true
+```
+
 ## Shortenings
 
 Many fields have an alternative, shorter name.

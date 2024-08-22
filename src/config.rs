@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::io::IsTerminal;
 use std::io::Read;
 use std::path::Path;
-use std::{fs, io};
+use std::{env, fs, io};
 use thiserror::Error;
 
 const CONFIG_FILE_NAMES: [&str; 4] = ["dingus.yaml", "Dingus.yaml", "dingus.yml", "Dingus.yml"];
@@ -97,6 +97,10 @@ pub struct Config {
     /// Top-level [`CommandConfig`]s.
     #[serde(alias = "cmds")]
     pub commands: CommandConfigMap,
+
+    #[serde(default)]
+    #[serde(alias = "opts")]
+    pub options: DingusOptions,
 }
 
 fn default_variables() -> VariableConfigMap {
@@ -105,6 +109,46 @@ fn default_variables() -> VariableConfigMap {
 
 fn default_commands() -> CommandConfigMap {
     CommandConfigMap::new()
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct DingusOptions {
+    /// When set to `true`, commands will be printed to stdout before executing them
+    /// Defaults to `false`.
+    #[serde(default = "default_print_commands")]
+    pub print_commands: bool,
+
+    /// When set to `true`, variables will be printed to stdout once they've been resolved
+    /// Defaults to `false`.
+    #[serde(default = "default_print_variables")]
+    pub print_variables: bool,
+}
+
+impl Default for DingusOptions {
+    fn default() -> Self {
+        DingusOptions {
+            print_commands: default_print_commands(),
+            print_variables: default_print_variables(),
+        }
+    }
+}
+
+fn default_print_commands() -> bool {
+    match env::var("DINGUS_PRINT_COMMANDS") {
+        Ok(str) => is_truthy(str),
+        Err(_) => false,
+    }
+}
+
+fn default_print_variables() -> bool {
+    match env::var("DINGUS_PRINT_VARIABLES") {
+        Ok(str) => is_truthy(str),
+        Err(_) => false,
+    }
+}
+
+fn is_truthy(s: String) -> bool {
+    s == "true" || s == "TRUE" || s == "t" || s == "T"
 }
 
 /// A set of [`VariableConfig`].

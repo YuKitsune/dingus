@@ -219,7 +219,7 @@ mod tests {
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::RawCommandConfigVariant::Shorthand;
     use crate::config::{
-        ActionConfig, AliasActionConfig, CommandConfig, ExecutionVariableConfig,
+        ActionConfig, AliasActionConfig, CommandConfig, DingusOptions, ExecutionVariableConfig,
         LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PromptConfig,
         PromptVariableConfig, SingleActionConfig, VariableConfig,
     };
@@ -876,6 +876,7 @@ mod tests {
             description: None,
             variables: root_variables,
             commands: commands,
+            options: DingusOptions::default(),
         };
 
         let platform_provider = mock_platform_provider();
@@ -981,6 +982,7 @@ mod tests {
             description: None,
             variables: root_variables,
             commands: parent_commands,
+            options: DingusOptions::default(),
         };
 
         let platform_provider = mock_platform_provider();
@@ -1066,6 +1068,7 @@ mod tests {
             description: None,
             variables: root_variables,
             commands: parent_commands,
+            options: DingusOptions::default(),
         };
 
         let platform_provider = mock_platform_provider();
@@ -1113,6 +1116,7 @@ mod tests {
             description: None,
             variables: Default::default(),
             commands: commands,
+            options: DingusOptions::default(),
         };
 
         let platform_provider = mock_platform_provider();
@@ -1157,6 +1161,7 @@ mod tests {
             description: None,
             variables: Default::default(),
             commands: commands,
+            options: DingusOptions::default(),
         };
 
         let platform_provider = mock_platform_provider();
