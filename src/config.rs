@@ -180,7 +180,7 @@ impl VariableConfig {
             VariableConfig::Execution(execution_conf) => execution_conf.clone().argument_name,
             VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().argument_name,
         }
-        .unwrap_or(key.to_string())
+        .unwrap_or(to_kebab_case(key.to_string()))
     }
 
     pub fn environment_variable_name(&self, key: &str) -> String {
@@ -203,6 +203,34 @@ impl VariableConfig {
             VariableConfig::Prompt(prompt_config) => prompt_config.clone().description,
         };
     }
+}
+
+fn to_kebab_case(var_name: String) -> String {
+    let mut kebabed = String::new();
+    let mut source = var_name.clone();
+
+    const SEPARATORS: [char; 2] = ['-', '_'];
+    let all_caps = source
+        .chars()
+        .all(|c| c.is_uppercase() || SEPARATORS.contains(&c));
+    if all_caps {
+        source = var_name.to_lowercase();
+    }
+
+    for (i, c) in source.chars().enumerate() {
+        if c.is_uppercase() {
+            if i != 0 {
+                kebabed.push('-');
+            }
+            kebabed.push(c.to_ascii_lowercase());
+        } else if c == '_' {
+            kebabed.push('-');
+        } else {
+            kebabed.push(c);
+        }
+    }
+
+    kebabed
 }
 
 /// Denotes a literal variable where the value is hard-coded.
@@ -1253,6 +1281,23 @@ commands:
                     ]
                 })),
             }
+        );
+    }
+
+    #[test]
+    fn to_kebab_case_converts_to_kebab_case() {
+        assert_eq!("pascal-case", to_kebab_case("PascalCase".to_string()));
+        assert_eq!("camel-case", to_kebab_case("camelCase".to_string()));
+        assert_eq!("snake-case", to_kebab_case("snake_case".to_string()));
+        assert_eq!("kebab-case", to_kebab_case("kebab-case".to_string()));
+        assert_eq!("allcaps", to_kebab_case("ALLCAPS".to_string()));
+        assert_eq!(
+            "snake-all-caps",
+            to_kebab_case("SNAKE_ALL_CAPS".to_string())
+        );
+        assert_eq!(
+            "kebab-all-caps",
+            to_kebab_case("KEBAB-ALL-CAPS".to_string())
         );
     }
 }
