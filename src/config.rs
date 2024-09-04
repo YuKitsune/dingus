@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::IsTerminal;
 use std::io::Read;
-use std::path::Path;
+use std::path::PathBuf;
 use std::{env, fs, io};
 use thiserror::Error;
 
@@ -18,29 +18,57 @@ commands:
   greet:
     action: echo \"Hello, $name!\"";
 
-// TODO: Support reading from parent directories
+pub enum Source {
+    Unknown,
+    Stdin,
+    File(PathBuf),
+}
+
+pub struct FoundConfig {
+    pub source: Source,
+    pub config: Config,
+}
 
 /// Loads the [`Config`] from stdin, or a file in the current directory.
-pub fn load() -> Result<Config, ConfigError> {
+pub fn load() -> Result<FoundConfig, ConfigError> {
     let input = io::stdin();
+
+    let mut source = Source::Unknown;
     let mut config_text = String::new();
 
     if input.is_terminal() {
         let mut found = false;
-        for config_file_name in CONFIG_FILE_NAMES {
-            if !Path::new(config_file_name).exists() {
-                continue;
+        let mut directory = env::current_dir().unwrap();
+        while !found {
+            for config_file_name in CONFIG_FILE_NAMES {
+                let config_file_path = directory.join(config_file_name);
+                if !config_file_path.exists() {
+                    continue;
+                }
+
+                source = Source::File(config_file_path.clone());
+                config_text = fs::read_to_string(config_file_path)
+                    .map_err(|err| ConfigError::ReadFailed(err))?;
+                found = true;
+                break;
             }
 
-            config_text =
-                fs::read_to_string(config_file_name).map_err(|err| ConfigError::ReadFailed(err))?;
-            found = true;
+            if found {
+                break;
+            }
+
+            if let Some(parent) = directory.parent() {
+                directory = parent.to_owned();
+            } else {
+                break;
+            }
         }
 
         if !found {
             return Err(ConfigError::FileNotFound);
         }
     } else {
+        source = Source::Stdin;
         input
             .lock()
             .read_to_string(&mut config_text)
@@ -48,7 +76,7 @@ pub fn load() -> Result<Config, ConfigError> {
     };
 
     let config = parse_config(&config_text)?;
-    return Ok(config);
+    Ok(FoundConfig { source, config })
 }
 
 /// Creates a new config file in the current directory.
@@ -61,10 +89,10 @@ pub fn init() -> Result<String, ConfigError> {
 
 fn parse_config(text: &str) -> Result<Config, ConfigError> {
     let result = serde_yaml::from_str(text);
-    return match result {
+    match result {
         Ok(config) => Ok(config),
         Err(parse_err) => Err(ConfigError::ParseFailed(parse_err)),
-    };
+    }
 }
 
 #[derive(Error, Debug)]

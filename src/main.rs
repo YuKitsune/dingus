@@ -1,11 +1,12 @@
 use crate::actions::ActionExecutor;
 use crate::args::ClapArgumentResolver;
-use crate::config::{ConfigError, DingusOptions};
+use crate::config::ConfigError;
 use crate::exec::create_command_executor;
 use crate::platform::current_platform_provider;
 use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
 use anyhow::Result;
+use std::env;
 use thiserror::Error;
 
 mod actions;
@@ -18,13 +19,12 @@ mod prompt;
 mod variables;
 
 // Ideas:
-// - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Include other config files (on disk or with a GitHub link)
-// - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
-// - Container actions: Run an action inside a docker container
+// - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Deferred actions: Always executes at the end, even if one of the actions fails.
+// - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
 // - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
-// - Named actions: Actions can be named so that they can be skipped selectively (--skip arg vs custom conditional stuff per action)
+// - Container actions: Run an action inside a docker container
 // - YAML schema.
 
 fn main() -> Result<()> {
@@ -52,9 +52,18 @@ fn main() -> Result<()> {
         };
     }
 
+    let found_config = config_result?;
+    let config = found_config.config;
+
+    // Change the current working directory to the directory that the config file came from.
+    if let config::Source::File(config_file_path) = found_config.source {
+        if let Some(parent_directory) = config_file_path.parent() {
+            env::set_current_dir(parent_directory)?;
+        }
+    }
+
     let platform_provider = current_platform_provider();
 
-    let config = config_result.unwrap();
     let root_command = cli::create_root_command(&config, &platform_provider);
 
     // This will exit on any match failures
@@ -96,7 +105,7 @@ fn main() -> Result<()> {
         }
     }
 
-    return Err(CommandError::CommandNotFound.into());
+    Err(CommandError::CommandNotFound.into())
 }
 
 #[derive(Error, Debug, Clone)]
