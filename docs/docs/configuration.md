@@ -4,6 +4,32 @@ sidebar_position: 3
 
 # Configuration
 
+## Dingus file
+
+When executing Dingus, it will look in the current directory a `dingus.yaml` file.
+If there is no file in the current directory, it will check all parent directories until it finds one.
+
+Once a config file has been found, Dingus will use that files location as it's working directory.
+This allows you to reference files from the config file using relative paths.
+
+```sh
+$ ls
+docs    license   dingus.yaml
+
+$ cat dingus.yaml
+commands:
+  print-license:
+    action: cat license
+
+$ cat license
+MIT
+
+$ cd docs
+
+$ dingus print-license
+MIT
+```
+
 ## Variables
 
 Variables are exposed to [commands](#commands) as environment variables.
