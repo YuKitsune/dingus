@@ -11,7 +11,7 @@ It's lightweight, easy to use, and perfect for consolidating project-specific ta
 ## Features
 
 - Designed from the ground-up as a command runner without the constraints of a build tool.
-- Supports Windows, macOS, and Linux, and isn't dependant on a specific Shell.
+- Supports Windows, macOS, and Linux, and isn't dependent on a specific Shell.
 - Provides a POSIX-style command-line interface allowing for nested subcommands, and variable substitution using command-line arguments.
 - Uses a simple YAML file for configuration.
 
