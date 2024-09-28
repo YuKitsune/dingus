@@ -87,26 +87,23 @@ pub fn init() -> Result<String, ConfigError> {
     Ok(file_name.to_string())
 }
 
-fn parse_config_from(path: &String) -> Result<Config, ConfigError>{
-
-    let config_text = fs::read_to_string(path)
-        .map_err(|err| ConfigError::ReadFailed(err))?;
+fn parse_config_from(path: &String) -> Result<Config, ConfigError> {
+    let config_text = fs::read_to_string(path).map_err(|err| ConfigError::ReadFailed(err))?;
 
     parse_config(&config_text)
 }
 
 fn parse_config(text: &String) -> Result<Config, ConfigError> {
-
     // Parse the base config
-    let mut base_config: Config = serde_yaml::from_str(text.as_str())
-        .map_err(|err| ConfigError::ParseFailed(err))?;
+    let mut base_config: Config =
+        serde_yaml::from_str(text.as_str()).map_err(|err| ConfigError::ParseFailed(err))?;
 
     // Parse the imports too
     for import in &base_config.imports {
-        let child_config = parse_config_from(&import.source)
-            .map_err(|err| ConfigError::ImportFailed {
+        let child_config =
+            parse_config_from(&import.source).map_err(|err| ConfigError::ImportFailed {
                 alias: import.alias.clone(),
-                source: Box::new(err)
+                source: Box::new(err),
             })?;
 
         // Create a top-level command for every import
@@ -143,14 +140,13 @@ pub enum ConfigError {
     #[error("failed to import {alias}")]
     ImportFailed {
         alias: String,
-        source: Box<ConfigError> // Need to box this so the size isn't infinite
+        source: Box<ConfigError>, // Need to box this so the size isn't infinite
     },
 }
 
 /// The root-level of the Configuration.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-
     /// A list of additional config files to import.
     #[serde(default = "default_imports")]
     pub imports: Vec<Import>,
@@ -648,12 +644,12 @@ pub struct BashCommandConfig {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-    use tempfile::NamedTempFile;
     use super::*;
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::Platform::Windows;
     use crate::config::RawCommandConfigVariant::Shorthand;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
     fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfigVariant {
         return ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
@@ -1351,7 +1347,6 @@ commands:
 
     #[test]
     fn import() {
-
         let yaml3 = "variables:
     age: Forty Two
 commands:
@@ -1359,7 +1354,8 @@ commands:
         action: echo \"You are $age years old.\"";
         let yaml3_file = create_temp_file(yaml3);
 
-        let yaml2 = format!("imports:
+        let yaml2 = format!(
+            "imports:
     - alias: level-3
       source: {}
       hidden: true
@@ -1367,10 +1363,13 @@ variables:
     last_name: Smith
 commands:
     demo:
-        action: echo \"Your last name is $last_name!\"", yaml3_file.path().to_str().unwrap());
+        action: echo \"Your last name is $last_name!\"",
+            yaml3_file.path().to_str().unwrap()
+        );
         let yaml2_file = create_temp_file(yaml2.as_str());
 
-        let yaml1 = format!("imports:
+        let yaml1 = format!(
+            "imports:
     - alias: level-2
       source: {}
       platform: Windows
@@ -1378,14 +1377,20 @@ variables:
     first_name: Dingus
 commands:
     demo:
-        action: echo \"Your first name is $first_name!\"", yaml2_file.path().to_str().unwrap());
+        action: echo \"Your first name is $first_name!\"",
+            yaml2_file.path().to_str().unwrap()
+        );
 
         let config = parse_config(&yaml1.to_string()).unwrap();
 
         let root_demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
             root_demo_command.action,
-            Some(ActionConfig::SingleStep(SingleActionConfig { action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Your first name is $first_name!\"".to_string())) }))
+            Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(Shorthand(
+                    "echo \"Your first name is $first_name!\"".to_string()
+                ))
+            }))
         );
         assert_eq!(
             config.variables.get("first_name").unwrap(),
@@ -1395,11 +1400,15 @@ commands:
         let second_level_command = config.commands.get("level-2").unwrap();
         assert_eq!(
             second_level_command.commands.get("demo").unwrap().action,
-            Some(ActionConfig::SingleStep(SingleActionConfig { action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Your last name is $last_name!\"".to_string())) }))
+            Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(Shorthand(
+                    "echo \"Your last name is $last_name!\"".to_string()
+                ))
+            }))
         );
         assert_eq!(
             second_level_command.platform,
-            Some(One(OnePlatform{ platform: Windows}))
+            Some(One(OnePlatform { platform: Windows }))
         );
         assert_eq!(
             second_level_command.variables.get("last_name").unwrap(),
@@ -1409,12 +1418,13 @@ commands:
         let third_level_command = second_level_command.commands.get("level-3").unwrap();
         assert_eq!(
             third_level_command.commands.get("demo").unwrap().action,
-            Some(ActionConfig::SingleStep(SingleActionConfig { action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"You are $age years old.\"".to_string())) }))
+            Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(Shorthand(
+                    "echo \"You are $age years old.\"".to_string()
+                ))
+            }))
         );
-        assert_eq!(
-            third_level_command.hidden,
-            true
-        );
+        assert_eq!(third_level_command.hidden, true);
         assert_eq!(
             third_level_command.variables.get("age").unwrap(),
             &VariableConfig::ShorthandLiteral("Forty Two".to_string())
