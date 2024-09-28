@@ -84,15 +84,46 @@ pub fn init() -> Result<String, ConfigError> {
     let file_name = CONFIG_FILE_NAMES[0];
 
     fs::write(file_name, DEFAULT_CONFIG_FILE).map_err(|io_err| ConfigError::WriteFailed(io_err))?;
-    return Ok(file_name.to_string());
+    Ok(file_name.to_string())
 }
 
-fn parse_config(text: &str) -> Result<Config, ConfigError> {
-    let result = serde_yaml::from_str(text);
-    match result {
-        Ok(config) => Ok(config),
-        Err(parse_err) => Err(ConfigError::ParseFailed(parse_err)),
+fn parse_config_from(path: &String) -> Result<Config, ConfigError>{
+
+    let config_text = fs::read_to_string(path)
+        .map_err(|err| ConfigError::ReadFailed(err))?;
+
+    parse_config(&config_text)
+}
+
+fn parse_config(text: &String) -> Result<Config, ConfigError> {
+
+    // Parse the base config
+    let mut base_config: Config = serde_yaml::from_str(text.as_str())
+        .map_err(|err| ConfigError::ParseFailed(err))?;
+
+    // Parse the imports too
+    for import in &base_config.imports {
+        let child_config = parse_config_from(&import.source)
+            .map_err(|err| ConfigError::ImportFailed {
+                alias: import.alias.clone(),
+                source: Box::new(err)
+            })?;
+
+        // Create a top-level command for every import
+        let command = CommandConfig {
+            name: None,
+            description: child_config.description,
+            hidden: import.hidden,
+            platform: import.platform.clone(),
+            variables: child_config.variables,
+            commands: child_config.commands,
+            action: None,
+        };
+
+        base_config.commands.insert(import.alias.clone(), command);
     }
+
+    Ok(base_config)
 }
 
 #[derive(Error, Debug)]
@@ -108,11 +139,22 @@ pub enum ConfigError {
 
     #[error("failed to parse config file")]
     ParseFailed(#[source] serde_yaml::Error),
+
+    #[error("failed to import {alias}")]
+    ImportFailed {
+        alias: String,
+        source: Box<ConfigError> // Need to box this so the size isn't infinite
+    },
 }
 
 /// The root-level of the Configuration.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
+
+    /// A list of additional config files to import.
+    #[serde(default = "default_imports")]
+    pub imports: Vec<Import>,
+
     /// A user-friendly description.
     #[serde(alias = "desc")]
     pub description: Option<String>,
@@ -131,12 +173,31 @@ pub struct Config {
     pub options: DingusOptions,
 }
 
+fn default_imports() -> Vec<Import> {
+    Vec::new()
+}
+
 fn default_variables() -> VariableConfigMap {
     VariableConfigMap::new()
 }
 
 fn default_commands() -> CommandConfigMap {
     CommandConfigMap::new()
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Import {
+    pub alias: String,
+    pub source: String, // TODO: Separate types for path, url, etc.
+
+    /// Whether the imported commands should be hidden from the --help output.
+    #[serde(default = "default_hidden")]
+    pub hidden: bool,
+
+    /// An optional platform to restrict this import to.
+    /// When specified, the config will only be imported on the specified platforms.
+    #[serde(flatten)]
+    pub platform: Option<OneOrManyPlatforms>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -587,8 +648,12 @@ pub struct BashCommandConfig {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write;
+    use tempfile::NamedTempFile;
     use super::*;
     use crate::config::OneOrManyPlatforms::{Many, One};
+    use crate::config::Platform::Windows;
+    use crate::config::RawCommandConfigVariant::Shorthand;
 
     fn bash_exec(command: &str, workdir: Option<String>) -> ExecutionConfigVariant {
         return ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
@@ -670,7 +735,7 @@ mod tests {
         let yaml = "commands:
     demo:
         action: echo \"Hello, World!\"";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         assert!(config.variables.is_empty());
     }
@@ -684,7 +749,7 @@ commands:
         variables:
             my-command-var: My command value
         action: echo \"Hello, World!\"";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -716,7 +781,7 @@ commands:
                 arg: command-arg
                 env: MY_VAR
         action: echo \"Hello, World!\"";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -761,7 +826,7 @@ commands:
                 arg: command-arg
                 env: MY_VAR
         action: echo \"Hello, World!\"";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -823,7 +888,7 @@ commands:
                         exec: cat example.txt
 
         action: echo \"Hello, World!\"";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -931,7 +996,7 @@ commands:
             command-var-1: Command value 1
             command-var-3: Command value 3
         action: echo \"Hello, World!\"";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -959,7 +1024,7 @@ commands:
         let yaml = "commands:
     demo:
         action: ls";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -985,7 +1050,7 @@ commands:
         let yaml = "commands:
     deps:
         alias: docker compose -f docker-compose.deps.yml";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("deps").unwrap();
         assert_eq!(
@@ -1010,7 +1075,7 @@ commands:
     demo:
         description: Says hello.
         action: ls";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1039,7 +1104,7 @@ commands:
             gday:
                 action: ls
         action: cat example.txt";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         let gday_command = demo_command.commands.get("gday").unwrap();
@@ -1089,7 +1154,7 @@ commands:
         commands:
             gday:
                 action: ls";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         let gday_command = demo_command.commands.get("gday").unwrap();
@@ -1137,7 +1202,7 @@ commands:
         actions:
             - cat example.txt
             - ls";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1174,7 +1239,7 @@ commands:
     demo_win:
         platform: Windows
         action: Get-Content example.txt";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command_nix = config.commands.get("demo_nix").unwrap();
         let demo_command_win = config.commands.get("demo_win").unwrap();
@@ -1223,7 +1288,7 @@ commands:
     demo:
         name: demonstration
         action: cat example.txt";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1252,7 +1317,7 @@ commands:
             - bash: echo \"Hello, World!\"
             - bash: pwd
               workdir: /";
-        let config = parse_config(yaml).unwrap();
+        let config = parse_config(&yaml.to_string()).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1282,5 +1347,83 @@ commands:
                 })),
             }
         );
+    }
+
+    #[test]
+    fn import() {
+
+        let yaml3 = "variables:
+    age: Forty Two
+commands:
+    demo:
+        action: echo \"You are $age years old.\"";
+        let yaml3_file = create_temp_file(yaml3);
+
+        let yaml2 = format!("imports:
+    - alias: level-3
+      source: {}
+      hidden: true
+variables:
+    last_name: Smith
+commands:
+    demo:
+        action: echo \"Your last name is $last_name!\"", yaml3_file.path().to_str().unwrap());
+        let yaml2_file = create_temp_file(yaml2.as_str());
+
+        let yaml1 = format!("imports:
+    - alias: level-2
+      source: {}
+      platform: Windows
+variables:
+    first_name: Dingus
+commands:
+    demo:
+        action: echo \"Your first name is $first_name!\"", yaml2_file.path().to_str().unwrap());
+
+        let config = parse_config(&yaml1.to_string()).unwrap();
+
+        let root_demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(
+            root_demo_command.action,
+            Some(ActionConfig::SingleStep(SingleActionConfig { action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Your first name is $first_name!\"".to_string())) }))
+        );
+        assert_eq!(
+            config.variables.get("first_name").unwrap(),
+            &VariableConfig::ShorthandLiteral("Dingus".to_string())
+        );
+
+        let second_level_command = config.commands.get("level-2").unwrap();
+        assert_eq!(
+            second_level_command.commands.get("demo").unwrap().action,
+            Some(ActionConfig::SingleStep(SingleActionConfig { action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"Your last name is $last_name!\"".to_string())) }))
+        );
+        assert_eq!(
+            second_level_command.platform,
+            Some(One(OnePlatform{ platform: Windows}))
+        );
+        assert_eq!(
+            second_level_command.variables.get("last_name").unwrap(),
+            &VariableConfig::ShorthandLiteral("Smith".to_string())
+        );
+
+        let third_level_command = second_level_command.commands.get("level-3").unwrap();
+        assert_eq!(
+            third_level_command.commands.get("demo").unwrap().action,
+            Some(ActionConfig::SingleStep(SingleActionConfig { action: ExecutionConfigVariant::RawCommand(Shorthand("echo \"You are $age years old.\"".to_string())) }))
+        );
+        assert_eq!(
+            third_level_command.hidden,
+            true
+        );
+        assert_eq!(
+            third_level_command.variables.get("age").unwrap(),
+            &VariableConfig::ShorthandLiteral("Forty Two".to_string())
+        );
+    }
+
+    fn create_temp_file(content: &str) -> NamedTempFile {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        temp_file.write_all(content.as_bytes()).unwrap();
+        return temp_file;
     }
 }

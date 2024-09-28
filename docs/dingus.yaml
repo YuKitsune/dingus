@@ -1,0 +1,8 @@
+description: Docs related commands
+
+commands:
+  run:
+    description: Runs the docs website locally
+    action:
+      workdir: ./docs
+      command: npm start

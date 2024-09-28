@@ -1,10 +1,8 @@
-commands:
+imports:
+  - alias: docs
+    source: ./docs/dingus.yaml
 
-  docs:
-    description: Runs the docs website locally
-    action:
-      workdir: ./docs
-      command: npm start
+commands:
 
   build:
     description: Builds the binary
