@@ -474,6 +474,37 @@ options:
   print_commands: true
 ```
 
+## Imports
+
+Additional config files can be imported using the `imports` field.
+
+```yaml
+imports:
+  - alias: docs
+    source: ./docs/dingus.yaml
+```
+
+This will import all commands and variables defined in the `./docs/dingus.yaml` file into a subcommand called `docs`.
+
+Imported files can be hidden from the help output, or restricted to specific platforms just like normal commands.
+
+```yaml
+imports:
+  - alias: utils
+    source: ./utils/dingus.yaml
+    hidden: true
+
+  - alias: packages
+    source: ./packages/nix.dingus.yaml
+    platform:
+      - MacOS
+      - Linux
+    
+  - alias: packages
+    source: ./packages/windows.dingus.yaml
+    platform: Windows
+```
+
 ## Shortenings
 
 Many fields have an alternative, shorter name.
