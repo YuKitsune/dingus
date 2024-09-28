@@ -474,6 +474,45 @@ options:
   print_commands: true
 ```
 
+## Imports
+
+Additional config files can be imported using the `imports` field. Importing a config file effectively creates a new 
+subcommand with the description, variables, and subcommands from the provided file.
+
+Imports require an `alias`, and a `source`. The `alias` is used to set the name of the subcommand, and the `source` is 
+the path to the file to import.
+
+For example, the following config will import all commands and variables defined in the `./docs/dingus.yaml` file into a
+subcommand called `docs`.
+
+```yaml
+imports:
+  - alias: docs
+    source: ./docs/dingus.yaml
+```
+
+Imported files can be hidden from the help output, or restricted to specific platforms just like normal commands.
+
+```yaml
+imports:
+  - alias: utils
+    source: ./utils/dingus.yaml
+    hidden: true
+
+  - alias: packages
+    source: ./packages/nix.dingus.yaml
+    platform:
+      - MacOS
+      - Linux
+    
+  - alias: packages
+    source: ./packages/windows.dingus.yaml
+    platform: Windows
+```
+
+The `alias` field does not need to be unique, so long as the other imports using the same alias are restricted to
+another platform. 
+
 ## Shortenings
 
 Many fields have an alternative, shorter name.

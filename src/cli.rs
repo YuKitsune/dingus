@@ -873,6 +873,7 @@ mod tests {
         );
 
         let config = Config {
+            imports: Default::default(),
             description: None,
             variables: root_variables,
             commands: commands,
@@ -979,6 +980,7 @@ mod tests {
         );
 
         let config = Config {
+            imports: Default::default(),
             description: None,
             variables: root_variables,
             commands: parent_commands,
@@ -1065,6 +1067,7 @@ mod tests {
         );
 
         let config = Config {
+            imports: Default::default(),
             description: None,
             variables: root_variables,
             commands: parent_commands,
@@ -1113,6 +1116,7 @@ mod tests {
         );
 
         let config = Config {
+            imports: Default::default(),
             description: None,
             variables: Default::default(),
             commands: commands,
@@ -1158,6 +1162,7 @@ mod tests {
         );
 
         let config = Config {
+            imports: Default::default(),
             description: None,
             variables: Default::default(),
             commands: commands,
