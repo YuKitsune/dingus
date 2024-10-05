@@ -19,12 +19,12 @@ mod prompt;
 mod variables;
 
 // Ideas:
-// - Include other config files (on disk or with a GitHub link)
 // - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Deferred actions: Always executes at the end, even if one of the actions fails.
 // - Cached variable results: Allow the results of an execution variable to be cached on disk for future use.
 // - Remote commands: Execute commands on a remote machine (Like a mini Ansible)
 // - Container actions: Run an action inside a docker container
+// - Include other config files with a remote link
 // - YAML schema.
 
 fn main() -> Result<()> {

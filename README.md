@@ -24,9 +24,8 @@ It's lightweight, easy to use, and perfect for consolidating project-specific ta
 
 ## Overview
 
-:::warning
-Dingus is still in early development and it's configuration syntax and usage are subject to change.
-:::
+> **Warning**
+> Dingus is still in early development and it's configuration syntax and usage are subject to change.
 
 Dingus relies on YAML for its configuration.
 
