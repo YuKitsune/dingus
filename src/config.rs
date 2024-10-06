@@ -1,3 +1,4 @@
+use crate::platform::{current_platform_provider, is_current_platform};
 use linked_hash_map::LinkedHashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -6,7 +7,6 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::{env, fs, io};
 use thiserror::Error;
-use crate::platform::{current_platform_provider, is_current_platform};
 
 const CONFIG_FILE_NAMES: [&str; 4] = ["dingus.yaml", "Dingus.yaml", "dingus.yml", "Dingus.yml"];
 
@@ -102,18 +102,19 @@ fn parse_config(text: &String, current_platform: Platform) -> Result<Config, Con
 
     // Parse the imports too
     for import in &base_config.imports {
-
         // Don't even try parsing the import if it's not for the current platform
         if let Some(import_platform) = &import.platform {
             if !is_current_platform(current_platform.clone(), import_platform) {
-                continue
+                continue;
             }
         }
 
         let child_config =
-            parse_config_from(&import.source, current_platform.clone()).map_err(|err| ConfigError::ImportFailed {
-                alias: import.alias.clone(),
-                source: Box::new(err),
+            parse_config_from(&import.source, current_platform.clone()).map_err(|err| {
+                ConfigError::ImportFailed {
+                    alias: import.alias.clone(),
+                    source: Box::new(err),
+                }
             })?;
 
         // Create a top-level command for every import
@@ -1445,7 +1446,8 @@ commands:
     fn import_for_other_platform_is_ignored() {
         let yaml2 = "commands:
     demo:
-        action: echo \"Your last name is $last_name!\"".to_string();
+        action: echo \"Your last name is $last_name!\""
+            .to_string();
         let yaml2_file = create_temp_file(yaml2.as_str());
 
         let yaml1 = format!(
