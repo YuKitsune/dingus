@@ -7,11 +7,9 @@ pub fn current_platform_provider() -> Box<dyn PlatformProvider> {
 }
 
 pub fn is_current_platform(
-    platform_provider: &Box<dyn PlatformProvider>,
+    current_platform: Platform,
     platform_or_platforms: &OneOrManyPlatforms,
 ) -> bool {
-    let current_platform = platform_provider.get_platform();
-
     match platform_or_platforms {
         OneOrManyPlatforms::One(platform) => platform.platform == current_platform,
         OneOrManyPlatforms::Many(platforms) => platforms.platforms.contains(&current_platform),
