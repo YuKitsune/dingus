@@ -37,7 +37,8 @@ fn create_commands(
         .iter()
         .filter(|(_, command_config)| -> bool {
             if let Some(one_or_many_platforms) = &command_config.platform {
-                if !is_current_platform(&platform_provider, one_or_many_platforms) {
+                let current_platform = platform_provider.get_platform();
+                if !is_current_platform(current_platform, one_or_many_platforms) {
                     return false;
                 }
             }

@@ -6,6 +6,7 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::{env, fs, io};
 use thiserror::Error;
+use crate::platform::{current_platform_provider, is_current_platform};
 
 const CONFIG_FILE_NAMES: [&str; 4] = ["dingus.yaml", "Dingus.yaml", "dingus.yml", "Dingus.yml"];
 
@@ -75,7 +76,8 @@ pub fn load() -> Result<FoundConfig, ConfigError> {
             .map_err(|err| ConfigError::ReadFailed(err))?;
     };
 
-    let config = parse_config(&config_text)?;
+    let current_platform = current_platform_provider().get_platform();
+    let config = parse_config(&config_text, current_platform)?;
     Ok(FoundConfig { source, config })
 }
 
@@ -87,21 +89,29 @@ pub fn init() -> Result<String, ConfigError> {
     Ok(file_name.to_string())
 }
 
-fn parse_config_from(path: &String) -> Result<Config, ConfigError> {
+fn parse_config_from(path: &String, current_platform: Platform) -> Result<Config, ConfigError> {
     let config_text = fs::read_to_string(path).map_err(|err| ConfigError::ReadFailed(err))?;
 
-    parse_config(&config_text)
+    parse_config(&config_text, current_platform)
 }
 
-fn parse_config(text: &String) -> Result<Config, ConfigError> {
+fn parse_config(text: &String, current_platform: Platform) -> Result<Config, ConfigError> {
     // Parse the base config
     let mut base_config: Config =
         serde_yaml::from_str(text.as_str()).map_err(|err| ConfigError::ParseFailed(err))?;
 
     // Parse the imports too
     for import in &base_config.imports {
+
+        // Don't even try parsing the import if it's not for the current platform
+        if let Some(import_platform) = &import.platform {
+            if !is_current_platform(current_platform.clone(), import_platform) {
+                continue
+            }
+        }
+
         let child_config =
-            parse_config_from(&import.source).map_err(|err| ConfigError::ImportFailed {
+            parse_config_from(&import.source, current_platform.clone()).map_err(|err| ConfigError::ImportFailed {
                 alias: import.alias.clone(),
                 source: Box::new(err),
             })?;
@@ -646,7 +656,7 @@ pub struct BashCommandConfig {
 mod tests {
     use super::*;
     use crate::config::OneOrManyPlatforms::{Many, One};
-    use crate::config::Platform::Windows;
+    use crate::config::Platform::{Linux, Windows};
     use crate::config::RawCommandConfigVariant::Shorthand;
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -731,7 +741,7 @@ mod tests {
         let yaml = "commands:
     demo:
         action: echo \"Hello, World!\"";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         assert!(config.variables.is_empty());
     }
@@ -745,7 +755,7 @@ commands:
         variables:
             my-command-var: My command value
         action: echo \"Hello, World!\"";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -777,7 +787,7 @@ commands:
                 arg: command-arg
                 env: MY_VAR
         action: echo \"Hello, World!\"";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -822,7 +832,7 @@ commands:
                 arg: command-arg
                 env: MY_VAR
         action: echo \"Hello, World!\"";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -884,7 +894,7 @@ commands:
                         exec: cat example.txt
 
         action: echo \"Hello, World!\"";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -992,7 +1002,7 @@ commands:
             command-var-1: Command value 1
             command-var-3: Command value 3
         action: echo \"Hello, World!\"";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         assert!(!config.variables.is_empty());
 
@@ -1020,7 +1030,7 @@ commands:
         let yaml = "commands:
     demo:
         action: ls";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1046,7 +1056,7 @@ commands:
         let yaml = "commands:
     deps:
         alias: docker compose -f docker-compose.deps.yml";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("deps").unwrap();
         assert_eq!(
@@ -1071,7 +1081,7 @@ commands:
     demo:
         description: Says hello.
         action: ls";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1100,7 +1110,7 @@ commands:
             gday:
                 action: ls
         action: cat example.txt";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         let gday_command = demo_command.commands.get("gday").unwrap();
@@ -1150,7 +1160,7 @@ commands:
         commands:
             gday:
                 action: ls";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         let gday_command = demo_command.commands.get("gday").unwrap();
@@ -1198,7 +1208,7 @@ commands:
         actions:
             - cat example.txt
             - ls";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1235,7 +1245,7 @@ commands:
     demo_win:
         platform: Windows
         action: Get-Content example.txt";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command_nix = config.commands.get("demo_nix").unwrap();
         let demo_command_win = config.commands.get("demo_win").unwrap();
@@ -1284,7 +1294,7 @@ commands:
     demo:
         name: demonstration
         action: cat example.txt";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1313,7 +1323,7 @@ commands:
             - bash: echo \"Hello, World!\"
             - bash: pwd
               workdir: /";
-        let config = parse_config(&yaml.to_string()).unwrap();
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
         let demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1372,7 +1382,7 @@ commands:
             "imports:
     - alias: level-2
       source: {}
-      platform: Windows
+      platform: Linux
 variables:
     first_name: Dingus
 commands:
@@ -1381,7 +1391,7 @@ commands:
             yaml2_file.path().to_str().unwrap()
         );
 
-        let config = parse_config(&yaml1.to_string()).unwrap();
+        let config = parse_config(&yaml1.to_string(), Platform::Linux).unwrap();
 
         let root_demo_command = config.commands.get("demo").unwrap();
         assert_eq!(
@@ -1408,7 +1418,7 @@ commands:
         );
         assert_eq!(
             second_level_command.platform,
-            Some(One(OnePlatform { platform: Windows }))
+            Some(One(OnePlatform { platform: Linux }))
         );
         assert_eq!(
             second_level_command.variables.get("last_name").unwrap(),
@@ -1429,6 +1439,46 @@ commands:
             third_level_command.variables.get("age").unwrap(),
             &VariableConfig::ShorthandLiteral("Forty Two".to_string())
         );
+    }
+
+    #[test]
+    fn import_for_other_platform_is_ignored() {
+        let yaml2 = "commands:
+    demo:
+        action: echo \"Your last name is $last_name!\"".to_string();
+        let yaml2_file = create_temp_file(yaml2.as_str());
+
+        let yaml1 = format!(
+            "imports:
+    - alias: other
+      source: {}
+      platform: Windows
+variables:
+    first_name: Dingus
+commands:
+    demo:
+        action: echo \"Your first name is $first_name!\"",
+            yaml2_file.path().to_str().unwrap()
+        );
+
+        let config = parse_config(&yaml1.to_string(), Platform::Linux).unwrap();
+
+        let root_demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(
+            root_demo_command.action,
+            Some(ActionConfig::SingleStep(SingleActionConfig {
+                action: ExecutionConfigVariant::RawCommand(Shorthand(
+                    "echo \"Your first name is $first_name!\"".to_string()
+                ))
+            }))
+        );
+        assert_eq!(
+            config.variables.get("first_name").unwrap(),
+            &VariableConfig::ShorthandLiteral("Dingus".to_string())
+        );
+
+        let second_level_command = config.commands.get("other");
+        assert_eq!(second_level_command, None);
     }
 
     fn create_temp_file(content: &str) -> NamedTempFile {
