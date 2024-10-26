@@ -2,7 +2,7 @@ use crate::args::ALIAS_ARGS_NAME;
 use crate::config::{
     ActionConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config, DingusOptions,
     ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant,
-    ShellCommandConfigVariant, VariableConfig, VariableConfigMap,
+    VariableConfig, VariableConfigMap,
 };
 use crate::platform::{is_current_platform, PlatformProvider};
 use clap::{Arg, ArgMatches, Command, ValueHint};
@@ -117,6 +117,7 @@ fn create_args(
                 VariableConfig::Literal(literal) => literal.clone().argument,
                 VariableConfig::Execution(exec) => exec.clone().argument,
                 VariableConfig::Prompt(prompt) => prompt.clone().argument,
+                VariableConfig::Argument(argument) => Some(argument.clone().argument),
             };
 
             // Automatically create an argument if the auto_args option is enabled
@@ -254,6 +255,7 @@ mod tests {
         LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PositionalArgumentConfig,
         PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig,
     };
+    use crate::config::ArgumentConfigVariant::Named;
     use crate::platform::MockPlatformProvider;
 
     fn mock_platform_provider() -> Box<dyn PlatformProvider> {
@@ -362,7 +364,11 @@ mod tests {
         subcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                argument: Some(ArgumentConfigVariant::Shorthand("sub-arg-2".to_string())),
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Sub arg 2".to_string()),
+                    long: "sub-arg-2".to_string(),
+                    short: None
+                })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
@@ -440,7 +446,7 @@ mod tests {
         assert_eq!(sub_arg_2.get_long().unwrap(), "sub-arg-2");
         assert_eq!(
             sub_arg_2.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
+            "Sub arg 2"
         );
     }
 
@@ -451,7 +457,11 @@ mod tests {
         subsubcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                argument: Some(ArgumentConfigVariant::Shorthand("sub-arg-2".to_string())),
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig{
+                    description: Some("Sub arg 2".to_string()),
+                    long: "sub-arg-2".to_string(),
+                    short: None
+                })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
@@ -531,8 +541,8 @@ mod tests {
             .unwrap();
         assert_eq!(parent_arg.get_long().unwrap(), "sub-arg-1");
         assert_eq!(
-            parent_arg.get_help().unwrap().to_string(),
-            "Defaults to the result of executing echo \"Hello, World!\"".to_string()
+            parent_arg.get_help(),
+            None
         );
 
         let subcommand_arg = subcommand_args
@@ -542,7 +552,7 @@ mod tests {
         assert_eq!(subcommand_arg.get_long().unwrap(), "sub-arg-2");
         assert_eq!(
             subcommand_arg.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
+            "Sub arg 2"
         );
     }
 

@@ -279,6 +279,9 @@ pub enum VariableConfig {
 
     /// Encapsulates a [`PromptVariableConfig`].
     Prompt(PromptVariableConfig),
+
+    /// Encapsulates a [`ArgumentVariableConfig`].
+    Argument(ArgumentVariableConfig)
 }
 
 impl VariableConfig {
@@ -290,6 +293,7 @@ impl VariableConfig {
                 execution_conf.clone().environment_variable_name
             }
             VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().environment_variable_name,
+            VariableConfig::Argument(argument_conf) => argument_conf.clone().environment_variable_name,
         }
         .unwrap_or(key.to_string())
     }
@@ -300,7 +304,6 @@ impl VariableConfig {
 /// Example:
 /// ```yaml
 /// name:
-///     description: Your name
 ///     arg: name
 ///     value: Dingus
 /// ```
@@ -330,7 +333,6 @@ pub struct LiteralVariableConfig {
 /// Example:
 /// ```yaml
 /// name:
-///     description: Your name
 ///     arg: name
 ///     exec: cat name.txt
 /// ```
@@ -362,7 +364,6 @@ pub struct ExecutionVariableConfig {
 /// Example:
 /// ```yaml
 /// name:
-///     description: Your name
 ///     arg: name
 ///     prompt:
 ///         message: What is your name?
@@ -386,6 +387,34 @@ pub struct PromptVariableConfig {
 
     /// The [`PromptConfig`] to use for the prompt.
     pub prompt: PromptConfig,
+}
+
+/// Denotes a variable whose value is sourced from command-line arguments.
+///
+/// Example:
+/// ```yaml
+/// name:
+///     arg:
+///         long: name
+///         short: n
+///         description: Your name
+/// ```
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ArgumentVariableConfig {
+    /// An optional argument configuration.
+    #[serde(rename(deserialize = "argument"))]
+    #[serde(alias = "arg")]
+    pub argument: ArgumentConfigVariant,
+
+    /// An optional environment variable name.
+    /// If specified, the environment variable for this variable will have the specified name.
+    ///
+    /// This is **not** the name of the environment variable to source the value from.
+    /// If you want to source a variables value from an environment variable,
+    /// use an [`ExecutionVariableConfig`].
+    #[serde(rename(deserialize = "environment_variable"))]
+    #[serde(alias = "env")]
+    pub environment_variable_name: Option<String>,
 }
 
 /// The kind of argument configuration.
@@ -976,6 +1005,62 @@ commands:
                 }
             })
         )
+    }
+
+    #[test]
+    fn argument_variable_parsed() {
+        let yaml = "commands:
+    demo:
+        variables:
+            name:
+                argument:
+                    description: Your name.
+                    long: name
+                    short: n
+            age:
+                arg: age
+            food:
+                arg:
+                    description: Your favourite food.
+                    position: 1
+        action: echo \"Hello, World!\"";
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+
+        let name_variable = demo_command.variables.get("name").unwrap();
+        assert_eq!(
+            name_variable,
+            &VariableConfig::Argument(ArgumentVariableConfig {
+                argument: ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Your name.".to_string()),
+                    long: "name".to_string(),
+                    short: Some('n'),
+                }),
+                environment_variable_name: None,
+            })
+        );
+
+        let age_variable = demo_command.variables.get("age").unwrap();
+        assert_eq!(
+            age_variable,
+            &VariableConfig::Argument(ArgumentVariableConfig {
+                argument: ArgumentConfigVariant::Shorthand("age".to_string()),
+                environment_variable_name: None,
+            })
+        );
+
+        let food_variable = demo_command.variables.get("food").unwrap();
+        assert_eq!(
+            food_variable,
+            &VariableConfig::Argument(ArgumentVariableConfig {
+                argument: ArgumentConfigVariant::Positional(PositionalArgumentConfig {
+                    description: Some("Your favourite food.".to_string()),
+                    position: 1
+                }),
+                environment_variable_name: None,
+            })
+        );
     }
 
     #[test]

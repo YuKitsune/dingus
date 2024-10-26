@@ -97,6 +97,9 @@ impl VariableResolver for RealVariableResolver {
                             sensitive_variable_names.push(name.clone());
                         }
                     }
+
+                    // Arguments are checked above, nothing to do here.
+                    VariableConfig::Argument(_) => {}
                 }
             }
         }
@@ -129,13 +132,11 @@ impl RealVariableResolver {
 
 fn is_variable_sensitive(variable_config: &VariableConfig) -> bool {
     match variable_config {
-        VariableConfig::ShorthandLiteral(_) => false,
-        VariableConfig::Literal(_) => false,
-        VariableConfig::Execution(_) => false,
         VariableConfig::Prompt(prompt_variable) => match prompt_variable.clone().prompt.options {
             PromptOptionsVariant::Select(_) => false,
             PromptOptionsVariant::Text(text_prompt_options) => text_prompt_options.sensitive,
         },
+        _ => false,
     }
 }
 
