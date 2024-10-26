@@ -1,5 +1,9 @@
 use crate::args::ALIAS_ARGS_NAME;
-use crate::config::{ActionConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config, DingusOptions, ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
+use crate::config::{
+    ActionConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config, DingusOptions,
+    ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant,
+    ShellCommandConfigVariant, VariableConfig, VariableConfigMap,
+};
 use crate::platform::{is_current_platform, PlatformProvider};
 use clap::{Arg, ArgMatches, Command, ValueHint};
 
@@ -121,65 +125,44 @@ fn create_args(
             }
 
             if let Some(arg_config) = arg_config {
-
                 // Use the variable key as the ID so we can link this arg to the variable
                 let mut arg = Arg::new(key.clone());
 
                 arg = match arg_config {
-
                     // Shorthand args only set the long version
                     ArgumentConfigVariant::Shorthand(arg_name) => arg.long(arg_name),
 
-                    // Named arguments can set the long and short versions
+                    // Named arguments can set the long and short versions as well as the description
                     ArgumentConfigVariant::Named(named_arg_config) => {
                         let mut arg = arg.long(named_arg_config.long);
                         if let Some(short_arg_name) = named_arg_config.short {
                             arg = arg.short(short_arg_name)
                         }
 
+                        if let Some(description) = named_arg_config.description {
+                            arg = arg.help(description)
+                        }
+
                         arg
                     }
 
-                    // Positional arguments only set the position
-                    ArgumentConfigVariant::Positional(positional_arg_config) =>
-                        arg.index(positional_arg_config.position),
+                    // Positional arguments only set the position and description
+                    ArgumentConfigVariant::Positional(positional_arg_config) => {
+                        let mut arg = arg.index(positional_arg_config.position);
+
+                        if let Some(description) = positional_arg_config.description {
+                            arg = arg.help(description)
+                        }
+
+                        arg
+                    }
                 };
 
-                // Set the description if one was provided
-                if let Some(description) = var_config.description() {
-                    arg = arg.help(description)
-                }
-
-                // Set the default value
+                // Set the default value if applicable
                 match var_config {
                     VariableConfig::ShorthandLiteral(literal) => arg = arg.default_value(literal),
                     VariableConfig::Literal(literal) => arg = arg.default_value(&literal.value),
-                    VariableConfig::Execution(exec) => {
-                        let command = match exec.execution.clone() {
-                            ExecutionConfigVariant::RawCommand(command) => match command {
-                                RawCommandConfigVariant::Shorthand(command_text) => command_text,
-                                RawCommandConfigVariant::RawCommandConfig(raw_command_config) => {
-                                    raw_command_config.command
-                                }
-                            },
-                            ExecutionConfigVariant::ShellCommand(shell_command) => {
-                                match shell_command {
-                                    ShellCommandConfigVariant::Bash(bash_command) => {
-                                        bash_command.command
-                                    }
-                                }
-                            }
-                        };
-
-                        arg = arg
-                            .hide_default_value(true)
-                            .help(format!("Defaults to the result of executing {command}"));
-                    }
-                    VariableConfig::Prompt(_) => {
-                        arg = arg
-                            .hide_default_value(true)
-                            .help("Prompts the user for a value if not specified.");
-                    }
+                    _ => {}
                 }
 
                 return Some(arg);
@@ -266,7 +249,11 @@ mod tests {
     use super::*;
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::RawCommandConfigVariant::Shorthand;
-    use crate::config::{ActionConfig, AliasActionConfig, CommandConfig, DingusOptions, ExecutionVariableConfig, LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PositionalArgumentConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
+    use crate::config::{
+        ActionConfig, AliasActionConfig, CommandConfig, DingusOptions, ExecutionVariableConfig,
+        LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PositionalArgumentConfig,
+        PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig,
+    };
     use crate::platform::MockPlatformProvider;
 
     fn mock_platform_provider() -> Box<dyn PlatformProvider> {
@@ -368,7 +355,6 @@ mod tests {
                 execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     "echo \"Hello, World!\"".to_string(),
                 )),
-                description: None,
                 argument: None,
                 environment_variable_name: None,
             }),
@@ -376,7 +362,6 @@ mod tests {
         subcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: Some(ArgumentConfigVariant::Shorthand("sub-arg-2".to_string())),
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -413,7 +398,6 @@ mod tests {
             "parent-var-2".to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: "bar".to_string(),
-                description: None,
                 argument: Some(ArgumentConfigVariant::Shorthand("parent-arg-2".to_string())),
                 environment_variable_name: None,
             }),
@@ -467,7 +451,6 @@ mod tests {
         subsubcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: Some(ArgumentConfigVariant::Shorthand("sub-arg-2".to_string())),
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -502,7 +485,6 @@ mod tests {
                 execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     "echo \"Hello, World!\"".to_string(),
                 )),
-                description: None,
                 argument: Some(ArgumentConfigVariant::Shorthand("sub-arg-1".to_string())),
                 environment_variable_name: None,
             }),
@@ -827,7 +809,6 @@ mod tests {
             "var-2".to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: "bar".to_string(),
-                description: None,
                 argument: None,
                 environment_variable_name: None,
             }),
@@ -838,7 +819,6 @@ mod tests {
                 execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     "echo \"Hello, World!\"".to_string(),
                 )),
-                description: None,
                 argument: Some(ArgumentConfigVariant::Shorthand("var-3".to_string())),
                 environment_variable_name: None,
             }),
@@ -846,10 +826,10 @@ mod tests {
         variables.insert(
             "var-4".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Fourth variable".to_string()),
                     long: "name".to_string(),
-                    short: Some('v')
+                    short: Some('v'),
                 })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -861,10 +841,12 @@ mod tests {
         variables.insert(
             "var-5".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
-                argument: Some(ArgumentConfigVariant::Positional(PositionalArgumentConfig {
-                    position: 1,
-                })),
+                argument: Some(ArgumentConfigVariant::Positional(
+                    PositionalArgumentConfig {
+                        description: Some("Fifth variable".to_string()),
+                        position: 1,
+                    },
+                )),
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your age?".to_string(),
@@ -885,25 +867,15 @@ mod tests {
 
         let var3 = args.iter().find(|v| v.get_id() == "var-3").unwrap();
         assert_eq!(var3.get_long().unwrap(), "var-3");
-        assert_eq!(
-            var3.get_help().unwrap().to_string(),
-            "Defaults to the result of executing echo \"Hello, World!\"".to_string()
-        );
 
         let var4 = args.iter().find(|v| v.get_id() == "var-4").unwrap();
         assert_eq!(var4.get_long().unwrap(), "name");
         assert_eq!(var4.get_short().unwrap(), 'v');
-        assert_eq!(
-            var4.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
-        );
+        assert_eq!(var4.get_help().unwrap().to_string(), "Fourth variable");
 
         let var5 = args.iter().find(|v| v.get_id() == "var-5").unwrap();
         assert_eq!(var5.get_index().unwrap(), 1);
-        assert_eq!(
-            var5.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
-        );
+        assert_eq!(var5.get_help().unwrap().to_string(), "Fifth variable");
     }
 
     #[test]
@@ -920,7 +892,6 @@ mod tests {
             "var-1".to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: "foo".to_string(),
-                description: None,
                 argument: None,
                 environment_variable_name: None,
             }),
@@ -930,7 +901,6 @@ mod tests {
             "var-2".to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: "bar".to_string(),
-                description: None,
                 argument: Some(ArgumentConfigVariant::Shorthand("existing".to_string())),
                 environment_variable_name: None,
             }),

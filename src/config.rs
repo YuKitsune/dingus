@@ -293,15 +293,6 @@ impl VariableConfig {
         }
         .unwrap_or(key.to_string())
     }
-
-    pub fn description(&self) -> Option<String> {
-        return match self {
-            VariableConfig::ShorthandLiteral(_) => None,
-            VariableConfig::Literal(literal_conf) => literal_conf.clone().description,
-            VariableConfig::Execution(execution_conf) => execution_conf.clone().description,
-            VariableConfig::Prompt(prompt_config) => prompt_config.clone().description,
-        };
-    }
 }
 
 /// Denotes a literal variable where the value is hard-coded.
@@ -315,10 +306,6 @@ impl VariableConfig {
 /// ```
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct LiteralVariableConfig {
-    /// An optional description for the variable.
-    #[serde(alias = "desc")]
-    pub description: Option<String>,
-
     /// An optional argument configuration.
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
@@ -349,10 +336,6 @@ pub struct LiteralVariableConfig {
 /// ```
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct ExecutionVariableConfig {
-    /// An optional description for the variable.
-    #[serde(alias = "desc")]
-    pub description: Option<String>,
-
     /// An optional argument configuration.
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
@@ -386,10 +369,6 @@ pub struct ExecutionVariableConfig {
 /// ```
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PromptVariableConfig {
-    /// An optional description for the variable.
-    #[serde(alias = "desc")]
-    pub description: Option<String>,
-
     /// An optional argument configuration.
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
@@ -415,12 +394,16 @@ pub struct PromptVariableConfig {
 pub enum ArgumentConfigVariant {
     Shorthand(String),
     Named(NamedArgumentConfig),
-    Positional(PositionalArgumentConfig)
+    Positional(PositionalArgumentConfig),
 }
 
 /// The configuration for a command-line argument.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct NamedArgumentConfig {
+    /// An optional description for the variable.
+    #[serde(alias = "desc")]
+    pub description: Option<String>,
+
     /// The long version of the argument without the preceding `--`.
     pub long: String,
 
@@ -431,6 +414,9 @@ pub struct NamedArgumentConfig {
 /// The configuration for a positional command-line argument.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct PositionalArgumentConfig {
+    /// An optional description for the variable.
+    #[serde(alias = "desc")]
+    pub description: Option<String>,
 
     /// The position of the argument.
     /// This refers to position according to other positional argument.
@@ -751,7 +737,6 @@ commands:
         variables:
             my-command-var:
                 value: My command value
-                description: Command level variable
                 arg: command-arg
                 env: MY_VAR
         action: echo \"Hello, World!\"";
@@ -764,7 +749,6 @@ commands:
             root_variable,
             &VariableConfig::Literal(LiteralVariableConfig {
                 value: "My root value".to_string(),
-                description: None,
                 argument: None,
                 environment_variable_name: None,
             })
@@ -776,7 +760,6 @@ commands:
             command_variable,
             &VariableConfig::Literal(LiteralVariableConfig {
                 value: "My command value".to_string(),
-                description: Some("Command level variable".to_string()),
                 argument: Some(ArgumentConfigVariant::Shorthand("command-arg".to_string())),
                 environment_variable_name: Some("MY_VAR".to_string()),
             })
@@ -796,22 +779,21 @@ commands:
             my-command-var-1:
                 exec:
                     bash: echo \"My command value\"
-                description: Command level variable
                 arg: command-arg-1
                 env: MY_VAR_1
             my-command-var-2:
                 exec:
                     bash: echo \"My command value\"
-                description: Command level variable
                 arg:
+                    description: Command level variable
                     long: command-arg-2
                     short: c
                 env: MY_VAR_2
             my-command-var-3:
                 exec:
                     bash: echo \"My command value\"
-                description: Command level variable
                 arg:
+                    description: Command level variable
                     position: 1
                 env: MY_VAR_3
         action: echo \"Hello, World!\"";
@@ -824,7 +806,6 @@ commands:
             root_variable,
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My root value\"", Some("../".to_string())),
-                description: None,
                 argument: None,
                 environment_variable_name: None,
             })
@@ -836,7 +817,6 @@ commands:
             command_variable_1,
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My command value\"", None),
-                description: Some("Command level variable".to_string()),
                 argument: Some(ArgumentConfigVariant::Shorthand(
                     "command-arg-1".to_string()
                 )),
@@ -849,8 +829,8 @@ commands:
             command_variable_2,
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My command value\"", None),
-                description: Some("Command level variable".to_string()),
                 argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Command level variable".to_string()),
                     long: "command-arg-2".to_string(),
                     short: Some('c'),
                 })),
@@ -863,10 +843,12 @@ commands:
             command_variable_3,
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My command value\"", None),
-                description: Some("Command level variable".to_string()),
-                argument: Some(ArgumentConfigVariant::Positional(PositionalArgumentConfig {
-                    position: 1,
-                })),
+                argument: Some(ArgumentConfigVariant::Positional(
+                    PositionalArgumentConfig {
+                        description: Some("Command level variable".to_string()),
+                        position: 1,
+                    }
+                )),
                 environment_variable_name: Some("MY_VAR_3".to_string()),
             })
         )
@@ -914,7 +896,6 @@ commands:
         assert_eq!(
             name_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -931,7 +912,6 @@ commands:
         assert_eq!(
             food_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
-                description: Some("Favourite food".to_string()),
                 argument: Some(ArgumentConfigVariant::Shorthand("food".to_string())),
                 environment_variable_name: Some("FAV_FOOD".to_string()),
                 prompt: PromptConfig {
@@ -952,7 +932,6 @@ commands:
         assert_eq!(
             password_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -969,7 +948,6 @@ commands:
         assert_eq!(
             life_story_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -986,7 +964,6 @@ commands:
         assert_eq!(
             fav_line_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {

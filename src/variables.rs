@@ -289,7 +289,6 @@ mod tests {
             name.to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: value.to_string(),
-                description: None,
                 argument: None,
                 environment_variable_name: None,
             }),
@@ -338,7 +337,6 @@ mod tests {
         variable_configs.insert(
             name.to_string(),
             VariableConfig::Execution(ExecutionVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 execution: ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
@@ -391,7 +389,6 @@ mod tests {
         variable_configs.insert(
             name.to_string(),
             Prompt(PromptVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -442,7 +439,6 @@ mod tests {
         variable_configs.insert(
             name.to_string(),
             Prompt(PromptVariableConfig {
-                description: None,
                 argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -496,7 +492,6 @@ mod tests {
             name.to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: value.to_string(),
-                description: None,
                 argument: None,
                 environment_variable_name: Some(env_var_name.to_string()),
             }),
