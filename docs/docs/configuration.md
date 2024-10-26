@@ -82,7 +82,7 @@ variables:
     value: Dingus
     argument:
       description: The name of the user to greet
-      name: user
+      long: user
       short: n
 
   age:
@@ -141,7 +141,7 @@ Options:
 ```
 
 Positional arguments can also be configured using the `position` field. This will set the position of the argument starting from `1`.
-When the `position` field is used, the `short` field is ignored.
+When the `position` field is used, the `long` and `short` fields cannot be specified.
 
 ```yaml
 commands:
@@ -154,7 +154,7 @@ commands:
       environment:
         value: Production
         arg:
-          name: environment
+          long: environment
           position: 1
 
     action: ...

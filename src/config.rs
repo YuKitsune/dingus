@@ -409,26 +409,34 @@ pub struct PromptVariableConfig {
     pub prompt: PromptConfig,
 }
 
-/// The kind of `ArgumentConfig`.
+/// The kind of argument configuration.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 #[serde(untagged)]
 pub enum ArgumentConfigVariant {
     Shorthand(String),
-    Full(ArgumentConfig),
+    Named(NamedArgumentConfig),
+    Positional(PositionalArgumentConfig)
 }
 
 /// The configuration for a command-line argument.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ArgumentConfig {
-    /// The name of the argument.
-    pub name: String,
+pub struct NamedArgumentConfig {
+    /// The long version of the argument without the preceding `--`.
+    pub long: String,
 
-    /// The shortened argument.
+    /// The short version of the argument without the preceding `-`.
     pub short: Option<char>,
+}
+
+/// The configuration for a positional command-line argument.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct PositionalArgumentConfig {
 
     /// The position of the argument.
-    /// If specified, the argument will be positional.
-    pub position: Option<usize>,
+    /// This refers to position according to other positional argument.
+    /// It does not define the position in the argument list as a whole.
+    /// https://docs.rs/clap/latest/clap/struct.Arg.html#method.index
+    pub position: usize,
 }
 
 /// The configuration for a prompt to the user for input.
@@ -796,7 +804,7 @@ commands:
                     bash: echo \"My command value\"
                 description: Command level variable
                 arg:
-                    name: command-arg-2
+                    long: command-arg-2
                     short: c
                 env: MY_VAR_2
             my-command-var-3:
@@ -804,7 +812,6 @@ commands:
                     bash: echo \"My command value\"
                 description: Command level variable
                 arg:
-                    name: command-arg-3
                     position: 1
                 env: MY_VAR_3
         action: echo \"Hello, World!\"";
@@ -843,10 +850,9 @@ commands:
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My command value\"", None),
                 description: Some("Command level variable".to_string()),
-                argument: Some(ArgumentConfigVariant::Full(ArgumentConfig {
-                    name: "command-arg-2".to_string(),
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    long: "command-arg-2".to_string(),
                     short: Some('c'),
-                    position: None,
                 })),
                 environment_variable_name: Some("MY_VAR_2".to_string()),
             })
@@ -858,10 +864,8 @@ commands:
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My command value\"", None),
                 description: Some("Command level variable".to_string()),
-                argument: Some(ArgumentConfigVariant::Full(ArgumentConfig {
-                    name: "command-arg-3".to_string(),
-                    short: None,
-                    position: Some(1),
+                argument: Some(ArgumentConfigVariant::Positional(PositionalArgumentConfig {
+                    position: 1,
                 })),
                 environment_variable_name: Some("MY_VAR_3".to_string()),
             })

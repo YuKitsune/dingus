@@ -1,9 +1,5 @@
 use crate::args::ALIAS_ARGS_NAME;
-use crate::config::{
-    ActionConfig, ArgumentConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config,
-    DingusOptions, ExecutionConfigVariant, RawCommandConfigVariant, ShellCommandConfigVariant,
-    VariableConfig, VariableConfigMap,
-};
+use crate::config::{ActionConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config, DingusOptions, ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap};
 use crate::platform::{is_current_platform, PlatformProvider};
 use clap::{Arg, ArgMatches, Command, ValueHint};
 
@@ -125,27 +121,29 @@ fn create_args(
             }
 
             if let Some(arg_config) = arg_config {
-                let full_config = match arg_config {
-                    ArgumentConfigVariant::Shorthand(arg_name) => ArgumentConfig {
-                        name: arg_name,
-                        short: None,
-                        position: None,
-                    },
-                    ArgumentConfigVariant::Full(full_arg_config) => full_arg_config,
-                };
 
                 // Use the variable key as the ID so we can link this arg to the variable
                 let mut arg = Arg::new(key.clone());
 
-                // Positional args don't need a short/long
-                if let Some(position) = full_config.position {
-                    arg = arg.index(position);
-                } else {
-                    arg = arg.long(full_config.name.clone());
-                    if let Some(short_name) = full_config.short {
-                        arg = arg.short(short_name);
+                arg = match arg_config {
+
+                    // Shorthand args only set the long version
+                    ArgumentConfigVariant::Shorthand(arg_name) => arg.long(arg_name),
+
+                    // Named arguments can set the long and short versions
+                    ArgumentConfigVariant::Named(named_arg_config) => {
+                        let mut arg = arg.long(named_arg_config.long);
+                        if let Some(short_arg_name) = named_arg_config.short {
+                            arg = arg.short(short_arg_name)
+                        }
+
+                        arg
                     }
-                }
+
+                    // Positional arguments only set the position
+                    ArgumentConfigVariant::Positional(positional_arg_config) =>
+                        arg.index(positional_arg_config.position),
+                };
 
                 // Set the description if one was provided
                 if let Some(description) = var_config.description() {
@@ -268,11 +266,7 @@ mod tests {
     use super::*;
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::RawCommandConfigVariant::Shorthand;
-    use crate::config::{
-        ActionConfig, AliasActionConfig, CommandConfig, DingusOptions, ExecutionVariableConfig,
-        LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PromptConfig,
-        PromptVariableConfig, SingleActionConfig, VariableConfig,
-    };
+    use crate::config::{ActionConfig, AliasActionConfig, CommandConfig, DingusOptions, ExecutionVariableConfig, LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PositionalArgumentConfig, PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig};
     use crate::platform::MockPlatformProvider;
 
     fn mock_platform_provider() -> Box<dyn PlatformProvider> {
@@ -853,10 +847,9 @@ mod tests {
             "var-4".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
-                argument: Some(ArgumentConfigVariant::Full(ArgumentConfig {
-                    name: "name".to_string(),
-                    short: Some('v'),
-                    position: None,
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    long: "name".to_string(),
+                    short: Some('v')
                 })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -869,10 +862,8 @@ mod tests {
             "var-5".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
-                argument: Some(ArgumentConfigVariant::Full(ArgumentConfig {
-                    name: "age".to_string(),
-                    short: None,
-                    position: Some(1),
+                argument: Some(ArgumentConfigVariant::Positional(PositionalArgumentConfig {
+                    position: 1,
                 })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
