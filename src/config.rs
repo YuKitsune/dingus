@@ -209,15 +209,20 @@ pub struct Import {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct DingusOptions {
-    /// When set to `true`, commands will be printed to stdout before executing them
+    /// When set to `true`, commands will be printed to stdout before executing them.
     /// Defaults to `false`.
     #[serde(default = "default_print_commands")]
     pub print_commands: bool,
 
-    /// When set to `true`, variables will be printed to stdout once they've been resolved
+    /// When set to `true`, variables will be printed to stdout once they've been resolved.
     /// Defaults to `false`.
     #[serde(default = "default_print_variables")]
     pub print_variables: bool,
+
+    /// When set to `true`, arguments will automatically be created for all variables.
+    /// Defaults to `false`.
+    #[serde(default = "default_auto_args")]
+    pub auto_args: bool,
 }
 
 impl Default for DingusOptions {
@@ -225,6 +230,7 @@ impl Default for DingusOptions {
         DingusOptions {
             print_commands: default_print_commands(),
             print_variables: default_print_variables(),
+            auto_args: default_auto_args(),
         }
     }
 }
@@ -238,6 +244,13 @@ fn default_print_commands() -> bool {
 
 fn default_print_variables() -> bool {
     match env::var("DINGUS_PRINT_VARIABLES") {
+        Ok(str) => is_truthy(str),
+        Err(_) => false,
+    }
+}
+
+fn default_auto_args() -> bool {
+    match env::var("DINGUS_AUTO_ARGS") {
         Ok(str) => is_truthy(str),
         Err(_) => false,
     }
@@ -269,16 +282,6 @@ pub enum VariableConfig {
 }
 
 impl VariableConfig {
-    pub fn arg_name(&self, key: &str) -> String {
-        match self {
-            VariableConfig::ShorthandLiteral(_) => None,
-            VariableConfig::Literal(literal_conf) => literal_conf.clone().argument_name,
-            VariableConfig::Execution(execution_conf) => execution_conf.clone().argument_name,
-            VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().argument_name,
-        }
-        .unwrap_or(key.to_string())
-    }
-
     pub fn environment_variable_name(&self, key: &str) -> String {
         match self {
             VariableConfig::ShorthandLiteral(_) => None,
@@ -316,12 +319,10 @@ pub struct LiteralVariableConfig {
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
-    /// An optional argument name.
-    /// If specified, the corresponding command-line argument for this variable will be re-named to
-    /// the provided value.
+    /// An optional argument configuration.
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
-    pub argument_name: Option<String>,
+    pub argument: Option<ArgumentConfigVariant>,
 
     /// An optional environment variable name.
     /// If specified, the environment variable for this variable will have the specified name.
@@ -352,12 +353,10 @@ pub struct ExecutionVariableConfig {
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
-    /// An optional argument name.
-    /// If specified, the corresponding command-line argument for this variable will be re-named to
-    /// the provided value.
+    /// An optional argument configuration.
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
-    pub argument_name: Option<String>,
+    pub argument: Option<ArgumentConfigVariant>,
 
     /// An optional environment variable name.
     /// If specified, the environment variable for this variable will have the specified name.
@@ -391,12 +390,10 @@ pub struct PromptVariableConfig {
     #[serde(alias = "desc")]
     pub description: Option<String>,
 
-    /// An optional argument name.
-    /// If specified, the corresponding command-line argument for this variable will be re-named to
-    /// the provided value.
+    /// An optional argument configuration.
     #[serde(rename(deserialize = "argument"))]
     #[serde(alias = "arg")]
-    pub argument_name: Option<String>,
+    pub argument: Option<ArgumentConfigVariant>,
 
     /// An optional environment variable name.
     /// If specified, the environment variable for this variable will have the specified name.
@@ -410,6 +407,28 @@ pub struct PromptVariableConfig {
 
     /// The [`PromptConfig`] to use for the prompt.
     pub prompt: PromptConfig,
+}
+
+/// The kind of `ArgumentConfig`.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum ArgumentConfigVariant {
+    Shorthand(String),
+    Full(ArgumentConfig),
+}
+
+/// The configuration for a command-line argument.
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct ArgumentConfig {
+    /// The name of the argument.
+    pub name: String,
+
+    /// The shortened argument.
+    pub short: Option<char>,
+
+    /// The position of the argument.
+    /// If specified, the argument will be positional.
+    pub position: Option<usize>,
 }
 
 /// The configuration for a prompt to the user for input.
@@ -657,7 +676,7 @@ pub struct BashCommandConfig {
 mod tests {
     use super::*;
     use crate::config::OneOrManyPlatforms::{Many, One};
-    use crate::config::Platform::{Linux, Windows};
+    use crate::config::Platform::Linux;
     use crate::config::RawCommandConfigVariant::Shorthand;
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -675,66 +694,6 @@ mod tests {
         return ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
             command.to_string(),
         ));
-    }
-
-    #[test]
-    fn variable_get_arg_returns_correct_arg_name() {
-        let literal = VariableConfig::ShorthandLiteral("Dingus".to_string());
-        assert_eq!("key", literal.arg_name("key"));
-
-        let literal_no_arg = VariableConfig::Literal(LiteralVariableConfig {
-            value: "Dingus".to_string(),
-            description: None,
-            argument_name: None,
-            environment_variable_name: None,
-        });
-        assert_eq!("key", literal_no_arg.arg_name("key"));
-
-        let literal_with_arg = VariableConfig::Literal(LiteralVariableConfig {
-            value: "Dingus".to_string(),
-            description: None,
-            argument_name: Some("name".to_string()),
-            environment_variable_name: None,
-        });
-        assert_eq!("name", literal_with_arg.arg_name("key"));
-
-        let exec_no_arg = VariableConfig::Execution(ExecutionVariableConfig {
-            execution: bash_exec("echo \"Dingus\"", None),
-            description: None,
-            argument_name: None,
-            environment_variable_name: None,
-        });
-        assert_eq!("key", exec_no_arg.arg_name("key"));
-
-        let exec_with_arg = VariableConfig::Execution(ExecutionVariableConfig {
-            execution: bash_exec("echo \"Dingus\"", None),
-            description: None,
-            argument_name: Some("name".to_string()),
-            environment_variable_name: None,
-        });
-        assert_eq!("name", exec_with_arg.arg_name("key"));
-
-        let prompt_no_arg = VariableConfig::Prompt(PromptVariableConfig {
-            description: None,
-            argument_name: None,
-            environment_variable_name: None,
-            prompt: PromptConfig {
-                message: "".to_string(),
-                options: Default::default(),
-            },
-        });
-        assert_eq!("key", prompt_no_arg.arg_name("key"));
-
-        let prompt_with_arg = VariableConfig::Prompt(PromptVariableConfig {
-            description: None,
-            argument_name: Some("name".to_string()),
-            environment_variable_name: None,
-            prompt: PromptConfig {
-                message: "".to_string(),
-                options: Default::default(),
-            },
-        });
-        assert_eq!("name", prompt_with_arg.arg_name("key"));
     }
 
     #[test]
@@ -798,7 +757,7 @@ commands:
             &VariableConfig::Literal(LiteralVariableConfig {
                 value: "My root value".to_string(),
                 description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
             })
         );
@@ -810,7 +769,7 @@ commands:
             &VariableConfig::Literal(LiteralVariableConfig {
                 value: "My command value".to_string(),
                 description: Some("Command level variable".to_string()),
-                argument_name: Some("command-arg".to_string()),
+                argument: Some(ArgumentConfigVariant::Shorthand("command-arg".to_string())),
                 environment_variable_name: Some("MY_VAR".to_string()),
             })
         )
@@ -826,12 +785,28 @@ commands:
 commands:
     demo:
         variables:
-            my-command-var:
+            my-command-var-1:
                 exec:
                     bash: echo \"My command value\"
                 description: Command level variable
-                arg: command-arg
-                env: MY_VAR
+                arg: command-arg-1
+                env: MY_VAR_1
+            my-command-var-2:
+                exec:
+                    bash: echo \"My command value\"
+                description: Command level variable
+                arg:
+                    name: command-arg-2
+                    short: c
+                env: MY_VAR_2
+            my-command-var-3:
+                exec:
+                    bash: echo \"My command value\"
+                description: Command level variable
+                arg:
+                    name: command-arg-3
+                    position: 1
+                env: MY_VAR_3
         action: echo \"Hello, World!\"";
         let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
 
@@ -843,20 +818,52 @@ commands:
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My root value\"", Some("../".to_string())),
                 description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
             })
         );
 
         let demo_command = config.commands.get("demo").unwrap();
-        let command_variable = demo_command.variables.get("my-command-var").unwrap();
+        let command_variable_1 = demo_command.variables.get("my-command-var-1").unwrap();
         assert_eq!(
-            command_variable,
+            command_variable_1,
             &VariableConfig::Execution(ExecutionVariableConfig {
                 execution: bash_exec("echo \"My command value\"", None),
                 description: Some("Command level variable".to_string()),
-                argument_name: Some("command-arg".to_string()),
-                environment_variable_name: Some("MY_VAR".to_string()),
+                argument: Some(ArgumentConfigVariant::Shorthand(
+                    "command-arg-1".to_string()
+                )),
+                environment_variable_name: Some("MY_VAR_1".to_string()),
+            })
+        );
+
+        let command_variable_2 = demo_command.variables.get("my-command-var-2").unwrap();
+        assert_eq!(
+            command_variable_2,
+            &VariableConfig::Execution(ExecutionVariableConfig {
+                execution: bash_exec("echo \"My command value\"", None),
+                description: Some("Command level variable".to_string()),
+                argument: Some(ArgumentConfigVariant::Full(ArgumentConfig {
+                    name: "command-arg-2".to_string(),
+                    short: Some('c'),
+                    position: None,
+                })),
+                environment_variable_name: Some("MY_VAR_2".to_string()),
+            })
+        );
+
+        let command_variable_3 = demo_command.variables.get("my-command-var-3").unwrap();
+        assert_eq!(
+            command_variable_3,
+            &VariableConfig::Execution(ExecutionVariableConfig {
+                execution: bash_exec("echo \"My command value\"", None),
+                description: Some("Command level variable".to_string()),
+                argument: Some(ArgumentConfigVariant::Full(ArgumentConfig {
+                    name: "command-arg-3".to_string(),
+                    short: None,
+                    position: Some(1),
+                })),
+                environment_variable_name: Some("MY_VAR_3".to_string()),
             })
         )
     }
@@ -904,7 +911,7 @@ commands:
             name_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
@@ -921,7 +928,7 @@ commands:
             food_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: Some("Favourite food".to_string()),
-                argument_name: Some("food".to_string()),
+                argument: Some(ArgumentConfigVariant::Shorthand("food".to_string())),
                 environment_variable_name: Some("FAV_FOOD".to_string()),
                 prompt: PromptConfig {
                     message: "What's your favourite food?".to_string(),
@@ -942,7 +949,7 @@ commands:
             password_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your password?".to_string(),
@@ -959,7 +966,7 @@ commands:
             life_story_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your life story?".to_string(),
@@ -976,7 +983,7 @@ commands:
             fav_line_variable,
             &VariableConfig::Prompt(PromptVariableConfig {
                 description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your favourite line?".to_string(),
