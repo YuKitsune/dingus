@@ -71,24 +71,25 @@ commands:
 
 ### Command-Line Arguments
 
-All variable values can be overridden using command-line arguments.
-By default, the name of the argument will be the same as the variable name, so a variable called `name` can be overridden using the `--name` argument.
-
-The optional `argument` and `description` fields can be used to control how the command-line argument is generated for a variable.
-The name of the command-line argument can be overridden using the `argument` field.
-The `description` field can be used to provide help text for the help output.
-Both of these fields are available on all variable types.
+Variable values can be provided using command-line arguments.
+Use the `argument` field to control how the command-line argument is generated for a variable.
+Here, a long name can be specified, along with an optional short name and description.
+The short name can only be one character long.
 
 ```yaml
 variables:
   name:
     value: Dingus
-    description: The name of the user to greet
-    argument: user
-  
+    argument:
+      description: The name of the user to greet
+      name: user
+      short: n
+
   age:
     value: 42
-    desc: The age of the user to greet
+    argument:
+      desc: The age of the user to greet
+      name: age
 
 commands:
   greet:
@@ -106,9 +107,68 @@ Commands:
   help     Print this message or the help of the given subcommand(s)
 
 Options:
-      --user <user>  The name of the user to greet [default: Dingus]
+  -n  --user <user>  The name of the user to greet [default: Dingus]
       --age <age>    The age of the user to greet [default: 42]
   -h, --help         Print help
+```
+
+The `argument` field also accepts a string if a short name and description are not necessary.
+
+```yaml
+variables:
+  name:
+    value: Dingus
+    argument: user
+    
+commands:
+  greet:
+    description: Greet the user
+    action: echo "Hello, $name!"
+```
+
+```
+$ dingus --help
+Usage: dingus [OPTIONS] <COMMAND>
+
+Commands:
+  greet    Greet the user
+  version  Shows version information
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+      --user <user>  [default: Dingus]
+  -h, --help         Print help
+```
+
+Positional arguments can also be configured using the `position` field. This will set the position of the argument starting from `1`.
+When the `position` field is used, the `short` field is ignored.
+
+```yaml
+commands:
+  deploy:
+    variables:
+      nodes:
+        value: "5"
+        arg: nodes
+
+      environment:
+        value: Production
+        arg:
+          name: environment
+          position: 1
+
+    action: ...
+```
+
+```
+Usage: dingus deploy [OPTIONS] [environment]
+
+Arguments:
+  [environment]  [default: Production]
+
+Options:
+      --nodes <nodes>  [default: 5]
+  -h, --help           Print help
 ```
 
 ### Literal Variables
@@ -120,13 +180,12 @@ This value can still be overridden using its relevant command-line argument.
 variables:
     name:
         value: dingus
-        description: The name of the user to use
         argument: user
 ```
 
 #### Shorthand
 
-If a description and argument name are not required, literal variables can be shortened to `key: value`.
+If the `argument` field is not required, literal variables can be shortened to `key: value`.
 
 ```yaml
 variables:
@@ -373,23 +432,19 @@ Below are some examples of raw executions vs. bash executions.
 ```yaml
 variables:
     raw_name:
-        desc: Execution variable using a raw execution
         execute: cat example.txt
     
     bash_name:
-        desc: Execution variable using bash
         execute:
             sh: cat example.json | jq -r '.name'
 
     raw_option:
-        desc: Prompt options sourced from a raw execution
         prompt: 
             message: Pick one
             options:
                 execute: cat example.txt
     
     bash_option:
-        desc: Prompt options sourced using a bash command
         prompt:
             message: Pick one
             options:
