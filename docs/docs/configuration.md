@@ -171,6 +171,18 @@ Options:
   -h, --help           Print help
 ```
 
+Command-line arguments can automatically be created for all variables by setting the `options.auto_args` field to `true`,
+or by setting the `DINGUS_AUTO_ARGS` environment variable to `true`.
+
+```yaml
+options:
+  auto_args: true
+```
+
+This will result in a command-line argument being created for all variables. These command-line arguments will be named
+after the variable. The `argument` field can still be used to provide a custom long name, short name, or make an
+argument positional. 
+
 ### Literal Variables
 
 Literal variables are ones where the value is hard-coded to a specific value.
