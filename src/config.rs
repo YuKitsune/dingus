@@ -281,7 +281,7 @@ pub enum VariableConfig {
     Prompt(PromptVariableConfig),
 
     /// Encapsulates a [`ArgumentVariableConfig`].
-    Argument(ArgumentVariableConfig)
+    Argument(ArgumentVariableConfig),
 }
 
 impl VariableConfig {
@@ -293,7 +293,9 @@ impl VariableConfig {
                 execution_conf.clone().environment_variable_name
             }
             VariableConfig::Prompt(prompt_conf) => prompt_conf.clone().environment_variable_name,
-            VariableConfig::Argument(argument_conf) => argument_conf.clone().environment_variable_name,
+            VariableConfig::Argument(argument_conf) => {
+                argument_conf.clone().environment_variable_name
+            }
         }
         .unwrap_or(key.to_string())
     }

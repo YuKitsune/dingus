@@ -1,8 +1,8 @@
 use crate::args::ALIAS_ARGS_NAME;
 use crate::config::{
     ActionConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config, DingusOptions,
-    ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant,
-    VariableConfig, VariableConfigMap,
+    ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant, VariableConfig,
+    VariableConfigMap,
 };
 use crate::platform::{is_current_platform, PlatformProvider};
 use clap::{Arg, ArgMatches, Command, ValueHint};
@@ -248,6 +248,7 @@ type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ArgumentConfigVariant::Named;
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::RawCommandConfigVariant::Shorthand;
     use crate::config::{
@@ -255,7 +256,6 @@ mod tests {
         LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PositionalArgumentConfig,
         PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig,
     };
-    use crate::config::ArgumentConfigVariant::Named;
     use crate::platform::MockPlatformProvider;
 
     fn mock_platform_provider() -> Box<dyn PlatformProvider> {
@@ -367,7 +367,7 @@ mod tests {
                 argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
                     description: Some("Sub arg 2".to_string()),
                     long: "sub-arg-2".to_string(),
-                    short: None
+                    short: None,
                 })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -444,10 +444,7 @@ mod tests {
             .find(|arg| arg.get_id() == "sub-var-2")
             .unwrap();
         assert_eq!(sub_arg_2.get_long().unwrap(), "sub-arg-2");
-        assert_eq!(
-            sub_arg_2.get_help().unwrap().to_string(),
-            "Sub arg 2"
-        );
+        assert_eq!(sub_arg_2.get_help().unwrap().to_string(), "Sub arg 2");
     }
 
     #[test]
@@ -457,10 +454,10 @@ mod tests {
         subsubcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig{
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
                     description: Some("Sub arg 2".to_string()),
                     long: "sub-arg-2".to_string(),
-                    short: None
+                    short: None,
                 })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
@@ -540,20 +537,14 @@ mod tests {
             .find(|arg| arg.get_id() == "sub-var-1")
             .unwrap();
         assert_eq!(parent_arg.get_long().unwrap(), "sub-arg-1");
-        assert_eq!(
-            parent_arg.get_help(),
-            None
-        );
+        assert_eq!(parent_arg.get_help(), None);
 
         let subcommand_arg = subcommand_args
             .iter()
             .find(|arg| arg.get_id() == "sub-var-2")
             .unwrap();
         assert_eq!(subcommand_arg.get_long().unwrap(), "sub-arg-2");
-        assert_eq!(
-            subcommand_arg.get_help().unwrap().to_string(),
-            "Sub arg 2"
-        );
+        assert_eq!(subcommand_arg.get_help().unwrap().to_string(), "Sub arg 2");
     }
 
     #[test]
