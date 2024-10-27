@@ -1,7 +1,8 @@
 use crate::args::ALIAS_ARGS_NAME;
 use crate::config::{
-    ActionConfig, CommandConfig, CommandConfigMap, Config, ExecutionConfigVariant,
-    RawCommandConfigVariant, ShellCommandConfigVariant, VariableConfig, VariableConfigMap,
+    ActionConfig, ArgumentConfigVariant, CommandConfig, CommandConfigMap, Config, DingusOptions,
+    ExecutionConfigVariant, NamedArgumentConfig, RawCommandConfigVariant, VariableConfig,
+    VariableConfigMap,
 };
 use crate::platform::{is_current_platform, PlatformProvider};
 use clap::{Arg, ArgMatches, Command, ValueHint};
@@ -11,8 +12,13 @@ pub fn create_root_command(
     config: &Config,
     platform_provider: &Box<dyn PlatformProvider>,
 ) -> Command {
-    let root_args = create_args(&config.variables);
-    let subcommands = create_commands(&config.commands, &config.variables, &platform_provider);
+    let root_args = create_args(&config.options, &config.variables);
+    let subcommands = create_commands(
+        &config.options,
+        &config.commands,
+        &config.variables,
+        &platform_provider,
+    );
 
     let mut root_command = Command::new("dingus")
         .version(env!("CARGO_PKG_VERSION"))
@@ -29,6 +35,7 @@ pub fn create_root_command(
 }
 
 fn create_commands(
+    dingus_options: &DingusOptions,
     commands: &CommandConfigMap,
     parent_variables: &VariableConfigMap,
     platform_provider: &Box<dyn PlatformProvider>,
@@ -57,10 +64,14 @@ fn create_commands(
             let mut variables = parent_variables.clone();
             variables.extend(command_config.variables.clone());
 
-            let args = create_args(&variables);
+            let args = create_args(dingus_options, &variables);
 
-            let subcommands =
-                create_commands(&command_config.commands, &variables, &platform_provider);
+            let subcommands = create_commands(
+                dingus_options,
+                &command_config.commands,
+                &variables,
+                &platform_provider,
+            );
 
             // If this command doesn't have any action, then it needs a subcommand
             // Doesn't make sense to have a command that does nothing and has no subcommands to
@@ -94,54 +105,74 @@ fn create_commands(
         .collect()
 }
 
-fn create_args(variable_config_map: &VariableConfigMap) -> Vec<Arg> {
+fn create_args(
+    dingus_options: &DingusOptions,
+    variable_config_map: &VariableConfigMap,
+) -> Vec<Arg> {
     variable_config_map
         .iter()
-        .map(|(key, var_config)| -> Arg {
-            // TODO: Try to convert the variable name to an arg name
-            // E.g: `--my-variable` instead of `--my_variable`
-            // Should also consider whether or not it's a good idea to have all variables available as args by default
-            let arg_name = var_config.arg_name(key);
+        .map(|(key, var_config)| -> Option<Arg> {
+            let mut arg_config = match var_config {
+                VariableConfig::ShorthandLiteral(_) => None,
+                VariableConfig::Literal(literal) => literal.clone().argument,
+                VariableConfig::Execution(exec) => exec.clone().argument,
+                VariableConfig::Prompt(prompt) => prompt.clone().argument,
+                VariableConfig::Argument(argument) => Some(argument.clone().argument),
+            };
 
-            let mut arg = Arg::new(arg_name.clone()).long(arg_name.clone());
-
-            if let Some(description) = var_config.description() {
-                arg = arg.help(description)
+            // Automatically create an argument if the auto_args option is enabled
+            if dingus_options.auto_args && arg_config == None {
+                arg_config = Some(ArgumentConfigVariant::Shorthand(key.clone()));
             }
 
-            match var_config {
-                VariableConfig::ShorthandLiteral(literal) => arg = arg.default_value(literal),
-                VariableConfig::Literal(literal) => arg = arg.default_value(&literal.value),
-                VariableConfig::Execution(exec) => {
-                    let command = match exec.execution.clone() {
-                        ExecutionConfigVariant::RawCommand(command) => match command {
-                            RawCommandConfigVariant::Shorthand(command_text) => command_text,
-                            RawCommandConfigVariant::RawCommandConfig(raw_command_config) => {
-                                raw_command_config.command
-                            }
-                        },
-                        ExecutionConfigVariant::ShellCommand(shell_command) => {
-                            match shell_command {
-                                ShellCommandConfigVariant::Bash(bash_command) => {
-                                    bash_command.command
-                                }
-                            }
+            if let Some(arg_config) = arg_config {
+                // Use the variable key as the ID so we can link this arg to the variable
+                let mut arg = Arg::new(key.clone());
+
+                arg = match arg_config {
+                    // Shorthand args only set the long version
+                    ArgumentConfigVariant::Shorthand(arg_name) => arg.long(arg_name),
+
+                    // Named arguments can set the long and short versions as well as the description
+                    ArgumentConfigVariant::Named(named_arg_config) => {
+                        let mut arg = arg.long(named_arg_config.long);
+                        if let Some(short_arg_name) = named_arg_config.short {
+                            arg = arg.short(short_arg_name)
                         }
-                    };
 
-                    arg = arg
-                        .hide_default_value(true)
-                        .help(format!("Defaults to the result of executing {command}"));
+                        if let Some(description) = named_arg_config.description {
+                            arg = arg.help(description)
+                        }
+
+                        arg
+                    }
+
+                    // Positional arguments only set the position and description
+                    ArgumentConfigVariant::Positional(positional_arg_config) => {
+                        let mut arg = arg.index(positional_arg_config.position);
+
+                        if let Some(description) = positional_arg_config.description {
+                            arg = arg.help(description)
+                        }
+
+                        arg
+                    }
+                };
+
+                // Set the default value if applicable
+                match var_config {
+                    VariableConfig::ShorthandLiteral(literal) => arg = arg.default_value(literal),
+                    VariableConfig::Literal(literal) => arg = arg.default_value(&literal.value),
+                    _ => {}
                 }
-                VariableConfig::Prompt(_) => {
-                    arg = arg
-                        .hide_default_value(true)
-                        .help("Prompts the user for a value if not specified.");
-                }
+
+                return Some(arg);
             }
 
-            return arg;
+            return None;
         })
+        .filter(|arg| arg.is_some())
+        .map(|arg| arg.unwrap())
         .collect()
 }
 
@@ -217,12 +248,13 @@ type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ArgumentConfigVariant::Named;
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::RawCommandConfigVariant::Shorthand;
     use crate::config::{
         ActionConfig, AliasActionConfig, CommandConfig, DingusOptions, ExecutionVariableConfig,
-        LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PromptConfig,
-        PromptVariableConfig, SingleActionConfig, VariableConfig,
+        LiteralVariableConfig, ManyPlatforms, OnePlatform, Platform, PositionalArgumentConfig,
+        PromptConfig, PromptVariableConfig, SingleActionConfig, VariableConfig,
     };
     use crate::platform::MockPlatformProvider;
 
@@ -289,6 +321,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &subcommands,
             &parent_variables,
             &Box::new(platform_provider),
@@ -324,16 +357,18 @@ mod tests {
                 execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     "echo \"Hello, World!\"".to_string(),
                 )),
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
             }),
         );
         subcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
-                argument_name: None,
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Sub arg 2".to_string()),
+                    long: "sub-arg-2".to_string(),
+                    short: None,
+                })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
@@ -369,8 +404,7 @@ mod tests {
             "parent-var-2".to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: "bar".to_string(),
-                description: None,
-                argument_name: None,
+                argument: Some(ArgumentConfigVariant::Shorthand("parent-arg-2".to_string())),
                 environment_variable_name: None,
             }),
         );
@@ -379,6 +413,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &subcommands,
             &parent_variables,
             &Box::new(platform_provider),
@@ -387,41 +422,29 @@ mod tests {
         // Assert
         let command = created_subcommands.get(0).unwrap();
         let command_args: Vec<&Arg> = command.get_arguments().collect();
-        assert_eq!(command_args.len(), 4);
+        assert_eq!(command_args.len(), 2);
 
         let parent_arg_1 = command_args
             .iter()
-            .find(|arg| arg.get_id() == "parent-var-1")
-            .unwrap();
-        assert_eq!(parent_arg_1.get_id().as_str(), "parent-var-1");
-        assert_eq!(parent_arg_1.get_default_values(), ["foo"]);
+            .find(|arg| arg.get_id() == "parent-var-1");
+        assert_eq!(parent_arg_1, None);
 
         let parent_arg_2 = command_args
             .iter()
             .find(|arg| arg.get_id() == "parent-var-2")
             .unwrap();
-        assert_eq!(parent_arg_2.get_id().as_str(), "parent-var-2");
+        assert_eq!(parent_arg_2.get_long().unwrap(), "parent-arg-2");
         assert_eq!(parent_arg_2.get_default_values(), ["bar"]);
 
-        let sub_arg_1 = command_args
-            .iter()
-            .find(|arg| arg.get_id() == "sub-var-1")
-            .unwrap();
-        assert_eq!(sub_arg_1.get_id().as_str(), "sub-var-1");
-        assert_eq!(
-            sub_arg_1.get_help().unwrap().to_string(),
-            "Defaults to the result of executing echo \"Hello, World!\"".to_string()
-        );
+        let sub_arg_1 = command_args.iter().find(|arg| arg.get_id() == "sub-var-1");
+        assert_eq!(sub_arg_1, None);
 
         let sub_arg_2 = command_args
             .iter()
             .find(|arg| arg.get_id() == "sub-var-2")
             .unwrap();
-        assert_eq!(sub_arg_2.get_id().as_str(), "sub-var-2");
-        assert_eq!(
-            sub_arg_2.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
-        );
+        assert_eq!(sub_arg_2.get_long().unwrap(), "sub-arg-2");
+        assert_eq!(sub_arg_2.get_help().unwrap().to_string(), "Sub arg 2");
     }
 
     #[test]
@@ -431,8 +454,11 @@ mod tests {
         subsubcommand_variables.insert(
             "sub-var-2".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
-                argument_name: None,
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Sub arg 2".to_string()),
+                    long: "sub-arg-2".to_string(),
+                    short: None,
+                })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
@@ -466,8 +492,7 @@ mod tests {
                 execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     "echo \"Hello, World!\"".to_string(),
                 )),
-                description: None,
-                argument_name: None,
+                argument: Some(ArgumentConfigVariant::Shorthand("sub-arg-1".to_string())),
                 environment_variable_name: None,
             }),
         );
@@ -494,6 +519,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &subcommands,
             &VariableConfigMap::new(),
             &Box::new(platform_provider),
@@ -510,21 +536,15 @@ mod tests {
             .iter()
             .find(|arg| arg.get_id() == "sub-var-1")
             .unwrap();
-        assert_eq!(parent_arg.get_id().as_str(), "sub-var-1");
-        assert_eq!(
-            parent_arg.get_help().unwrap().to_string(),
-            "Defaults to the result of executing echo \"Hello, World!\"".to_string()
-        );
+        assert_eq!(parent_arg.get_long().unwrap(), "sub-arg-1");
+        assert_eq!(parent_arg.get_help(), None);
 
         let subcommand_arg = subcommand_args
             .iter()
             .find(|arg| arg.get_id() == "sub-var-2")
             .unwrap();
-        assert_eq!(subcommand_arg.get_id().as_str(), "sub-var-2");
-        assert_eq!(
-            subcommand_arg.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
-        );
+        assert_eq!(subcommand_arg.get_long().unwrap(), "sub-arg-2");
+        assert_eq!(subcommand_arg.get_help().unwrap().to_string(), "Sub arg 2");
     }
 
     #[test]
@@ -566,6 +586,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &subcommands,
             &VariableConfigMap::new(),
             &Box::new(platform_provider),
@@ -603,6 +624,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &subcommands,
             &VariableConfigMap::new(),
             &Box::new(platform_provider),
@@ -650,6 +672,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &commands,
             &VariableConfigMap::new(),
             &Box::new(platform_provider),
@@ -744,6 +767,7 @@ mod tests {
 
         // Act
         let created_subcommands = create_commands(
+            &DingusOptions::default(),
             &commands,
             &VariableConfigMap::new(),
             &Box::new(platform_provider),
@@ -775,6 +799,8 @@ mod tests {
     #[test]
     fn create_args_creates_correct_args() {
         // Arrange
+        let options = DingusOptions::default();
+
         let mut variables = VariableConfigMap::new();
         variables.insert(
             "var-1".to_string(),
@@ -784,8 +810,7 @@ mod tests {
             "var-2".to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: "bar".to_string(),
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
             }),
         );
@@ -795,16 +820,18 @@ mod tests {
                 execution: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     "echo \"Hello, World!\"".to_string(),
                 )),
-                description: None,
-                argument_name: None,
+                argument: Some(ArgumentConfigVariant::Shorthand("var-3".to_string())),
                 environment_variable_name: None,
             }),
         );
         variables.insert(
             "var-4".to_string(),
             VariableConfig::Prompt(PromptVariableConfig {
-                description: None,
-                argument_name: None,
+                argument: Some(ArgumentConfigVariant::Named(NamedArgumentConfig {
+                    description: Some("Fourth variable".to_string()),
+                    long: "name".to_string(),
+                    short: Some('v'),
+                })),
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "What's your name?".to_string(),
@@ -812,32 +839,86 @@ mod tests {
                 },
             }),
         );
+        variables.insert(
+            "var-5".to_string(),
+            VariableConfig::Prompt(PromptVariableConfig {
+                argument: Some(ArgumentConfigVariant::Positional(
+                    PositionalArgumentConfig {
+                        description: Some("Fifth variable".to_string()),
+                        position: 1,
+                    },
+                )),
+                environment_variable_name: None,
+                prompt: PromptConfig {
+                    message: "What's your age?".to_string(),
+                    options: Default::default(),
+                },
+            }),
+        );
 
         // Act
-        let args = create_args(&variables);
+        let args = create_args(&options, &variables);
+
+        // Assert
+        let var1 = args.iter().find(|v| v.get_id() == "var-1");
+        assert_eq!(var1, None);
+
+        let var2 = args.iter().find(|v| v.get_id() == "var-2");
+        assert_eq!(var2, None);
+
+        let var3 = args.iter().find(|v| v.get_id() == "var-3").unwrap();
+        assert_eq!(var3.get_long().unwrap(), "var-3");
+
+        let var4 = args.iter().find(|v| v.get_id() == "var-4").unwrap();
+        assert_eq!(var4.get_long().unwrap(), "name");
+        assert_eq!(var4.get_short().unwrap(), 'v');
+        assert_eq!(var4.get_help().unwrap().to_string(), "Fourth variable");
+
+        let var5 = args.iter().find(|v| v.get_id() == "var-5").unwrap();
+        assert_eq!(var5.get_index().unwrap(), 1);
+        assert_eq!(var5.get_help().unwrap().to_string(), "Fifth variable");
+    }
+
+    #[test]
+    fn auto_args_creates_correct_args() {
+        // Arrange
+        let options = DingusOptions {
+            print_commands: false,
+            print_variables: false,
+            auto_args: true,
+        };
+
+        let mut variables = VariableConfigMap::new();
+        variables.insert(
+            "var-1".to_string(),
+            VariableConfig::Literal(LiteralVariableConfig {
+                value: "foo".to_string(),
+                argument: None,
+                environment_variable_name: None,
+            }),
+        );
+
+        variables.insert(
+            "var-2".to_string(),
+            VariableConfig::Literal(LiteralVariableConfig {
+                value: "bar".to_string(),
+                argument: Some(ArgumentConfigVariant::Shorthand("existing".to_string())),
+                environment_variable_name: None,
+            }),
+        );
+
+        // Act
+        let args = create_args(&options, &variables);
 
         // Assert
         let var1 = args.iter().find(|v| v.get_id() == "var-1").unwrap();
-        assert_eq!(var1.get_id().as_str(), "var-1");
+        assert_eq!(var1.get_long().unwrap(), "var-1");
         assert_eq!(var1.get_default_values(), ["foo"]);
 
+        // auto_arg should not overwrite any provided arg config
         let var2 = args.iter().find(|v| v.get_id() == "var-2").unwrap();
-        assert_eq!(var2.get_id().as_str(), "var-2");
+        assert_eq!(var2.get_long().unwrap(), "existing");
         assert_eq!(var2.get_default_values(), ["bar"]);
-
-        let var3 = args.iter().find(|v| v.get_id() == "var-3").unwrap();
-        assert_eq!(var3.get_id().as_str(), "var-3");
-        assert_eq!(
-            var3.get_help().unwrap().to_string(),
-            "Defaults to the result of executing echo \"Hello, World!\"".to_string()
-        );
-
-        let var4 = args.iter().find(|v| v.get_id() == "var-4").unwrap();
-        assert_eq!(var4.get_id().as_str(), "var-4");
-        assert_eq!(
-            var4.get_help().unwrap().to_string(),
-            "Prompts the user for a value if not specified."
-        );
     }
 
     #[test]

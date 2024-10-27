@@ -36,15 +36,13 @@ impl VariableResolver for RealVariableResolver {
         let mut sensitive_variable_names: Vec<String> = vec![];
 
         for (key, config) in variable_configs.iter() {
-            // Args from the command-line have the highest priority, check there first.
-            let arg_name = config.arg_name(key);
-
             let name = config.environment_variable_name(key);
 
-            if let Some(arg_value) = self.argument_resolver.get(&arg_name) {
+            // Args from the command-line have the highest priority, check there first.
+            if let Some(arg_value) = self.argument_resolver.get(key) {
                 resolved_variables.insert(name.clone(), arg_value.clone());
             } else {
-                _ = match config {
+                match config {
                     VariableConfig::ShorthandLiteral(value) => {
                         resolved_variables.insert(name.clone(), value.clone());
                     }
@@ -99,6 +97,9 @@ impl VariableResolver for RealVariableResolver {
                             sensitive_variable_names.push(name.clone());
                         }
                     }
+
+                    // Arguments are checked above, nothing to do here.
+                    VariableConfig::Argument(_) => {}
                 }
             }
         }
@@ -131,13 +132,11 @@ impl RealVariableResolver {
 
 fn is_variable_sensitive(variable_config: &VariableConfig) -> bool {
     match variable_config {
-        VariableConfig::ShorthandLiteral(_) => false,
-        VariableConfig::Literal(_) => false,
-        VariableConfig::Execution(_) => false,
         VariableConfig::Prompt(prompt_variable) => match prompt_variable.clone().prompt.options {
             PromptOptionsVariant::Select(_) => false,
             PromptOptionsVariant::Text(text_prompt_options) => text_prompt_options.sensitive,
         },
+        _ => false,
     }
 }
 
@@ -291,8 +290,7 @@ mod tests {
             name.to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: value.to_string(),
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
             }),
         );
@@ -340,8 +338,7 @@ mod tests {
         variable_configs.insert(
             name.to_string(),
             VariableConfig::Execution(ExecutionVariableConfig {
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 execution: ExecutionConfigVariant::ShellCommand(ShellCommandConfigVariant::Bash(
                     BashCommandConfig {
@@ -393,8 +390,7 @@ mod tests {
         variable_configs.insert(
             name.to_string(),
             Prompt(PromptVariableConfig {
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "Enter your name".to_string(),
@@ -444,8 +440,7 @@ mod tests {
         variable_configs.insert(
             name.to_string(),
             Prompt(PromptVariableConfig {
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: None,
                 prompt: PromptConfig {
                     message: "Select your name".to_string(),
@@ -498,8 +493,7 @@ mod tests {
             name.to_string(),
             VariableConfig::Literal(LiteralVariableConfig {
                 value: value.to_string(),
-                description: None,
-                argument_name: None,
+                argument: None,
                 environment_variable_name: Some(env_var_name.to_string()),
             }),
         );
