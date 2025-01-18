@@ -248,7 +248,6 @@ type SubcommandSearchResult = (CommandConfig, VariableConfigMap, ArgMatches);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::ArgumentConfigVariant::Named;
     use crate::config::OneOrManyPlatforms::{Many, One};
     use crate::config::RawCommandConfigVariant::Shorthand;
     use crate::config::{
@@ -285,6 +284,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -308,6 +308,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -392,6 +393,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -482,6 +484,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -512,6 +515,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -565,6 +569,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -579,6 +584,7 @@ mod tests {
                 variables: Default::default(),
                 commands: subsubcommands,
                 action: None,
+                defer: None,
             },
         );
 
@@ -617,6 +623,7 @@ mod tests {
                 action: Some(ActionConfig::Alias(AliasActionConfig {
                     alias: "docker compose".to_string(),
                 })),
+                defer: None,
             },
         );
 
@@ -665,6 +672,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -703,6 +711,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -722,6 +731,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -741,6 +751,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -760,6 +771,7 @@ mod tests {
                         "Write-Host \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -951,6 +963,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1022,6 +1035,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1040,6 +1054,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1058,6 +1073,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1127,6 +1143,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1145,6 +1162,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1194,6 +1212,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
@@ -1240,6 +1259,7 @@ mod tests {
                         "echo \"Hello, World!\"".to_string(),
                     )),
                 })),
+                defer: None,
             },
         );
 
