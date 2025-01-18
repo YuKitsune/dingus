@@ -1,32 +1,30 @@
-use crate::args::{ArgumentResolver, ALIAS_ARGS_NAME};
-use crate::config::RawCommandConfigVariant::Shorthand;
-use crate::config::{ActionConfig, AliasActionConfig, ExecutionConfigVariant};
+use std::fmt;
+use std::fmt::Formatter;
+use crate::args::{ArgumentResolver};
+use crate::config::{DeferConfig, ExecutionConfigVariant};
 use crate::exec::{CommandExecutor, ExecutionError, ExitStatus};
-use crate::variables::{substitute_variables, VariableMap};
+use crate::variables::{VariableMap};
 use thiserror::Error;
 
-pub struct ActionExecutor {
+pub struct DeferExecutor {
     pub command_executor: Box<dyn CommandExecutor>,
-    pub arg_resolver: Box<dyn ArgumentResolver>,
 }
 
-impl ActionExecutor {
-    /// Executes the provided [`ActionConfig`] with the provided [`VariableMap`].
+impl DeferExecutor {
+    /// Executes the provided [`DeferConfig`] with the provided [`VariableMap`].
     pub fn execute(
         &self,
-        action_config: &ActionConfig,
+        defer_config: &DeferConfig,
         variables: &VariableMap,
-    ) -> Result<(), ActionError> {
-        match action_config {
-            ActionConfig::SingleStep(single_command_action) => {
-                self.execute_actions(vec![single_command_action.action.clone()], variables)
+    ) -> Result<(), DeferErrors> {
+        match defer_config {
+            DeferConfig::SingleStep(exec_config) => {
+                self.execute_actions(vec![exec_config.clone()], variables)
             }
 
-            ActionConfig::MultiStep(multi_command_action) => {
-                self.execute_actions(multi_command_action.actions.clone(), variables)
+            DeferConfig::MultiStep(exec_configs) => {
+                self.execute_actions(exec_configs.clone(), variables)
             }
-
-            ActionConfig::Alias(alias_action) => self.execute_alias(alias_action, variables),
         }
     }
 
@@ -34,8 +32,12 @@ impl ActionExecutor {
         &self,
         exec_configs: Vec<ExecutionConfigVariant>,
         variables: &VariableMap,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(), DeferErrors> {
+
+        let mut errors: Vec<DeferError> = Vec::new();
+
         for (idx, execution_config) in exec_configs.iter().enumerate() {
+
             let result = self.command_executor.execute(&execution_config, &variables);
 
             match result {
@@ -44,11 +46,11 @@ impl ActionExecutor {
                         ExitStatus::Success => continue,
 
                         // Re-map non-zero exit codes to errors
-                        _ => return Err(ActionError::StatusCode { index: idx, status }),
+                        _ => errors.push(DeferError::StatusCode { index: idx, status }),
                     }
                 }
                 Err(err) => {
-                    return Err(ActionError::Execution {
+                    errors.push(DeferError::Execution {
                         index: idx,
                         source: err,
                     })
@@ -56,61 +58,54 @@ impl ActionExecutor {
             }
         }
 
-        Ok(())
-    }
-
-    fn execute_alias(
-        &self,
-        alias_action_config: &AliasActionConfig,
-        variables: &VariableMap,
-    ) -> Result<(), ActionError> {
-        // Replace variables in the alias text
-        let alias_text = substitute_variables(alias_action_config.alias.as_str(), variables);
-
-        // Get the args and append them to the alias
-        let command_text =
-            if let Some(args) = self.arg_resolver.get_many(&ALIAS_ARGS_NAME.to_string()) {
-                let joined_args: String = args.join(" ");
-                format!("{} {}", alias_text, joined_args)
-            } else {
-                alias_text
-            };
-
-        // Execute it!
-        let exec = ExecutionConfigVariant::RawCommand(Shorthand(command_text));
-        self.command_executor
-            .execute(&exec, variables)
-            .map_err(|err| ActionError::Execution {
-                index: 0,
-                source: err,
-            })?;
-
-        return Ok(());
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(DeferErrors { errors })
+        }
     }
 }
 
 #[derive(Error, Debug)]
-pub enum ActionError {
-    #[error("failed to execute action {index}")]
+pub struct DeferErrors {
+    pub errors: Vec<DeferError>,
+}
+
+impl fmt::Display for DeferErrors {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for error in &self.errors {
+            writeln!(f, "{}", error)?
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum DeferError {
+
+    #[error("failed to execute deferred action {index}")]
     Execution {
         index: usize,
         source: ExecutionError,
     },
 
     // TODO: Reconsider whether a non-zero exit codes should be treated as errors
-    #[error("failed to execute action {index}: {status}")]
+    #[error("failed to execute deferredaction {index}: {status}")]
     StatusCode { index: usize, status: ExitStatus },
 }
 
 #[cfg(test)]
 mod tests {
+    use std::{io};
     use super::*;
     use crate::{
         args::MockArgumentResolver,
-        config::{MultiActionConfig, RawCommandConfigVariant, SingleActionConfig},
+        config::{RawCommandConfigVariant},
         exec::MockCommandExecutor,
     };
     use mockall::{predicate::eq, Sequence};
+    use crate::defer::DeferError;
 
     #[test]
     fn execute_single_step() {
@@ -136,18 +131,17 @@ mod tests {
         arg_resolver.expect_get_many().times(0).returning(|_| None);
 
         // Act
-        let action = ActionConfig::SingleStep(SingleActionConfig {
-            action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+        let defer = DeferConfig::SingleStep(
+            ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                 command_text.to_string(),
-            )),
-        });
+            ))
+        );
 
-        let action_executor = ActionExecutor {
+        let defer_executor = DeferExecutor {
             command_executor: Box::new(command_executor),
-            arg_resolver: Box::new(arg_resolver),
         };
 
-        let result = action_executor.execute(&action, &variables.clone());
+        let result = defer_executor.execute(&defer, &variables.clone());
 
         // Assert
         assert!(result.is_ok())
@@ -186,8 +180,7 @@ mod tests {
         arg_resolver.expect_get_many().times(0).returning(|_| None);
 
         // Act
-        let action = ActionConfig::MultiStep(MultiActionConfig {
-            actions: vec![
+        let defer = DeferConfig::MultiStep(vec![
                 ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     command_text_1.to_string(),
                 )),
@@ -197,61 +190,103 @@ mod tests {
                 ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
                     command_text_3.to_string(),
                 )),
-            ],
-        });
+            ]
+        );
 
-        let action_executor = ActionExecutor {
+        let defer_executor = DeferExecutor {
             command_executor: Box::new(command_executor),
-            arg_resolver: Box::new(arg_resolver),
         };
 
-        let result = action_executor.execute(&action, &variables.clone());
+        let result = defer_executor.execute(&defer, &variables.clone());
 
         // Assert
         assert!(result.is_ok())
     }
 
     #[test]
-    fn execute_alias() {
+    fn all_errors_returned() {
         // Arrange
-        let mut variables = VariableMap::new();
-        variables.insert("name".to_string(), "Dingus".to_string());
+        let variables = VariableMap::new();
+        let command_text_1 = "exit 1";
+        let command_text_2 = "exit 2";
+        let command_text_3 = "ls";
 
-        let command_text = "docker compose";
-
+        let mut seq = Sequence::new();
         let mut command_executor = MockCommandExecutor::new();
+
+        // Command 1: Exit-code 1
         command_executor
             .expect_execute()
-            .times(1)
+            .once()
+            .in_sequence(&mut seq)
             .with(
                 eq(ExecutionConfigVariant::RawCommand(
-                    RawCommandConfigVariant::Shorthand("docker compose up -d".to_string()),
+                    RawCommandConfigVariant::Shorthand(command_text_1.to_string()),
+                )),
+                eq(variables.clone()),
+            )
+            .returning(|_, _| Ok(ExitStatus::Fail(1)));
+
+        // Command 2: IO error
+        command_executor
+            .expect_execute()
+            .once()
+            .in_sequence(&mut seq)
+            .with(
+                eq(ExecutionConfigVariant::RawCommand(
+                    RawCommandConfigVariant::Shorthand(command_text_2.to_string()),
+                )),
+                eq(variables.clone()),
+            )
+            .returning(|_, _| Err(ExecutionError::IO(io::Error::new(io::ErrorKind::NotFound, "blah"))));
+
+        // Command 3: Success
+        command_executor
+            .expect_execute()
+            .once()
+            .in_sequence(&mut seq)
+            .with(
+                eq(ExecutionConfigVariant::RawCommand(
+                    RawCommandConfigVariant::Shorthand(command_text_3.to_string()),
                 )),
                 eq(variables.clone()),
             )
             .returning(|_, _| Ok(ExitStatus::Success));
 
-        let alias_text = "up -d";
         let mut arg_resolver = MockArgumentResolver::new();
-        arg_resolver
-            .expect_get_many()
-            .with(eq(ALIAS_ARGS_NAME.to_string()))
-            .once()
-            .returning(|_| Some(vec![alias_text.to_string()]));
+        arg_resolver.expect_get_many().times(0).returning(|_| None);
 
         // Act
-        let action = ActionConfig::Alias(AliasActionConfig {
-            alias: command_text.to_string(),
-        });
+        let defer = DeferConfig::MultiStep(vec![
+                ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                    command_text_1.to_string(),
+                )),
+                ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                    command_text_2.to_string(),
+                )),
+                ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                    command_text_3.to_string(),
+                ))
+            ]
+        );
 
-        let action_executor = ActionExecutor {
+        let defer_executor = DeferExecutor {
             command_executor: Box::new(command_executor),
-            arg_resolver: Box::new(arg_resolver),
         };
 
-        let result = action_executor.execute(&action, &variables.clone());
+        let result = defer_executor.execute(&defer, &variables.clone());
 
         // Assert
-        assert!(result.is_ok())
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+
+        assert_eq!(
+            err.to_string(),
+            DeferErrors {
+                errors: vec![
+                    DeferError::StatusCode { index: 0, status: ExitStatus::Fail(1) },
+                    DeferError::Execution { index: 1, source: ExecutionError::IO(io::Error::new(io::ErrorKind::NotFound, "blah")) }
+                ]
+            }.to_string());
     }
 }

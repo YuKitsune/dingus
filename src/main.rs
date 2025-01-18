@@ -1,13 +1,16 @@
 use crate::actions::ActionExecutor;
 use crate::args::ClapArgumentResolver;
-use crate::config::ConfigError;
+use crate::config::{ConfigError};
 use crate::exec::create_command_executor;
 use crate::platform::current_platform_provider;
 use crate::prompt::TerminalPromptExecutor;
 use crate::variables::{RealVariableResolver, VariableResolver};
 use anyhow::Result;
-use std::env;
+use std::{env, fmt};
+use std::error::Error;
+use std::fmt::Formatter;
 use thiserror::Error;
+use crate::defer::{DeferExecutor};
 
 mod actions;
 mod args;
@@ -17,7 +20,7 @@ mod exec;
 mod platform;
 mod prompt;
 mod variables;
-
+mod defer;
 // Ideas:
 // - Preconditions: Specify a list of applications that must be installed, or a custom script that must succeed before running a command
 // - Deferred actions: Always executes at the end, even if one of the actions fails.
@@ -100,13 +103,59 @@ fn main() -> Result<()> {
                 )),
             };
 
-            action_executor.execute(&command_action, &variables)?;
-            return Ok(());
+            let mut errors: Vec<Box<dyn Error>> = Vec::new();
+
+            // Primary action handling
+            let action_exec_result = action_executor.execute(&command_action, &variables);
+            if let Err(action_err) = action_exec_result {
+                errors.push(Box::new(action_err));
+            }
+
+            // Deferred action handling
+            if let Some(defer_config) = target_command.defer {
+                let defer_executor = DeferExecutor {
+                    command_executor: create_command_executor(&config.options),
+                    arg_resolver: Box::new(ClapArgumentResolver::from_arg_matches(
+                        &sucbommand_arg_matches,
+                    )),
+                };
+
+                let defer_result = defer_executor.execute(&defer_config, &variables);
+                if let Err(defer_errs) = defer_result {
+                    for defer_err in defer_errs.errors {
+                        errors.push(Box::new(defer_err))
+                    }
+                }
+            }
+
+            return if errors.len() == 0 {
+                Ok(())
+            } else {
+                Err(AggregateError { errors }.into())
+            }
         }
     }
 
     Err(CommandError::CommandNotFound.into())
 }
+
+#[derive(Debug, Error)]
+pub struct AggregateError {
+    pub errors: Vec<Box<dyn Error>>,
+}
+
+impl fmt::Display for AggregateError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for error in &self.errors {
+            writeln!(f, "{}", error)?
+        }
+
+        Ok(())
+    }
+}
+
+unsafe impl Send for AggregateError {}
+unsafe impl Sync for AggregateError {}
 
 #[derive(Error, Debug, Clone)]
 enum CommandError {
