@@ -153,6 +153,7 @@ fn parse_config(
             variables: child_config.variables,
             commands: child_config.commands,
             action: None,
+            defer: None,
         };
 
         base_config.commands.insert(import.alias.clone(), command);
@@ -705,6 +706,10 @@ pub struct CommandConfig {
     /// The [`ActionConfig`] that this command will perform when executed.
     #[serde(flatten)]
     pub action: Option<ActionConfig>,
+
+    /// The [`DeferConfig`] that this command will perform once all of the actions have been executed.
+    /// The commands provided here will always run in the provided order, regardless of any previous errors.
+    pub defer: Option<DeferConfig>,
 }
 
 fn default_hidden() -> bool {
@@ -759,6 +764,14 @@ pub struct SingleActionConfig {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct MultiActionConfig {
     pub actions: Vec<ExecutionConfigVariant>,
+}
+
+/// Encapsulates one or many [`ExecutionConfigVariant`].
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[serde(untagged)]
+pub enum DeferConfig {
+    MultiStep(Vec<ExecutionConfigVariant>),
+    SingleStep(ExecutionConfigVariant),
 }
 
 /// The kind of command to execute.
@@ -1252,6 +1265,7 @@ commands:
                         "ls".to_string()
                     )),
                 })),
+                defer: None,
             }
         );
     }
@@ -1276,6 +1290,7 @@ commands:
                 action: Some(ActionConfig::Alias(AliasActionConfig {
                     alias: "docker compose -f docker-compose.deps.yml".to_string()
                 })),
+                defer: None,
             }
         );
     }
@@ -1303,6 +1318,7 @@ commands:
                         "ls".to_string()
                     )),
                 })),
+                defer: None,
             }
         );
     }
@@ -1334,6 +1350,7 @@ commands:
                         "ls".to_string()
                     )),
                 })),
+                defer: None,
             }
         );
 
@@ -1354,6 +1371,7 @@ commands:
                         "cat example.txt".to_string()
                     )),
                 })),
+                defer: None,
             }
         );
     }
@@ -1384,6 +1402,7 @@ commands:
                         "ls".to_string()
                     )),
                 })),
+                defer: None,
             }
         );
 
@@ -1400,6 +1419,7 @@ commands:
                 variables: Default::default(),
                 commands: map,
                 action: None,
+                defer: None,
             }
         );
     }
@@ -1435,6 +1455,76 @@ commands:
                         )),
                     ],
                 })),
+                defer: None,
+            }
+        );
+    }
+
+    #[test]
+    fn command_with_deferred_action_parses() {
+        let yaml = "commands:
+    demo:
+        action: cat example.txt
+        defer: rm example.txt";
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(
+            demo_command,
+            &CommandConfig {
+                name: None,
+                description: None,
+                hidden: false,
+                platform: None,
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "cat example.txt".to_string()
+                    )),
+                })),
+                defer: Some(DeferConfig::SingleStep(ExecutionConfigVariant::RawCommand(RawCommandConfigVariant::Shorthand(
+                        "rm example.txt".to_string()
+                    ))
+                )),
+            }
+        );
+    }
+
+    #[test]
+    fn command_with_deferred_actions_parses() {
+        let yaml = "commands:
+    demo:
+        action: cat example.txt
+        defer:
+            - rm example.txt
+            - echo Done!";
+        let config = parse_config(&yaml.to_string(), Platform::Linux).unwrap();
+
+        let demo_command = config.commands.get("demo").unwrap();
+        assert_eq!(
+            demo_command,
+            &CommandConfig {
+                name: None,
+                description: None,
+                hidden: false,
+                platform: None,
+                variables: Default::default(),
+                commands: Default::default(),
+                action: Some(ActionConfig::SingleStep(SingleActionConfig {
+                    action: ExecutionConfigVariant::RawCommand(Shorthand(
+                            "cat example.txt".to_string()
+                        )),
+                })),
+                defer: Some(DeferConfig::MultiStep(vec![
+                        ExecutionConfigVariant::RawCommand(Shorthand(
+                            "rm example.txt".to_string()
+                        )),
+                        ExecutionConfigVariant::RawCommand(Shorthand(
+                            "echo Done!".to_string()
+                        ))
+                    ]
+                )),
             }
         );
     }
@@ -1470,6 +1560,7 @@ commands:
                         "cat example.txt".to_string()
                     ))
                 })),
+                defer: None,
             }
         );
 
@@ -1489,6 +1580,7 @@ commands:
                         "Get-Content example.txt".to_string()
                     ))
                 })),
+                defer: None,
             }
         );
     }
@@ -1516,6 +1608,7 @@ commands:
                         "cat example.txt".to_string()
                     ))
                 })),
+                defer: None,
             }
         );
     }
@@ -1556,6 +1649,7 @@ commands:
                         )),
                     ]
                 })),
+                defer: None,
             }
         );
     }

@@ -56,7 +56,7 @@ impl ActionExecutor {
             }
         }
 
-        return Ok(());
+        Ok(())
     }
 
     fn execute_alias(
